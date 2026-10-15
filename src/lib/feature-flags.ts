@@ -1,6 +1,6 @@
 import { getDb } from './mongodb';
 
-export type MonetizationMode = 1 | 0; // 1 = Plans, 0 = Buy Me a Coffee
+export type MonetizationMode = 1 | 0; // 1 = Plans (Default), 0 = Coffee (Deprecated)
 
 export interface FeatureFlagConfig {
   key: string;
@@ -9,21 +9,19 @@ export interface FeatureFlagConfig {
   updatedAt: string;
 }
 
-// Default memory state (defaults to 0 unless FEATURE_FLAG_PLANS_MODE is set)
-let memoryMonetizationMode: MonetizationMode = 0;
+// Default state: 1 = Plans Base with Razorpay
+let memoryMonetizationMode: MonetizationMode = 1;
 
 export async function getMonetizationFeatureFlag(): Promise<MonetizationMode> {
-  // 1. Check environment variable first (admin configuration)
+  // Always prioritize Plans mode (1)
   if (process.env.FEATURE_FLAG_PLANS_MODE !== undefined) {
     const raw = process.env.FEATURE_FLAG_PLANS_MODE.trim();
-    if (raw === '1') {
-      memoryMonetizationMode = 1;
-      return 1;
-    }
     if (raw === '0') {
       memoryMonetizationMode = 0;
       return 0;
     }
+    memoryMonetizationMode = 1;
+    return 1;
   }
 
   // 2. Check MongoDB database configuration
@@ -58,7 +56,7 @@ export async function setMonetizationFeatureFlag(value: MonetizationMode): Promi
           $set: {
             key: 'monetization_mode',
             value,
-            description: value === 1 ? '1 = My Plans' : '0 = Buy Me a Coffee',
+            description: value === 1 ? '1 = Plans Base (Razorpay)' : '0 = Legacy Coffee',
             updatedAt: now,
           },
         },

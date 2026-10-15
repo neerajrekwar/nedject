@@ -8,7 +8,6 @@ import {
   User,
   LogIn,
   Zap,
-  Coffee,
   Layers,
   Sparkles,
   QrCode,
@@ -84,7 +83,7 @@ export function GlobalNavbar() {
     { href: '/fitness-glass', label: 'Fitness Glass' },
     { href: '/google-fit', label: 'Google Fit Sync' },
     { href: '/fitness-glass/winter-arc-2026', label: 'Winter Arc 2026' },
-    { href: '/tip', label: monetizationMode === 1 ? 'Plans' : 'Tip & Coffee' },
+    { href: '/payment', label: 'Plans & Pricing' },
   ];
 
   return (
@@ -122,7 +121,7 @@ export function GlobalNavbar() {
             </nav>
           </div>
 
-          {/* Right Action Bar: Quota Counter + Upgrade/Coffee Button + User Profile / Auth */}
+          {/* Right Action Bar: Quota Counter + Plans Button + User Profile / Auth */}
           <div className="flex items-center gap-2 flex-wrap">
             
             {/* 1. Quota Limit Counter */}
@@ -155,26 +154,13 @@ export function GlobalNavbar() {
               )}
             </div>
 
-            {/* 2. Clean Monetization Action Link (Conditional without internal debug wording) */}
+            {/* 2. Plans & Razorpay Action Link */}
             <Link
-              href="/tip"
-              className={`border-2 border-black px-2.5 py-1 text-xs font-black flex items-center gap-1.5 transition-all shadow-[1px_1px_0px_#000000] cursor-pointer ${
-                monetizationMode === 1
-                  ? 'bg-white text-black hover:bg-black hover:text-[#ccff00]'
-                  : 'bg-[#FFDD00] text-black hover:bg-black hover:text-[#FFDD00]'
-              }`}
+              href="/payment"
+              className="border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-2.5 py-1 text-xs font-black flex items-center gap-1.5 transition-all shadow-[1px_1px_0px_#000000] cursor-pointer"
             >
-              {monetizationMode === 1 ? (
-                <>
-                  <Zap className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="text-[11px]">UPGRADE PLAN</span>
-                </>
-              ) : (
-                <>
-                  <Coffee className="w-3.5 h-3.5 text-amber-900" />
-                  <span className="text-[11px]">BUY ME A COFFEE</span>
-                </>
-              )}
+              <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
+              <span className="text-[11px]">PLANS &amp; RAZORPAY</span>
             </Link>
 
             {/* 3. User Authentication Button / Profile Pill */}

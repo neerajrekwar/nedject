@@ -119,10 +119,10 @@ export function TechnicalFooter({ onOpenQRArtifact }: TechnicalFooterProps) {
                 </li>
                 <li>
                   <Link
-                    href="/tip"
+                    href="/payment"
                     className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
                   >
-                    <span>[07]</span> <span>PLANS & COFFEE ☕</span>
+                    <span>[07]</span> <span>PLANS &amp; RAZORPAY</span>
                   </Link>
                 </li>
                 <li>

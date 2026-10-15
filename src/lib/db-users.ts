@@ -19,7 +19,7 @@ export interface UserProfile {
   provider: 'google' | 'x' | 'instagram' | 'credentials';
   providerAccountId?: string;
   image?: string;
-  plan: 'free' | 'pro';
+  plan: 'free' | 'pro' | 'enterprise';
   generationsLimit: number;
   generationsUsed: number;
   googleFitTokens?: GoogleFitUserTokens;
@@ -108,7 +108,8 @@ export async function updateUserProfile(
     dob?: string;
     occupation?: string;
     generationsUsed?: number;
-    plan?: 'free' | 'pro';
+    generationsLimit?: number;
+    plan?: 'free' | 'pro' | 'enterprise';
   }
 ): Promise<UserProfile | null> {
   const normalizedEmail = email.toLowerCase().trim();

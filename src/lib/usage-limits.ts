@@ -2,7 +2,7 @@
 
 export const GUEST_GENERATION_LIMIT = 2;
 export const AUTH_FREE_GENERATION_LIMIT = 10;
-export const PRO_GENERATION_LIMIT = 100;
+export const PRO_GENERATION_LIMIT = 99999; // Unlimited for Pro
 
 export type ToolKey =
   | 'qr_studio'
@@ -18,7 +18,7 @@ export interface UsageStats {
   remaining: number;
   canGenerate: boolean;
   isLoggedIn: boolean;
-  plan: 'guest' | 'free' | 'pro';
+  plan: 'guest' | 'free' | 'pro' | 'enterprise';
   toolBreakdown?: Record<string, number>;
 }
 
@@ -63,11 +63,15 @@ export function setLocalUsageCount(count: number, toolKey?: ToolKey): void {
   }
 }
 
-export function getUsageStats(isLoggedIn: boolean, plan: 'free' | 'pro' = 'free'): UsageStats {
+export function getUsageStats(
+  isLoggedIn: boolean,
+  plan: 'free' | 'pro' | 'enterprise' = 'free'
+): UsageStats {
   const used = getLocalUsageCount();
+  const isPaidPlan = plan === 'pro' || plan === 'enterprise';
   const limit = !isLoggedIn
     ? GUEST_GENERATION_LIMIT
-    : plan === 'pro'
+    : isPaidPlan
     ? PRO_GENERATION_LIMIT
     : AUTH_FREE_GENERATION_LIMIT;
 
@@ -91,14 +95,14 @@ export function getUsageStats(isLoggedIn: boolean, plan: 'free' | 'pro' = 'free'
 export async function consumeToolQuota(
   toolKey: ToolKey = 'general_generator',
   isLoggedIn: boolean = false,
-  plan: 'free' | 'pro' = 'free'
+  plan: 'free' | 'pro' | 'enterprise' = 'free'
 ): Promise<{ allowed: boolean; stats: UsageStats; message?: string }> {
   const currentStats = getUsageStats(isLoggedIn, plan);
 
   if (!currentStats.canGenerate) {
     const message = !isLoggedIn
-      ? `Guest generation limit reached (${GUEST_GENERATION_LIMIT}/${GUEST_GENERATION_LIMIT}). Sign in with Google, X, or Email to unlock 10 generations or support on Ko-fi!`
-      : `Account limit reached (${currentStats.limit}/${currentStats.limit}). Support on Ko-fi or upgrade to Pro to unlock unlimited generations.`;
+      ? `Guest generation limit reached (${GUEST_GENERATION_LIMIT}/${GUEST_GENERATION_LIMIT}). Sign in with Google or Email to unlock 10 daily generations or upgrade to Pro!`
+      : `Account limit reached (${currentStats.limit}/${currentStats.limit}). Upgrade to Pro to unlock unlimited 300/600 DPI generations and vector exports.`;
 
     // Trigger universal quota exhaustion dialog modal
     if (typeof window !== 'undefined') {

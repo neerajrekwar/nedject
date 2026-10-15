@@ -11,7 +11,6 @@ import {
   AlertCircle,
   X,
   Sparkles,
-  Coffee,
   Layers,
   LogOut,
   Save,
@@ -207,39 +206,24 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </div>
         </div>
 
-        {/* 2. Membership & Support Quick Action */}
+        {/* 2. Membership & Upgrade Quick Action */}
         <div className="border-2 border-black bg-[#fafaf5] p-3 flex items-center justify-between gap-3">
           <div>
             <div className="text-xs font-black uppercase text-black flex items-center gap-1.5">
-              {monetizationMode === 1 ? (
-                <>
-                  <Zap className="w-3.5 h-3.5 text-amber-500" />
-                  <span>PRO MEMBERSHIP &amp; UPGRADE</span>
-                </>
-              ) : (
-                <>
-                  <Coffee className="w-3.5 h-3.5 text-amber-800" />
-                  <span>SUPPORT CREATOR &amp; TIP</span>
-                </>
-              )}
+              <Zap className="w-3.5 h-3.5 text-amber-500" />
+              <span>PRO PLANS &amp; UPGRADE (RAZORPAY)</span>
             </div>
             <p className="text-[10px] text-zinc-600 mt-0.5">
-              {monetizationMode === 1
-                ? 'Unlock 600 DPI, vector exports, and unlimited volume.'
-                : 'Help keep 300 DPI high-resolution generation free & open.'}
+              Unlock unlimited 300 &amp; 600 DPI vector exports, batch matrices, and commercial rights.
             </p>
           </div>
 
           <a
-            href="/tip"
+            href="/payment"
             onClick={onClose}
-            className={`px-3 py-1.5 border-2 border-black font-mono text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer shrink-0 flex items-center gap-1 ${
-              monetizationMode === 1
-                ? 'bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black'
-                : 'bg-[#FFDD00] text-black hover:bg-black hover:text-[#FFDD00]'
-            }`}
+            className="px-3 py-1.5 border-2 border-black font-mono text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer shrink-0 flex items-center gap-1 bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black"
           >
-            <span>{monetizationMode === 1 ? 'VIEW PLANS' : 'BUY COFFEE'}</span>
+            <span>VIEW PLANS</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>

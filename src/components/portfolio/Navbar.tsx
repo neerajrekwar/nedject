@@ -107,10 +107,10 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
           </div>
 
           <Link
-            href="/tip"
+            href="/payment"
             className="flex items-center gap-2 border-2 border-black bg-black px-4 py-2.5 text-[#ccff00] font-mono text-xs font-black tracking-wider shadow-[4px_4px_0px_#000000] hover:bg-[#ccff00] hover:text-black hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#000000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all cursor-pointer"
           >
-            <span>SUPPORT / PLANS</span>
+            <span>PLANS &amp; RAZORPAY</span>
             <Terminal className="w-3.5 h-3.5" />
           </Link>
         </div>
@@ -177,11 +177,11 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
               WINTER ARC 2026 (90D PROTOCOL) →
             </Link>
             <Link
-              href="/tip"
+              href="/payment"
               onClick={() => setMobileMenuOpen(false)}
               className="block p-3 border-2 border-black bg-[#ccff00] font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000]"
             >
-              PLANS & CREATOR SUPPORT →
+              PLANS &amp; RAZORPAY BILLING →
             </Link>
           </div>
         </div>
