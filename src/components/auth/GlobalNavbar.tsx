@@ -154,13 +154,13 @@ export function GlobalNavbar() {
               )}
             </div>
 
-            {/* 2. Plans & Razorpay Action Link */}
+            {/* 2. Upgrade Pro Action Link */}
             <Link
               href="/payment"
               className="border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-2.5 py-1 text-xs font-black flex items-center gap-1.5 transition-all shadow-[1px_1px_0px_#000000] cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
-              <span className="text-[11px]">PLANS &amp; RAZORPAY</span>
+              <span className="text-[11px]">UPGRADE TO PRO</span>
             </Link>
 
             {/* 3. User Authentication Button / Profile Pill */}

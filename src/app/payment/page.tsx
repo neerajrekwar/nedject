@@ -286,7 +286,7 @@ export default function PlansAndPaymentPage() {
               </div>
               <div>
                 <h1 className="text-xl sm:text-2xl font-black uppercase text-black tracking-tight">
-                  NEDJECT // PLANS &amp; RAZORPAY BILLING
+                  NEDJECT // UPGRADE &amp; PLANS
                 </h1>
                 <p className="text-xs text-zinc-600 font-bold uppercase mt-0.5">
                   INDUSTRIAL OPTICAL CALIBRATION • 600 DPI PRINT PASS • UNLIMITED GENERATIONS
@@ -296,7 +296,7 @@ export default function PlansAndPaymentPage() {
 
             <div className="flex items-center gap-2 text-xs font-black bg-zinc-100 border-2 border-black px-3 py-1.5 shadow-[2px_2px_0px_#000000]">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>SECURED BY RAZORPAY GATEWAY</span>
+              <span>256-BIT ENCRYPTED SECURE CHECKOUT</span>
             </div>
           </div>
 
@@ -543,7 +543,7 @@ export default function PlansAndPaymentPage() {
                 {isProcessing && selectedPlanId === 'pro' ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin text-[#ccff00]" />
-                    <span>LAUNCHING RAZORPAY CHECKOUT...</span>
+                    <span>INITIALIZING SECURE CHECKOUT...</span>
                   </>
                 ) : (
                   <>
@@ -565,7 +565,7 @@ export default function PlansAndPaymentPage() {
 
               <div className="text-[10px] text-zinc-600 font-bold text-center flex items-center justify-center gap-1">
                 <Lock className="w-3 h-3 text-zinc-500" />
-                <span>Instant activation via Razorpay UPI, Cards, NetBanking</span>
+                <span>Instant activation via UPI, Cards, NetBanking</span>
               </div>
             </div>
           </div>
@@ -622,7 +622,7 @@ export default function PlansAndPaymentPage() {
                 {isProcessing && selectedPlanId === 'enterprise' ? (
                   <>
                     <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>LAUNCHING RAZORPAY...</span>
+                    <span>INITIALIZING CHECKOUT...</span>
                   </>
                 ) : (
                   <>
@@ -640,13 +640,13 @@ export default function PlansAndPaymentPage() {
 
         </div>
 
-        {/* 4. RAZORPAY PAYMENT METHODS & TRUST BADGES */}
+        {/* 4. PAYMENT METHODS & TRUST BADGES */}
         <div className="border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-black pb-3">
             <div className="flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-black" />
               <h3 className="text-sm font-black uppercase text-black">
-                ACCEPTED PAYMENT METHODS (POWERED BY RAZORPAY)
+                ACCEPTED PAYMENT METHODS &amp; INSTANT ACTIVATION
               </h3>
             </div>
             <div className="text-[11px] font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 border border-emerald-300">
@@ -752,9 +752,9 @@ export default function PlansAndPaymentPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
             <div className="space-y-1">
-              <h4 className="font-mono font-black text-black uppercase">How does Razorpay checkout work?</h4>
+              <h4 className="font-mono font-black text-black uppercase">How does checkout &amp; instant activation work?</h4>
               <p className="text-zinc-600 leading-relaxed font-medium">
-                Razorpay allows you to pay securely using UPI (Google Pay, PhonePe, Paytm), Credit or Debit cards, NetBanking, and Wallets. Once payment is authorized, your account is immediately upgraded to Pro without waiting.
+                You can pay securely using UPI (Google Pay, PhonePe, Paytm), Credit or Debit cards, NetBanking, and Wallets. Once payment is authorized, your account is immediately upgraded to Pro without waiting.
               </p>
             </div>
             <div className="space-y-1">
@@ -785,7 +785,7 @@ export default function PlansAndPaymentPage() {
 
       {/* 7. FOOTER */}
       <footer className="border-t-2 border-black bg-white py-4 px-4 font-mono text-xs text-center text-zinc-600">
-        Nedject // Developed by neerajrekwar • Industrial Optical Matrix &amp; Razorpay Billing Engine
+        Nedject // Developed by neerajrekwar • Industrial Optical Matrix &amp; Pro Subscription Engine
       </footer>
     </div>
   );

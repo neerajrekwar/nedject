@@ -211,7 +211,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <div>
             <div className="text-xs font-black uppercase text-black flex items-center gap-1.5">
               <Zap className="w-3.5 h-3.5 text-amber-500" />
-              <span>PRO PLANS &amp; UPGRADE (RAZORPAY)</span>
+              <span>PRO MEMBERSHIP &amp; UPGRADE</span>
             </div>
             <p className="text-[10px] text-zinc-600 mt-0.5">
               Unlock unlimited 300 &amp; 600 DPI vector exports, batch matrices, and commercial rights.
@@ -223,7 +223,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             onClick={onClose}
             className="px-3 py-1.5 border-2 border-black font-mono text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer shrink-0 flex items-center gap-1 bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black"
           >
-            <span>VIEW PLANS</span>
+            <span>UPGRADE NOW</span>
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>

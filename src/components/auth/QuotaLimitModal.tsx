@@ -81,8 +81,8 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
             </div>
             <p className="text-xs font-bold text-zinc-700">
               {isGuest
-                ? `You've used all 2 guest generations on ${triggerTool}. Sign in for 10 free generations or upgrade to Pro via Razorpay for unlimited access!`
-                : `You've used all 10 free generations on ${triggerTool}. Upgrade to Pro Studio via Razorpay to unlock unlimited 300 & 600 DPI generations.`}
+                ? `You've used all 2 guest generations on ${triggerTool}. Sign in for 10 free generations or upgrade to Pro for unlimited access!`
+                : `You've used all 10 free generations on ${triggerTool}. Upgrade to Pro Studio to unlock unlimited 300 & 600 DPI generations.`}
             </p>
           </div>
 
@@ -109,7 +109,7 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
             </div>
           )}
 
-          {/* Pro Upgrade Option via Razorpay */}
+          {/* Pro Upgrade Option */}
           <div className="border-2 border-black bg-[#f0fde8] p-4 space-y-3">
             <div className="flex justify-between items-center font-black">
               <span className="uppercase text-black flex items-center gap-1.5 text-xs">
@@ -132,7 +132,7 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
               </li>
               <li className="flex items-center gap-1.5">
                 <Check className="w-3 h-3 text-emerald-700" />
-                <span>Instant activation via Razorpay (UPI, Cards, NetBanking)</span>
+                <span>Instant activation (UPI, Cards, NetBanking)</span>
               </li>
             </ul>
 
@@ -142,7 +142,7 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
               className="w-full py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
             >
               <CreditCard className="w-3.5 h-3.5" />
-              <span>VIEW PRO PLANS &amp; PAY VIA RAZORPAY</span>
+              <span>UPGRADE TO PRO STUDIO</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>

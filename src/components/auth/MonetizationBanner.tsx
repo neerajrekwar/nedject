@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Sparkles,
@@ -9,24 +9,94 @@ import {
   ArrowRight,
   ShieldCheck,
   CreditCard,
+  X,
 } from 'lucide-react';
 
 interface MonetizationBannerProps {
   monetizationMode?: 1 | 0; // Kept for backwards prop compatibility, always renders Plans
   onOpenUpgrade?: () => void;
+  onClose?: () => void;
   className?: string;
 }
 
 export const MonetizationBanner: React.FC<MonetizationBannerProps> = ({
+  onClose,
   className = '',
 }) => {
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [isFullyHidden, setIsFullyHidden] = useState(false);
+
+  useEffect(() => {
+    try {
+      const dismissed = sessionStorage.getItem('nedject_pro_banner_dismissed') === 'true';
+      if (dismissed) {
+        setIsDismissed(true);
+      }
+    } catch (e) {
+      // sessionStorage not available or disabled in sandbox
+    }
+  }, []);
+
+  const handleDismiss = () => {
+    setIsDismissed(true);
+    try {
+      sessionStorage.setItem('nedject_pro_banner_dismissed', 'true');
+    } catch (e) {}
+    onClose?.();
+  };
+
+  const handleRestore = () => {
+    setIsDismissed(false);
+    setIsFullyHidden(false);
+    try {
+      sessionStorage.removeItem('nedject_pro_banner_dismissed');
+    } catch (e) {}
+  };
+
+  if (isFullyHidden) {
+    return null;
+  }
+
+  if (isDismissed) {
+    return (
+      <div
+        className={`border-2 border-dashed border-black/40 bg-[#fbfbf8] p-3 font-mono text-xs flex flex-wrap items-center justify-between gap-3 shadow-[2px_2px_0px_#00000020] transition-all ${className}`}
+      >
+        <div className="flex items-center gap-2 text-zinc-600 font-bold text-[11px] uppercase">
+          <span className="w-2.5 h-2.5 bg-zinc-400 border border-black inline-block shrink-0" />
+          <span>NEDJECT PRO MEMBERSHIP BOX TEMPORARILY REMOVED</span>
+        </div>
+        <div className="flex items-center gap-2 ml-auto">
+          <button
+            type="button"
+            onClick={handleRestore}
+            title="Restore Pro Membership box"
+            className="border border-black bg-[#ccff00] text-black px-2.5 py-1 font-black text-[10px] uppercase shadow-[1px_1px_0px_#000000] hover:bg-black hover:text-[#ccff00] transition-all cursor-pointer flex items-center gap-1"
+          >
+            <Sparkles className="w-3 h-3 text-amber-600" />
+            <span>RESTORE BOX</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setIsFullyHidden(true)}
+            title="Hide notice completely"
+            aria-label="Hide notice completely"
+            className="border border-black bg-white hover:bg-zinc-200 text-zinc-700 p-1 text-[10px] shadow-[1px_1px_0px_#000000] cursor-pointer"
+          >
+            <X className="w-3 h-3" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`border-4 border-black bg-[#fafaf5] p-5 sm:p-6 shadow-[6px_6px_0px_#000000] font-mono space-y-4 ${className}`}
+      className={`relative border-4 border-black bg-[#fafaf5] p-5 sm:p-6 shadow-[6px_6px_0px_#000000] font-mono space-y-4 ${className}`}
     >
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b-2 border-black pb-3">
+      <div className="flex items-start sm:items-center justify-between gap-3 border-b-2 border-black pb-3">
         <div className="flex items-center gap-2.5">
-          <span className="w-6 h-6 bg-[#ccff00] text-black font-black text-xs flex items-center justify-center border-2 border-black shadow-[1px_1px_0px_#000000]">
+          <span className="w-6 h-6 bg-[#ccff00] text-black font-black text-xs flex items-center justify-center border-2 border-black shadow-[1px_1px_0px_#000000] shrink-0">
             ★
           </span>
           <div>
@@ -34,14 +104,26 @@ export const MonetizationBanner: React.FC<MonetizationBannerProps> = ({
               NEDJECT PRO MEMBERSHIP // OPTICAL TIERS
             </h3>
             <p className="text-[11px] text-zinc-600 font-bold uppercase mt-0.5">
-              UNLIMITED 300/600 DPI VECTOR EXPORTS • POWERED BY RAZORPAY
+              UNLIMITED 300/600 DPI VECTOR EXPORTS • PRO SUBSCRIPTION
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2 self-start sm:self-auto">
-          <span className="text-[10px] bg-black text-[#ccff00] px-2.5 py-1 font-black uppercase border border-black shadow-[1px_1px_0px_#000000]">
+
+        {/* Top-Right Corner Actions: Unlimited Access Badge + Remove / Cancel Button */}
+        <div className="flex items-center gap-2 shrink-0 self-start sm:self-auto">
+          <span className="hidden md:inline-block text-[10px] bg-black text-[#ccff00] px-2.5 py-1 font-black uppercase border border-black shadow-[1px_1px_0px_#000000]">
             UNLIMITED ACCESS
           </span>
+          <button
+            type="button"
+            onClick={handleDismiss}
+            title="Temporarily remove this box"
+            aria-label="Cancel or remove Pro Membership box"
+            className="border-2 border-black bg-white hover:bg-rose-50 hover:border-rose-600 hover:text-rose-600 active:translate-x-0.5 active:translate-y-0.5 text-black px-2.5 py-1 text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>REMOVE</span>
+          </button>
         </div>
       </div>
 
@@ -108,7 +190,7 @@ export const MonetizationBanner: React.FC<MonetizationBannerProps> = ({
             className="w-full mt-2 py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all cursor-pointer shadow-[2px_2px_0px_#000000] flex items-center justify-center gap-2"
           >
             <CreditCard className="w-3.5 h-3.5" />
-            <span>UPGRADE VIA RAZORPAY</span>
+            <span>UPGRADE TO PRO NOW</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
