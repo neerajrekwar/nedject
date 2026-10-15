@@ -21,9 +21,12 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const returnTo = searchParams.get('returnTo') || '/dashboard';
     
-    // Resolve dynamic origin for multi-environment support (Codespaces, Vercel, localhost)
+    // Resolve dynamic origin for multi-environment support (Cloud Run, Vercel, localhost)
     const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
-    const proto = request.headers.get('x-forwarded-proto') || 'http';
+    let proto = request.headers.get('x-forwarded-proto') || 'http';
+    if (!host.includes('localhost') && !host.includes('127.0.0.1')) {
+      proto = 'https';
+    }
     const origin = `${proto}://${host}`;
 
     // Prefer explicitly configured GOOGLE_FIT_REDIRECT_URI, otherwise default to callback route

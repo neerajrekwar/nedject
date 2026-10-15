@@ -136,7 +136,36 @@ export async function exchangeAuthorizationCode(
   redirectUri?: string
 ): Promise<GoogleOAuthTokens> {
   const oauth2Client = createOAuth2Client(redirectUri);
-  const { tokens } = await oauth2Client.getToken(code);
+  
+  let tokens: any;
+  try {
+    const tokenRes = await oauth2Client.getToken(code);
+    tokens = tokenRes.tokens;
+  } catch (err: any) {
+    const errorText = err?.response?.data?.error || err?.message || '';
+    // If redirect_uri_mismatch and redirectUri was http, retry with https (and vice-versa)
+    if (errorText.includes('redirect_uri_mismatch') && redirectUri) {
+      const altUri = redirectUri.startsWith('http://')
+        ? redirectUri.replace('http://', 'https://')
+        : redirectUri.startsWith('https://')
+        ? redirectUri.replace('https://', 'http://')
+        : undefined;
+
+      if (altUri) {
+        try {
+          const altClient = createOAuth2Client(altUri);
+          const altRes = await altClient.getToken(code);
+          tokens = altRes.tokens;
+        } catch {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    } else {
+      throw err;
+    }
+  }
 
   oauth2Client.setCredentials(tokens);
 

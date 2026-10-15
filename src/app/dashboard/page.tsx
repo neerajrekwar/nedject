@@ -49,6 +49,7 @@ import {
   Flame,
   ArrowUpRight,
   Home,
+  Copy,
 } from 'lucide-react';
 
 // ============================================================================
@@ -137,6 +138,15 @@ export default function DashboardPage() {
   const [isApiDisabled, setIsApiDisabled] = useState<boolean>(false);
   const [apiActivationUrl, setApiActivationUrl] = useState<string | null>(null);
 
+  // 1-minute auto-refresh countdown ticker & OAuth error diagnostics
+  const [secondsUntilNextSync, setSecondsUntilNextSync] = useState<number>(60);
+  const [copiedRedirectUri, setCopiedRedirectUri] = useState<boolean>(false);
+  const [authErrorDetails, setAuthErrorDetails] = useState<{
+    code: string;
+    details?: string;
+    redirectUri?: string;
+  } | null>(null);
+
   // Modal / Action Tabs State
   const [showModal, setShowModal] = useState<boolean>(false);
   const [modalTab, setModalTab] = useState<'biometrics' | 'workout'>('biometrics');
@@ -161,9 +171,10 @@ export default function DashboardPage() {
   // --------------------------------------------------------------------------
   // Fetch Metrics & Sessions Data
   // --------------------------------------------------------------------------
-  const loadDashboardData = useCallback(async (forcedDemo?: boolean) => {
-    setIsRefreshing(true);
-    setErrorNotice(null);
+  const loadDashboardData = useCallback(async (forcedDemo?: boolean, isSilentAutoRefresh: boolean = false) => {
+    if (!isSilentAutoRefresh) {
+      setIsRefreshing(true);
+    }
 
     const demoFlag = forcedDemo !== undefined ? forcedDemo : isDemoMode;
     const queryParam = demoFlag ? '?demo=true' : '';
@@ -222,15 +233,35 @@ export default function DashboardPage() {
       setLastRefreshedAt(new Date());
     } catch (err: any) {
       console.error('Failed to load dashboard data:', err);
-      setErrorNotice('Network error connecting to fitness sync service.');
+      if (!isSilentAutoRefresh) {
+        setErrorNotice('Network error connecting to fitness sync service.');
+      }
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
     }
   }, [isDemoMode, user]);
 
+  // Initial fetch on mount
   useEffect(() => {
     loadDashboardData();
+  }, [loadDashboardData]);
+
+  // Auto-refresh Google Fit data every 1 minute (60 seconds)
+  useEffect(() => {
+    const intervalTimer = setInterval(() => {
+      loadDashboardData(undefined, true);
+      setSecondsUntilNextSync(60);
+    }, 60000);
+
+    const secondCountdown = setInterval(() => {
+      setSecondsUntilNextSync((prev) => (prev > 1 ? prev - 1 : 60));
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalTimer);
+      clearInterval(secondCountdown);
+    };
   }, [loadDashboardData]);
 
   // Handle URL auth return parameters
@@ -241,11 +272,20 @@ export default function DashboardPage() {
         setSuccessNotice('Google Fit connected successfully! Live two-way sync active.');
         setIsConnected(true);
         setIsDemoMode(false);
+        setAuthErrorDetails(null);
         // Clean search query from URL without reloading
         window.history.replaceState({}, document.title, window.location.pathname);
         loadDashboardData(false);
       } else if (urlParams.get('error')) {
-        setErrorNotice(`Connection error: ${urlParams.get('error')}`);
+        const errorCode = urlParams.get('error') || 'unknown';
+        const details = urlParams.get('details') || undefined;
+        const redirectUri = urlParams.get('redirect_uri') || `${window.location.origin}/api/auth/callback/google`;
+        setAuthErrorDetails({
+          code: errorCode,
+          details,
+          redirectUri,
+        });
+        setErrorNotice(`Connection error: ${errorCode}`);
       }
     }
   }, [loadDashboardData]);
@@ -501,10 +541,13 @@ export default function DashboardPage() {
 
             {/* Refresh Button */}
             <button
-              onClick={() => loadDashboardData()}
+              onClick={() => {
+                loadDashboardData(undefined, false);
+                setSecondsUntilNextSync(60);
+              }}
               disabled={isRefreshing}
-              className="flex items-center gap-1.5 border-2 border-black bg-white px-3 py-1.5 font-mono text-xs font-black shadow-[2px_2px_0px_#000000] hover:bg-zinc-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-60"
-              title="Refresh Data from Google Fit"
+              className="flex items-center gap-1.5 border-2 border-black bg-white px-3 py-1.5 font-mono text-xs font-black shadow-[2px_2px_0px_#000000] hover:bg-zinc-100 hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all disabled:opacity-60 cursor-pointer"
+              title="Refresh Data from Google Fit (Auto-syncs every 1 min)"
             >
               <RefreshCw
                 className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin text-black' : ''}`}
@@ -544,13 +587,29 @@ export default function DashboardPage() {
             </span>
           </div>
 
-          <div className="text-[11px] text-zinc-500 flex items-center gap-1.5">
-            <Clock className="w-3 h-3" />
-            <span>
-              {lastRefreshedAt
-                ? `Last Synced: ${lastRefreshedAt.toLocaleTimeString()}`
-                : 'Connecting to telemetry streams...'}
-            </span>
+          <div className="text-[11px] font-mono flex items-center gap-3">
+            <div
+              onClick={() => {
+                loadDashboardData(undefined, false);
+                setSecondsUntilNextSync(60);
+              }}
+              title="Click to force sync now. Automatically re-fetches every 1 minute."
+              className="flex items-center gap-1.5 bg-black text-[#ccff00] px-2.5 py-1 border border-black font-black uppercase text-[10px] shadow-[1px_1px_0px_#000000] cursor-pointer hover:bg-zinc-900 transition-colors"
+            >
+              <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin text-[#ccff00]' : ''}`} />
+              <span>
+                {isRefreshing ? 'SYNCING DATA...' : `AUTO-SYNC (1m): ${secondsUntilNextSync}s`}
+              </span>
+            </div>
+
+            <div className="text-zinc-600 font-bold flex items-center gap-1">
+              <Clock className="w-3 h-3 text-zinc-500" />
+              <span>
+                {lastRefreshedAt
+                  ? `Last Synced: ${lastRefreshedAt.toLocaleTimeString()}`
+                  : 'Connecting to telemetry streams...'}
+              </span>
+            </div>
           </div>
         </div>
       </header>
@@ -575,8 +634,106 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Error Alert */}
-        {errorNotice && (
+        {/* Error Alert & Diagnostics for OAuth Token Exchange */}
+        {authErrorDetails ? (
+          <div className="border-4 border-black bg-rose-50 p-5 sm:p-6 shadow-[6px_6px_0px_#000000] space-y-4 font-mono animate-fade-in">
+            <div className="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
+              <div className="flex items-center gap-2 text-rose-950 font-black text-sm sm:text-base uppercase">
+                <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
+                <span>Google Fit Connection Error: {authErrorDetails.code}</span>
+              </div>
+              <button
+                onClick={() => {
+                  setAuthErrorDetails(null);
+                  setErrorNotice(null);
+                }}
+                className="text-rose-800 hover:text-black border border-black p-1 bg-white shadow-[1px_1px_0px_#000000] cursor-pointer"
+                title="Dismiss error notice"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs text-rose-950">
+              <div className="bg-white border-2 border-black p-3.5 space-y-2">
+                <span className="font-black uppercase text-black text-[12px] block">
+                  Why this error is showing:
+                </span>
+                <p className="font-medium text-zinc-700 leading-relaxed">
+                  During Google Fit connection, Google sends a temporary authorization code to your applet. The applet server then makes an HTTPS token exchange with Google's servers (<code>oauth2.googleapis.com/token</code>). Google rejected this exchange.
+                </p>
+                {authErrorDetails.details && (
+                  <div className="font-mono text-[11px] bg-rose-100 p-2 border border-rose-300 text-rose-900 break-all">
+                    <strong>Error Details from Google:</strong> {authErrorDetails.details}
+                  </div>
+                )}
+              </div>
+
+              <div className="border-2 border-black/20 bg-white p-3.5 space-y-2">
+                <span className="font-black uppercase text-black text-[11px] block">
+                  3 Common Causes &amp; Solutions:
+                </span>
+                <ol className="list-decimal pl-4 space-y-2 font-medium text-zinc-800">
+                  <li>
+                    <strong>Redirect URI Mismatch (Most Common):</strong> In Google Cloud Console under{' '}
+                    <em>APIs &amp; Services &gt; Credentials &gt; OAuth 2.0 Client IDs</em>, the
+                    <strong> Authorized redirect URIs</strong> must include this exact callback URL:
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <input
+                        type="text"
+                        readOnly
+                        value={authErrorDetails.redirectUri || (typeof window !== 'undefined' ? `${window.location.origin}/api/auth/callback/google` : '')}
+                        className="w-full bg-zinc-100 border border-black p-1.5 font-mono text-[11px] select-all font-bold text-black"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const uri = authErrorDetails.redirectUri || (typeof window !== 'undefined' ? `${window.location.origin}/api/auth/callback/google` : '');
+                          if (uri) {
+                            navigator.clipboard.writeText(uri);
+                            setCopiedRedirectUri(true);
+                            setTimeout(() => setCopiedRedirectUri(false), 2000);
+                          }
+                        }}
+                        className="shrink-0 bg-black text-[#ccff00] px-2.5 py-1.5 border border-black font-black uppercase text-[10px] hover:bg-[#ccff00] hover:text-black transition-colors cursor-pointer flex items-center gap-1 shadow-[2px_2px_0px_#000000]"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>{copiedRedirectUri ? 'COPIED!' : 'COPY URI'}</span>
+                      </button>
+                    </div>
+                  </li>
+                  <li>
+                    <strong>Single-Use Authorization Code:</strong> Google authorization codes expire in 5 minutes and can only be used once. If you refreshed the page or pressed Back, the code became invalid.
+                  </li>
+                  <li>
+                    <strong>Missing or Mismatched OAuth Client Secret:</strong> Ensure <code>GOOGLE_CLIENT_ID</code> and <code>GOOGLE_CLIENT_SECRET</code> match the Google Cloud project where the Fitness API is enabled.
+                  </li>
+                </ol>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 pt-2">
+                <a
+                  href="/api/auth/login"
+                  className="bg-black text-[#ccff00] border-2 border-black px-4 py-2 font-mono text-xs font-black uppercase shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] hover:text-black active:translate-x-0.5 active:translate-y-0.5 transition-all inline-flex items-center gap-1.5"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Start Fresh Google Fit Connection →</span>
+                </a>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthErrorDetails(null);
+                    setErrorNotice(null);
+                    loadDashboardData(true);
+                  }}
+                  className="bg-white text-zinc-900 border-2 border-black px-3.5 py-2 font-mono text-xs font-black uppercase shadow-[2px_2px_0px_#000000] hover:bg-zinc-100 transition-all cursor-pointer"
+                >
+                  Continue with Demo Sandbox Data
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : errorNotice ? (
           <div className="border-2 border-black bg-rose-100 p-4 shadow-[4px_4px_0px_#000000] flex items-start justify-between gap-3 animate-fade-in">
             <div className="flex items-center gap-2 text-rose-950 font-mono text-sm font-bold">
               <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
@@ -589,7 +746,7 @@ export default function DashboardPage() {
               <X className="w-4 h-4" />
             </button>
           </div>
-        )}
+        ) : null}
 
         {/* API Disabled in GCP Alert */}
         {isApiDisabled && (

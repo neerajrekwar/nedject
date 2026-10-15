@@ -10,9 +10,11 @@ import { saveUserGoogleFitTokens } from '@/lib/db-users';
  * Exchanges the temporary authorization code for Google access and refresh tokens,
  * extracts user profile metadata, and stores credentials securely in an HTTP-only cookie.
  */
-export async function GET(request: NextRequest) {
   const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
-  const proto = request.headers.get('x-forwarded-proto') || 'http';
+  let proto = request.headers.get('x-forwarded-proto') || 'http';
+  if (!host.includes('localhost') && !host.includes('127.0.0.1')) {
+    proto = 'https';
+  }
   const origin = `${proto}://${host}`;
 
   const { searchParams } = new URL(request.url);
@@ -87,10 +89,18 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.redirect(destination);
   } catch (err: any) {
-    console.error('Failed to exchange Google OAuth code for tokens:', err);
+    const errorDetail =
+      err?.response?.data?.error_description ||
+      err?.response?.data?.error ||
+      err?.message ||
+      String(err);
+    console.error('Failed to exchange Google OAuth code for tokens:', errorDetail, err);
     const destination = new URL(returnTo, origin);
     destination.searchParams.set('error', 'token_exchange_failed');
-    destination.searchParams.set('details', encodeURIComponent(err?.message || String(err)));
+    destination.searchParams.set('details', errorDetail);
+    if (finalRedirectUri) {
+      destination.searchParams.set('redirect_uri', finalRedirectUri);
+    }
     return NextResponse.redirect(destination);
   }
 }
