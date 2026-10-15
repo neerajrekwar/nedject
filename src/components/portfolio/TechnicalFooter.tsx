@@ -24,30 +24,30 @@ export function TechnicalFooter({ onOpenQRArtifact }: TechnicalFooterProps) {
           {/* Brand Block with Mission Summary (5 cols) */}
           <div className="md:col-span-5 space-y-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 border-2 border-white bg-[#ccff00] text-black font-black text-lg flex items-center justify-center shadow-[3px_3px_0px_#ffffff]">
-                NR
+              <div className="px-3 h-10 border-2 border-white bg-[#ccff00] text-black font-black text-sm flex items-center justify-center shadow-[3px_3px_0px_#ffffff]">
+                NEDJECT
               </div>
               <div>
                 <div className="text-sm font-black tracking-widest text-white">
-                  NEERAJ REKWAR
+                  GENQR_STUDIO // TOOLS SUITE
                 </div>
                 <div className="text-[11px] text-[#ccff00] font-bold">
-                  PRINCIPAL SYSTEMS & FULLSTACK ARCHITECT
+                  DEVELOPED BY NEERAJREKWAR
                 </div>
               </div>
             </div>
 
             <p className="text-xs text-zinc-400 font-sans leading-relaxed max-w-sm">
-              Engineering high-availability web systems, deterministic microservices, and industrial-grade user interfaces. No bloat, no fuzzy abstractions, strict zero-radius discipline.
+              Industrial 300 DPI Photo QR Code Generator with B/W print calibration, multi-format export, and optical matrix engineering. Deterministic tool suite built with zero-radius neo-brutalist discipline.
             </p>
 
             {/* Square Social Icon Buttons */}
             <div className="flex items-center gap-2 pt-2">
               {[
-                { icon: GitBranch, href: 'https://github.com/neerajrekwar', label: 'Git Repos' },
-                { icon: Globe, href: 'https://Nedject.dev', label: 'Network' },
-                { icon: Share2, href: '#contact', label: 'Direct Comm' },
-                { icon: Terminal, href: '#registry', label: 'Console' },
+                { icon: GitBranch, href: 'https://github.com/neerajrekwar/nedject', label: 'GitHub Repository' },
+                { icon: Globe, href: 'https://github.com/neerajrekwar', label: 'Developer Profile' },
+                { icon: Share2, href: 'mailto:neerajrekwar817@gmail.com', label: 'Contact Developer' },
+                { icon: Terminal, href: '/qr-crush', label: 'QR Crush Lab' },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
@@ -70,94 +70,69 @@ export function TechnicalFooter({ onOpenQRArtifact }: TechnicalFooterProps) {
           <div className="md:col-span-4 grid grid-cols-2 gap-6 text-xs">
             <div>
               <div className="text-xs font-black text-[#ccff00] uppercase mb-3 border-b border-zinc-800 pb-1">
-                {'// SITEMAP'}
+                {'// OPTICAL TOOLS'}
               </div>
               <ul className="space-y-2 text-zinc-300">
                 <li>
-                  <a href="#about" className="hover:text-[#ccff00] transition-colors flex items-center gap-1">
-                    <span>[01]</span> <span>ABOUT</span>
-                  </a>
+                  <Link href="/" className="hover:text-[#ccff00] transition-colors flex items-center gap-1">
+                    <span>[01]</span> <span>300 DPI PHOTO QR</span>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#projects" className="hover:text-[#ccff00] transition-colors flex items-center gap-1">
-                    <span>[02]</span> <span>PROJECTS</span>
-                  </a>
+                  <Link href="/normal-dpi-photo" className="hover:text-[#ccff00] transition-colors flex items-center gap-1">
+                    <span>[02]</span> <span>PHOTO DPI MAKER</span>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#registry" className="hover:text-[#ccff00] transition-colors flex items-center gap-1">
-                    <span>[03]</span> <span>REGISTRY</span>
-                  </a>
+                  <Link href="/barcode-pick" className="hover:text-[#ccff00] transition-colors flex items-center gap-1">
+                    <span>[03]</span> <span>BARCODE PICK</span>
+                  </Link>
                 </li>
                 <li>
-                  <a href="#contact" className="hover:text-[#ccff00] transition-colors flex items-center gap-1">
-                    <span>[04]</span> <span>ENGAGEMENT</span>
-                  </a>
+                  <Link href="/qr-crush" className="hover:text-[#ccff00] transition-colors flex items-center gap-1">
+                    <span>[04]</span> <span>QR CRUSH FORENSICS</span>
+                  </Link>
                 </li>
               </ul>
             </div>
 
             <div>
               <div className="text-xs font-black text-[#ccff00] uppercase mb-3 border-b border-zinc-800 pb-1">
-                {'// ARTIFACTS'}
+                {'// UTILITIES'}
               </div>
               <ul className="space-y-2 text-zinc-300">
-                <li>
-                  <Link
-                    href="/nomral-dpi-photo"
-                    className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>[LIVE]</span> <span>PHOTO DPI MAKER (B/W)</span>
-                  </Link>
-                </li>
-                <li>
-                  <Link
-                    href="/barcode-pick"
-                    className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>[LIVE]</span> <span>BARCODE PICK & STUDIO</span>
-                  </Link>
-                </li>
                 <li>
                   <Link
                     href="/fitness-glass"
                     className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
                   >
-                    <span>[LIVE]</span> <span>FITNESS GLASS (TIMETABLE)</span>
+                    <span>[05]</span> <span>FITNESS GLASS</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/fitness-glass/winter-arc-2026"
+                    className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>[06]</span> <span>WINTER ARC 2026</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/tip"
+                    className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>[07]</span> <span>PLANS & COFFEE ☕</span>
                   </Link>
                 </li>
                 <li>
                   <a
-                    href="https://ko-fi.com/neerajrekwar2001"
+                    href="https://github.com/neerajrekwar"
                     target="_blank"
                     rel="noreferrer"
                     className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
                   >
-                    <span>[LIVE]</span> <span>KO-FI / CREATOR SUPPORT ☕</span>
-                  </a>
-                </li>
-                {onOpenQRArtifact && (
-                  <li>
-                    <button
-                      onClick={onOpenQRArtifact}
-                      className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
-                    >
-                      <span>[LIVE]</span> <span>300 DPI QR ENGINE</span>
-                    </button>
-                  </li>
-                )}
-                <li>
-                  <a href="https://github.com/neerajrekwar" target="_blank" rel="noreferrer" className="hover:text-[#ccff00] transition-colors">
-                    <span>&gt;</span> KUBESENTINEL
-                  </a>
-                </li>
-                <li>
-                  <a href="https://github.com/neerajrekwar" target="_blank" rel="noreferrer" className="hover:text-[#ccff00] transition-colors">
-                    <span>&gt;</span> CHRONOSTREAM
-                  </a>
-                </li>
-                <li>
-                  <a href="https://github.com/neerajrekwar" target="_blank" rel="noreferrer" className="hover:text-[#ccff00] transition-colors">
-                    <span>&gt;</span> VULCAN VAULT
+                    <span>[DEV]</span> <span>GITHUB @NEERAJREKWAR</span>
                   </a>
                 </li>
               </ul>
@@ -169,13 +144,13 @@ export function TechnicalFooter({ onOpenQRArtifact }: TechnicalFooterProps) {
             <div className="border border-zinc-800 bg-zinc-950 p-4 text-[11px] space-y-1.5 text-zinc-400">
               <div className="text-white font-bold text-xs uppercase flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-[#ccff00] inline-block" />
-                <span>ENVIRONMENT SPEC</span>
+                <span>NEDJECT CORE ENGINE</span>
               </div>
-              <div>OS: LINUX-X64 (NODE 22)</div>
-              <div>RUNTIME: NEXT.JS 16 APP ROUTER</div>
-              <div>STYLING: TAILWIND CSS v4 STRICT</div>
+              <div>APP: NEDJECT GENQR_STUDIO</div>
+              <div>DEVELOPER: NEERAJREKWAR</div>
+              <div>CALIBRATION: 300 DPI B/W (21:1)</div>
+              <div>PRINT CHUNK: PHYSICAL pHYs INJECTED</div>
               <div>BOUNDARIES: 2PX SOLID BLACK</div>
-              <div>GEOMETRY: 0PX RADIUS</div>
             </div>
 
             <button
@@ -192,13 +167,13 @@ export function TechnicalFooter({ onOpenQRArtifact }: TechnicalFooterProps) {
         {/* Bottom Sub-Bar with Copyright & Technical Coordinates */}
         <div className="mt-12 pt-6 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500 font-mono">
           <div>
-            © {new Date().getFullYear()} NEERAJ REKWAR // ALL RIGHTS RESERVED.
+            © {new Date().getFullYear()} NEDJECT // DEVELOPED BY NEERAJREKWAR // ALL RIGHTS RESERVED.
           </div>
 
           <div className="flex items-center gap-4 flex-wrap justify-center">
             <span>LOC: 37.7749° N, 122.4194° W</span>
             <span className="text-zinc-700">|</span>
-            <span>LATENCY: 14MS</span>
+            <span>DEVELOPER: neerajrekwar</span>
             <span className="text-zinc-700">|</span>
             <span className="text-emerald-400 font-bold">STATUS: PROD_STABLE</span>
           </div>

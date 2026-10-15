@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Menu, X, ArrowUpRight, Terminal, Printer, Barcode as BarcodeIcon, Activity } from 'lucide-react';
+import { Menu, X, ArrowUpRight, Terminal, Printer, Barcode as BarcodeIcon } from 'lucide-react';
 
 interface NavbarProps {
-  onOpenContact: () => void;
+  onOpenContact?: () => void;
   onOpenQRArtifact?: () => void;
 }
 
@@ -25,36 +25,33 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
         {/* Left: Square Framed Brand Mark Box */}
         <div className="flex items-center gap-3">
-          <a
-            href="#"
-            className="flex items-center justify-center w-12 h-12 border-2 border-black bg-white shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000000] transition-all font-mono font-black text-xl tracking-tighter"
+          <Link
+            href="/"
+            className="flex items-center justify-center px-3 h-12 border-2 border-black bg-white shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000000] transition-all font-mono font-black text-lg tracking-tighter"
           >
-            NR
-          </a>
+            NEDJECT
+          </Link>
           <div className="hidden sm:block">
             <div className="font-mono text-xs font-black tracking-widest text-black flex items-center gap-1.5">
-              <span>NEERAJ REKWAR</span>
+              <span>GENQR_STUDIO</span>
               <span className="w-1.5 h-1.5 bg-[#ccff00] border border-black inline-block" />
             </div>
             <div className="font-mono text-[10px] text-zinc-600 tracking-wider">
-              SYS-ARCH // FULLSTACK
+              DEVELOPED BY NEERAJREKWAR
             </div>
           </div>
         </div>
 
-        {/* Center: Minimalist Text Links */}
+        {/* Center: Minimalist Text Links for Tools */}
         <nav className="hidden lg:flex items-center gap-1 border-2 border-black bg-white p-1 shadow-[4px_4px_0px_#000000]">
-          {navLinks.map((link) => (
-            <a
-              key={link.label}
-              href={link.href}
-              className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors"
-            >
-              {link.label}
-            </a>
-          ))}
           <Link
-            href="/nomral-dpi-photo"
+            href="/"
+            className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1"
+          >
+            <span>300 DPI QR</span>
+          </Link>
+          <Link
+            href="/normal-dpi-photo"
             className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
           >
             <Printer className="w-3.5 h-3.5" />
@@ -68,36 +65,35 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
             <span>BARCODES</span>
           </Link>
           <Link
-            href="/dashboard"
-            className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
+            href="/qr-crush"
+            className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
           >
-            <Activity className="w-3.5 h-3.5" />
-            <span>GOOGLE FIT</span>
+            <span>QR CRUSH</span>
           </Link>
           <Link
             href="/fitness-glass"
             className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
           >
-            <span>GLASS</span>
+            <span>FITNESS GLASS</span>
           </Link>
           <Link
             href="/fitness-glass/winter-arc-2026"
-            className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
+            className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
           >
             <span>WINTER ARC</span>
           </Link>
           {onOpenQRArtifact && (
             <button
               onClick={onOpenQRArtifact}
-              className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black bg-[#ccff00] border-l-2 border-black hover:bg-black hover:text-white transition-colors flex items-center gap-1"
+              className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black border-l-2 border-black hover:bg-black hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
             >
-              <span>QR ARTIFACT</span>
+              <span>POPUP STUDIO</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
           )}
         </nav>
 
-        {/* Right: System Status Capsule Widget & Primary Rectangular Button */}
+        {/* Right: System Status Capsule Widget & Quick Tool Action */}
         <div className="hidden md:flex items-center gap-3">
           {/* Status Capsule Widget */}
           <div className="flex items-center gap-2 border-2 border-black bg-white px-3 py-2 shadow-[3px_3px_0px_#000000]">
@@ -106,22 +102,21 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
               <span className="relative inline-flex h-2.5 w-2.5 bg-[#16a34a] border border-black" />
             </span>
             <span className="font-mono text-[11px] font-black tracking-widest text-black">
-              SYS_OK // AVAIL_Q4
+              SYS_OK // 300_DPI_READY
             </span>
           </div>
 
-          {/* Primary Action Rectangular Button */}
-          <button
-            onClick={onOpenContact}
-            className="flex items-center gap-2 border-2 border-black bg-black px-5 py-2.5 text-white font-mono text-xs font-black tracking-wider shadow-[4px_4px_0px_#000000] hover:bg-[#ccff00] hover:text-black hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#000000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all cursor-pointer"
+          <Link
+            href="/tip"
+            className="flex items-center gap-2 border-2 border-black bg-black px-4 py-2.5 text-[#ccff00] font-mono text-xs font-black tracking-wider shadow-[4px_4px_0px_#000000] hover:bg-[#ccff00] hover:text-black hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#000000] active:translate-x-[4px] active:translate-y-[4px] active:shadow-none transition-all cursor-pointer"
           >
-            <span>INITIALIZE ENGAGEMENT</span>
+            <span>SUPPORT / PLANS</span>
             <Terminal className="w-3.5 h-3.5" />
-          </button>
+          </Link>
         </div>
 
         {/* Mobile Hamburger Button */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex lg:hidden items-center gap-2">
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2.5 border-2 border-black bg-white shadow-[3px_3px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
@@ -147,7 +142,7 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
               </a>
             ))}
             <Link
-              href="/nomral-dpi-photo"
+              href="/normal-dpi-photo"
               onClick={() => setMobileMenuOpen(false)}
               className="block p-3 border-2 border-black bg-white font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00]"
             >
@@ -161,46 +156,33 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
               BARCODE PICK & STUDIO →
             </Link>
             <Link
-              href="/dashboard"
+              href="/qr-crush"
               onClick={() => setMobileMenuOpen(false)}
-              className="block p-3 border-2 border-black bg-[#ccff00] font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000]"
+              className="block p-3 border-2 border-black bg-white font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00]"
             >
-              ⚡ GOOGLE FIT TELEMETRY DASHBOARD →
+              QR CRUSH (FORENSIC & CRYPTO) →
             </Link>
             <Link
               href="/fitness-glass"
               onClick={() => setMobileMenuOpen(false)}
               className="block p-3 border-2 border-black bg-white font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00]"
             >
-              FITNESS GLASS (TIMETABLE & TARGETS) →
+              FITNESS GLASS (TIMETABLE) →
             </Link>
             <Link
               href="/fitness-glass/winter-arc-2026"
               onClick={() => setMobileMenuOpen(false)}
+              className="block p-3 border-2 border-black bg-white font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00]"
+            >
+              WINTER ARC 2026 (90D PROTOCOL) →
+            </Link>
+            <Link
+              href="/tip"
+              onClick={() => setMobileMenuOpen(false)}
               className="block p-3 border-2 border-black bg-[#ccff00] font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000]"
             >
-              🔥 WINTER ARC 2026 (90D / 24H PROTOCOL) →
+              PLANS & CREATOR SUPPORT →
             </Link>
-            {onOpenQRArtifact && (
-              <button
-                onClick={() => {
-                  setMobileMenuOpen(false);
-                  onOpenQRArtifact();
-                }}
-                className="w-full text-left p-3 border-2 border-black bg-[#ccff00] font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000]"
-              >
-                LAUNCH 300 DPI QR ENGINE →
-              </button>
-            )}
-            <button
-              onClick={() => {
-                setMobileMenuOpen(false);
-                onOpenContact();
-              }}
-              className="w-full p-3.5 border-2 border-black bg-black text-white font-mono text-xs font-black tracking-widest shadow-[3px_3px_0px_#000000] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
-            >
-              INITIALIZE ENGAGEMENT →
-            </button>
           </div>
         </div>
       )}

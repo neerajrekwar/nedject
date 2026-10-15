@@ -14,8 +14,6 @@ import {
   BookmarkPlus,
   Trash2,
   Scan,
-  ArrowDownRight,
-  Terminal,
   SlidersHorizontal,
   CheckCircle2,
   AlertCircle,
@@ -83,20 +81,20 @@ const PHOTO_QR_MODES: { id: PhotoQRMode; label: string; desc: string }[] = [
 
 const QUICK_PRESETS = [
   {
-    label: 'Architect Specimen',
-    text: 'NEERAJ REKWAR // SENIOR SYSTEMS ARCHITECT\nCONTACT: neerajrekwar817@gmail.com\nSTATUS: AVAILABLE Q4 2026',
+    label: 'Nedject Studio Pass',
+    text: 'NEDJECT // INDUSTRIAL 300 DPI PHOTO QR CODE ENGINE\nDEVELOPED BY: neerajrekwar\nDOCS: https://nedject.dev\nSTANDARDS: ISO/IEC 18004 COMPLIANT',
     shape: 'square' as DotShape,
     photoId: 'bw-portrait-photo',
   },
   {
-    label: 'VIP Dev Pass',
+    label: 'VIP Sanskrit Matrix',
     text: 'नमो नमः मित्रवर्ग! भवतः दिनं शुभं मङ्गलमयं च भूयात्।',
     shape: 'square' as DotShape,
     photoId: 'bw-cyber-avatar',
   },
   {
-    label: 'Monolith Seal',
-    text: 'https://neerajrekwar.github.io/',
+    label: 'Nedject Web Portal',
+    text: 'https://nedject.dev',
     shape: 'diamond' as DotShape,
     photoId: 'bw-nr-monogram',
   },
@@ -833,35 +831,9 @@ export function HeroSection({
                 </button>
               </div>
 
-              <div className="flex items-center gap-3 text-xs font-mono">
-                {onExploreProjects && (
-                  <button
-                    onClick={onExploreProjects}
-                    className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Projects</span>
-                    <ArrowDownRight className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {onExploreRegistry && (
-                  <button
-                    onClick={onExploreRegistry}
-                    className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Registry</span>
-                    <Terminal className="w-3.5 h-3.5" />
-                  </button>
-                )}
-                {onOpenQRArtifact && (
-                  <button
-                    onClick={onOpenQRArtifact}
-                    className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
-                  >
-                    <span>Full Modal Suite →</span>
-                  </button>
-                )}
+              <div className="flex items-center gap-3 text-xs font-mono flex-wrap">
                 <Link
-                  href="/nomral-dpi-photo"
+                  href="/normal-dpi-photo"
                   className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
@@ -875,11 +847,24 @@ export function HeroSection({
                   <span>Barcode Pick →</span>
                 </Link>
                 <Link
+                  href="/qr-crush"
+                  className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Scan className="w-3.5 h-3.5" />
+                  <span>QR Crush Forensics →</span>
+                </Link>
+                <Link
                   href="/fitness-glass"
                   className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
                 >
                   <Activity className="w-3.5 h-3.5" />
                   <span>Fitness Glass →</span>
+                </Link>
+                <Link
+                  href="/fitness-glass/winter-arc-2026"
+                  className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Winter Arc 2026 →</span>
                 </Link>
               </div>
             </div>

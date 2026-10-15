@@ -6,8 +6,7 @@ import { HeroSection } from '@/components/portfolio/HeroSection';
 import { MarqueeBanner } from '@/components/portfolio/MarqueeBanner';
 import { ProjectShowcase } from '@/components/portfolio/ProjectShowcase';
 import { OpenSourceRegistry } from '@/components/portfolio/OpenSourceRegistry';
-import { ServicesSection } from '@/components/portfolio/ServicesSection';
-import { ContactBlock } from '@/components/portfolio/ContactBlock';
+import { ToolsSuiteGrid } from '@/components/portfolio/ToolsSuiteGrid';
 import { TechnicalFooter } from '@/components/portfolio/TechnicalFooter';
 import { LiveArtifactModal } from '@/components/portfolio/LiveArtifactModal';
 
@@ -15,23 +14,23 @@ export default function Home() {
   const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
 
   const handleOpenContact = () => {
-    const contactElem = document.getElementById('contact');
+    const contactElem = document.getElementById('tools-catalog');
     if (contactElem) {
       contactElem.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   const handleExploreProjects = () => {
-    const projectsElem = document.getElementById('projects');
-    if (projectsElem) {
-      projectsElem.scrollIntoView({ behavior: 'smooth' });
+    const toolsElem = document.getElementById('tools-catalog');
+    if (toolsElem) {
+      toolsElem.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
   const handleExploreRegistry = () => {
-    const registryElem = document.getElementById('registry');
-    if (registryElem) {
-      registryElem.scrollIntoView({ behavior: 'smooth' });
+    const toolsElem = document.getElementById('tools-catalog');
+    if (toolsElem) {
+      toolsElem.scrollIntoView({ behavior: 'smooth' });
     }
   };
 
@@ -44,9 +43,9 @@ export default function Home() {
         onOpenQRArtifact={() => setIsArtifactModalOpen(true)}
       />
 
-      {/* MAIN CONTENT RUNTIME */}
+      {/* MAIN CONTENT RUNTIME - PURE TOOLS FOCUS UNDER BRAND "NEDJECT" */}
       <main className="flex-1 w-full">
-        {/* 2. HERO BLOCK */}
+        {/* 2. CORE 300 DPI PHOTO QR CODE STUDIO HERO */}
         <HeroSection
           onExploreProjects={handleExploreProjects}
           onExploreRegistry={handleExploreRegistry}
@@ -56,27 +55,20 @@ export default function Home() {
         {/* 3. HORIZONTAL TECH STACK MARQUEE */}
         <MarqueeBanner />
 
-        {/* 4. PROJECT SHOWCASE GRID */}
-        <ProjectShowcase onOpenQRArtifact={() => setIsArtifactModalOpen(true)} />
+        {/* 4. PROJECT SHOWCASE GRID 
+        <ProjectShowcase onOpenQRArtifact={() => setIsArtifactModalOpen(true)} /> */}
 
-        {/* 5. OPEN-SOURCE REGISTRY MODULES */}
-        <OpenSourceRegistry />
+        {/* 5. OPEN-SOURCE REGISTRY MODULES 
+        <OpenSourceRegistry /> */}
 
-        {/* 6. CORE DISCIPLINES & SERVICES */}
-        <ServicesSection
-          onSelectService={() => {
-            handleOpenContact();
-          }}
-        />
-
-        {/* 7. INITIALIZE ENGAGEMENT CONTACT BLOCK */}
-        <ContactBlock />
+        {/* 6. COMPLETE NEDJECT TOOLS SUITE CATALOG */}
+        <ToolsSuiteGrid />
       </main>
 
-      {/* 8. TECHNICAL FOOTER */}
+      {/* 7. TECHNICAL FOOTER WITH ATTRIBUTION: DEVELOPED BY NEERAJREKWAR */}
       <TechnicalFooter onOpenQRArtifact={() => setIsArtifactModalOpen(true)} />
 
-      {/* 9. INTERACTIVE LIVE ARTIFACT MODAL (300 DPI QR Studio & Pass Engine) */}
+      {/* 8. INTERACTIVE LIVE ARTIFACT POPUP MODAL (300 DPI QR Studio & Pass Engine) */}
       <LiveArtifactModal
         isOpen={isArtifactModalOpen}
         onClose={() => setIsArtifactModalOpen(false)}
