@@ -41,9 +41,6 @@ export async function GET(request: NextRequest) {
       timestamp: Date.now(),
     });
 
-    // Generate consent URL via googleapis OAuth2 client
-    const authUrl = getFitnessConsentUrl(redirectUri, Buffer.from(state).toString('base64url'));
-
     // Check if client is properly configured in environment
     if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
       console.warn('Google OAuth credentials not configured in environment variables.');
@@ -51,6 +48,9 @@ export async function GET(request: NextRequest) {
         new URL(`${returnTo}?error=oauth_missing_credentials`, origin)
       );
     }
+
+    // Generate consent URL via googleapis OAuth2 client
+    const authUrl = getFitnessConsentUrl(redirectUri, Buffer.from(state).toString('base64url'));
 
     return NextResponse.redirect(authUrl);
   } catch (err: any) {

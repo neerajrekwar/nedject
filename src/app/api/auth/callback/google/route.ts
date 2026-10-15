@@ -10,6 +10,7 @@ import { saveUserGoogleFitTokens } from '@/lib/db-users';
  * Exchanges the temporary authorization code for Google access and refresh tokens,
  * extracts user profile metadata, and stores credentials securely in an HTTP-only cookie.
  */
+export async function GET(request: NextRequest) {
   const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'localhost:3000';
   let proto = request.headers.get('x-forwarded-proto') || 'http';
   if (!host.includes('localhost') && !host.includes('127.0.0.1')) {
@@ -51,15 +52,15 @@ import { saveUserGoogleFitTokens } from '@/lib/db-users';
     );
   }
 
-  try {
-    // Determine the exact redirect URI passed to Google auth URL
-    const configuredRedirect = process.env.GOOGLE_FIT_REDIRECT_URI;
-    const finalRedirectUri =
-      redirectUriUsed ||
-      (configuredRedirect && configuredRedirect.startsWith('http')
-        ? configuredRedirect
-        : `${origin}/api/auth/callback/google`);
+  // Determine the exact redirect URI passed to Google auth URL
+  const configuredRedirect = process.env.GOOGLE_FIT_REDIRECT_URI;
+  const finalRedirectUri =
+    redirectUriUsed ||
+    (configuredRedirect && configuredRedirect.startsWith('http')
+      ? configuredRedirect
+      : `${origin}/api/auth/callback/google`);
 
+  try {
     // Exchange code for tokens using googleapis
     const tokens = await exchangeAuthorizationCode(code, finalRedirectUri);
 

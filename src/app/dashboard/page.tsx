@@ -660,7 +660,7 @@ export default function DashboardPage() {
                   Why this error is showing:
                 </span>
                 <p className="font-medium text-zinc-700 leading-relaxed">
-                  During Google Fit connection, Google sends a temporary authorization code to your applet. The applet server then makes an HTTPS token exchange with Google's servers (<code>oauth2.googleapis.com/token</code>). Google rejected this exchange.
+                  During Google Fit connection, Google sends a temporary authorization code to your applet. The applet server then makes an HTTPS token exchange with Google&apos;s servers (<code>oauth2.googleapis.com/token</code>). Google rejected this exchange.
                 </p>
                 {authErrorDetails.details && (
                   <div className="font-mono text-[11px] bg-rose-100 p-2 border border-rose-300 text-rose-900 break-all">
