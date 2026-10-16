@@ -28,6 +28,9 @@ import {
   ChevronRight,
   Flame,
   ArrowRight,
+  ShieldCheck,
+  Camera,
+  Zap,
 } from 'lucide-react';
 import { toPng } from 'html-to-image';
 import {
@@ -53,8 +56,9 @@ export default function MochupPage() {
 
   // Website Source: URL vs Preset Template vs Uploaded Screenshot
   const [sourceType, setSourceType] = useState<'url' | 'template' | 'upload'>('url');
-  const [websiteUrl, setWebsiteUrl] = useState<string>('https://nedject.vercel.app');
-  const [submittedUrl, setSubmittedUrl] = useState<string>('https://nedject.vercel.app');
+  const [websiteUrl, setWebsiteUrl] = useState<string>('https://fixitfusion.com');
+  const [submittedUrl, setSubmittedUrl] = useState<string>('https://fixitfusion.com');
+  const [embedMode, setEmbedMode] = useState<'proxy' | 'screenshot'>('proxy');
   const [selectedTemplate, setSelectedTemplate] = useState<WebsiteTemplate>(WEBSITE_TEMPLATES[0]);
   const [uploadedScreenshot, setUploadedScreenshot] = useState<string | null>(null);
 
@@ -155,10 +159,32 @@ export default function MochupPage() {
       return <TemplateRenderer templateId={selectedTemplate.id} viewportWidth={width} />;
     }
 
-    // Default URL / Iframe
+    // Default URL:
+    // If embedMode === 'screenshot', render high-res website snapshot
+    if (embedMode === 'screenshot') {
+      const snapWidth = viewport === 'desktop' ? 1440 : viewport === 'tablet' ? 834 : 400;
+      const snapUrl = `https://image.thum.io/get/width/${snapWidth}/crop/900/${submittedUrl}`;
+      return (
+        <div className="w-full h-full relative bg-zinc-900 overflow-hidden flex flex-col items-center">
+          <img
+            src={snapUrl}
+            alt={`Live snapshot of ${submittedUrl}`}
+            className="w-full h-full object-cover object-top"
+            onError={(e) => {
+              // Fallback to proxy iframe if snapshot service fails
+              setEmbedMode('proxy');
+            }}
+          />
+        </div>
+      );
+    }
+
+    // Server-Side Reverse Proxy to strip X-Frame-Options: DENY (Fixes Firefox / Chrome iframe blocking!)
+    const proxiedSrc = `/api/mockup/proxy?url=${encodeURIComponent(submittedUrl)}`;
+
     return (
       <iframe
-        src={submittedUrl}
+        src={proxiedSrc}
         className="w-full h-full border-0 bg-white"
         title={`${viewport} Viewport Preview`}
         sandbox="allow-scripts allow-same-origin allow-forms"
@@ -269,6 +295,21 @@ export default function MochupPage() {
             <button
               type="button"
               onClick={() => {
+                setWebsiteUrl('https://fixitfusion.com');
+                setSubmittedUrl('https://fixitfusion.com');
+                setSourceType('url');
+              }}
+              className={`px-2 py-1 rounded border transition-colors ${
+                sourceType === 'url' && submittedUrl.includes('fixitfusion')
+                  ? 'bg-[#ccff00] text-black font-black border-[#ccff00]'
+                  : 'bg-black text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-white'
+              }`}
+            >
+              FixitFusion.com
+            </button>
+            <button
+              type="button"
+              onClick={() => {
                 setSourceType('template');
                 setSelectedTemplate({
                   id: 'minimal-interior',
@@ -303,23 +344,65 @@ export default function MochupPage() {
             >
               Nedject.app
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setSourceType('template');
-                setSelectedTemplate(WEBSITE_TEMPLATES[0]);
-              }}
-              className={`px-2 py-1 rounded border transition-colors ${
-                sourceType === 'template' && selectedTemplate.id === 'industrial-studio'
-                  ? 'bg-black text-[#ccff00] font-black border-[#ccff00]'
-                  : 'bg-black text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-white'
-              }`}
-            >
-              SaaS Tech Landing
-            </button>
           </div>
 
         </div>
+
+        {/* Security & Proxy Status Bar for Embedded Websites */}
+        {sourceType === 'url' && (
+          <div className="max-w-7xl mx-auto mt-2.5 pt-2 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1 text-[#ccff00] font-bold">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#ccff00]" />
+                SERVER PROXY ACTIVE:
+              </span>
+              <span className="text-zinc-400">
+                Bypassing X-Frame-Options: DENY headers for{' '}
+                <strong className="text-white">{submittedUrl}</strong>
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Toggle Proxy vs HD Snapshot */}
+              <button
+                type="button"
+                onClick={() => setEmbedMode(embedMode === 'proxy' ? 'screenshot' : 'proxy')}
+                className={`px-2 py-0.5 rounded border transition-colors flex items-center gap-1 ${
+                  embedMode === 'proxy'
+                    ? 'bg-black text-[#ccff00] border-[#ccff00] font-bold'
+                    : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                }`}
+              >
+                <Zap className="w-3 h-3 text-[#ccff00]" />
+                <span>Interactive Live Mode</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setEmbedMode(embedMode === 'screenshot' ? 'proxy' : 'screenshot')}
+                className={`px-2 py-0.5 rounded border transition-colors flex items-center gap-1 ${
+                  embedMode === 'screenshot'
+                    ? 'bg-black text-[#ccff00] border-[#ccff00] font-bold'
+                    : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                }`}
+              >
+                <Camera className="w-3 h-3 text-[#ccff00]" />
+                <span>HD Screenshot Mode</span>
+              </button>
+
+              <a
+                href={submittedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-zinc-400 hover:text-white flex items-center gap-1 ml-1"
+                title="Open website in new browser tab"
+              >
+                <span>Open in Tab</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Scene Switcher & Studio Customization Bar */}
@@ -563,6 +646,7 @@ export default function MochupPage() {
               bezelStyle={bezelStyle}
               chassisColor={chassisColor}
               zoomScale={zoomScale}
+              onToggleOrientation={() => setOrientation(orientation === 'portrait' ? 'landscape' : 'portrait')}
             >
               {renderViewportContent(selectedDevice.category)}
             </DeviceFrame>

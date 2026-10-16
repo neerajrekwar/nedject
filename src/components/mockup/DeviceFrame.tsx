@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { RotateCw } from 'lucide-react';
 import { MockupDevice } from '@/lib/mockup-templates';
 
 interface Props {
@@ -9,6 +10,7 @@ interface Props {
   bezelStyle: 'chassis' | 'minimal' | 'frameless';
   chassisColor: string;
   zoomScale: number;
+  onToggleOrientation?: () => void;
   children: React.ReactNode;
 }
 
@@ -18,6 +20,7 @@ export function DeviceFrame({
   bezelStyle,
   chassisColor,
   zoomScale,
+  onToggleOrientation,
   children,
 }: Props) {
   const isLandscape = orientation === 'landscape';
@@ -37,13 +40,24 @@ export function DeviceFrame({
   if (bezelStyle === 'frameless') {
     return (
       <div
-        className="transition-all duration-300 origin-top shadow-2xl overflow-hidden bg-white border border-zinc-700"
+        className="device-frame transition-all duration-300 origin-top shadow-2xl overflow-hidden bg-white border border-zinc-700 relative"
         style={{
           width: `${width}px`,
           height: `${height}px`,
           transform: `scale(${zoomScale})`,
         }}
       >
+        {onToggleOrientation && (
+          <button
+            type="button"
+            onClick={onToggleOrientation}
+            className="absolute top-2 right-2 z-40 bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-2.5 py-1 text-xs font-mono font-black border-2 border-black rounded shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all cursor-pointer"
+            title={`Rotate to ${isLandscape ? 'Portrait' : 'Landscape'}`}
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Rotate ({isLandscape ? 'Portrait' : 'Landscape'})</span>
+          </button>
+        )}
         <div className="w-full h-full overflow-y-auto">{children}</div>
       </div>
     );
@@ -52,11 +66,26 @@ export function DeviceFrame({
   // Realistic Chassis Bezel
   return (
     <div
-      className="transition-all duration-300 origin-top relative select-none"
+      className="device-frame transition-all duration-300 origin-top relative select-none"
       style={{
         transform: `scale(${zoomScale})`,
       }}
     >
+      {/* Floating Rotate Button attached to selected device frame */}
+      {onToggleOrientation && (
+        <div className="absolute -top-11 right-0 z-40 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={onToggleOrientation}
+            className="bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-3 py-1.5 text-xs font-mono font-black border-2 border-black rounded-lg shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all cursor-pointer"
+            title={`Rotate to ${isLandscape ? 'Portrait' : 'Landscape'}`}
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Rotate ({isLandscape ? 'Portrait' : 'Landscape'})</span>
+          </button>
+        </div>
+      )}
+
       {/* Outer Device Chassis Shell */}
       <div
         className="relative shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] transition-all overflow-hidden"
