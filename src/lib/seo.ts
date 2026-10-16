@@ -28,6 +28,12 @@ export interface PageMetadataParams {
   canonicalUrl?: string;
   keywords?: string[];
   noIndex?: boolean;
+  ogType?: 'website' | 'article';
+  publishedTime?: string;
+  modifiedTime?: string;
+  authors?: string[];
+  tags?: string[];
+  imageUrl?: string;
 }
 
 /**
@@ -41,11 +47,18 @@ export function createPageMetadata({
   canonicalUrl,
   keywords = [],
   noIndex = false,
+  ogType = 'website',
+  publishedTime,
+  modifiedTime,
+  authors,
+  tags = [],
+  imageUrl,
 }: PageMetadataParams): Metadata {
   const siteUrl = getSiteUrl();
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   const resolvedCanonical = canonicalUrl || `${siteUrl}${normalizedPath === '/' ? '' : normalizedPath}`;
   const fullPageUrl = `${siteUrl}${normalizedPath === '/' ? '' : normalizedPath}`;
+  const resolvedImage = imageUrl || `${siteUrl}/opengraph-image`;
 
   const defaultKeywords = [
     '300 DPI QR code',
@@ -62,13 +75,13 @@ export function createPageMetadata({
     'Nedject studio',
   ];
 
-  return {
+  const metadata: Metadata = {
     title: {
       default: title,
       template: `%s | ${SITE_NAME}`,
     },
     description,
-    keywords: Array.from(new Set([...keywords, ...defaultKeywords])),
+    keywords: Array.from(new Set([...keywords, ...tags, ...defaultKeywords])),
     metadataBase: new URL(siteUrl),
     alternates: {
       canonical: resolvedCanonical,
@@ -86,7 +99,7 @@ export function createPageMetadata({
       },
     },
     openGraph: {
-      type: 'website',
+      type: ogType,
       locale: 'en_US',
       url: fullPageUrl,
       title,
@@ -94,12 +107,18 @@ export function createPageMetadata({
       siteName: SITE_NAME,
       images: [
         {
-          url: `${siteUrl}/opengraph-image`,
+          url: resolvedImage,
           width: 1200,
           height: 630,
           alt: `${title} - ${SITE_NAME}`,
         },
       ],
+      ...(ogType === 'article' && {
+        publishedTime,
+        modifiedTime: modifiedTime || publishedTime,
+        authors: authors || [`${SITE_NAME} Editorial Team`],
+        tags,
+      }),
     },
     twitter: {
       card: 'summary_large_image',
@@ -107,9 +126,11 @@ export function createPageMetadata({
       description,
       site: '@Nedject',
       creator: '@Nedject',
-      images: [`${siteUrl}/opengraph-image`],
+      images: [resolvedImage],
     },
   };
+
+  return metadata;
 }
 
 /**
@@ -160,6 +181,87 @@ export function buildBreadcrumbJsonLd(items: { name: string; path: string }[]) {
       position: index + 1,
       name: item.name,
       item: `${siteUrl}${item.path.startsWith('/') ? item.path : `/${item.path}`}`,
+    })),
+  };
+}
+
+/**
+ * BlogPosting Schema.org structured data generator
+ */
+export function buildBlogPostingJsonLd(opts: {
+  title: string;
+  description: string;
+  path: string;
+  datePublished: string;
+  dateModified?: string;
+  authorName: string;
+  authorUrl?: string;
+  imageUrl?: string;
+  keywords?: string[];
+}) {
+  const siteUrl = getSiteUrl();
+  const postUrl = `${siteUrl}${opts.path.startsWith('/') ? opts.path : `/${opts.path}`}`;
+  const image = opts.imageUrl || `${siteUrl}/opengraph-image`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BlogPosting',
+    mainEntityOfPage: {
+      '@type': 'WebPage',
+      '@id': postUrl,
+    },
+    headline: opts.title,
+    description: opts.description,
+    image,
+    datePublished: opts.datePublished,
+    dateModified: opts.dateModified || opts.datePublished,
+    author: {
+      '@type': 'Person',
+      name: opts.authorName,
+      ...(opts.authorUrl ? { url: opts.authorUrl } : {}),
+    },
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+      url: siteUrl,
+      logo: {
+        '@type': 'ImageObject',
+        url: `${siteUrl}/opengraph-image`,
+      },
+    },
+    keywords: opts.keywords?.join(', '),
+  };
+}
+
+/**
+ * Blog Collection / CollectionPage Schema.org structured data generator
+ */
+export function buildBlogCollectionJsonLd(opts: {
+  title: string;
+  description: string;
+  posts: Array<{
+    title: string;
+    path: string;
+    datePublished: string;
+  }>;
+}) {
+  const siteUrl = getSiteUrl();
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'Blog',
+    name: opts.title,
+    description: opts.description,
+    url: `${siteUrl}/blog`,
+    publisher: {
+      '@type': 'Organization',
+      name: SITE_NAME,
+      url: siteUrl,
+    },
+    blogPost: opts.posts.map((post) => ({
+      '@type': 'BlogPosting',
+      headline: post.title,
+      url: `${siteUrl}${post.path.startsWith('/') ? post.path : `/${post.path}`}`,
+      datePublished: post.datePublished,
     })),
   };
 }
