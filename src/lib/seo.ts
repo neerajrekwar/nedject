@@ -12,7 +12,7 @@ export function getSiteUrl(): string {
   const rawUrl =
     process.env.NEXTAUTH_URL ||
     process.env.APP_URL ||
-    'https://ais-pre-wu4yus7fs652j6wksn2vmo-615430009365.asia-southeast1.run.app';
+    'https://nedject.vercel.app/';
 
   let cleaned = rawUrl.trim().replace(/\/+$/, '');
   if (!cleaned.startsWith('http://') && !cleaned.startsWith('https://')) {
