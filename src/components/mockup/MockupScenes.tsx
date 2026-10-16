@@ -64,6 +64,7 @@ export function TrioScene({
         {/* 1. LAPTOP (MacBook Pro 16" - Back Right)                          */}
         {/* ================================================================= */}
         <div
+          id="mockup-target-desktop"
           className="absolute right-0 sm:right-6 top-4 sm:top-8 w-[420px] sm:w-[580px] lg:w-[680px] z-10 transition-transform duration-300"
           style={{
             transform: 'rotateY(-10deg) rotateX(6deg) translateZ(-40px)',
@@ -101,6 +102,7 @@ export function TrioScene({
         {/* 2. TABLET (iPad Pro with Keyboard Folio - Left Center)            */}
         {/* ================================================================= */}
         <div
+          id="mockup-target-tablet"
           className="absolute left-0 sm:left-4 bottom-8 sm:bottom-12 w-[300px] sm:w-[410px] lg:w-[480px] z-20 transition-transform duration-300"
           style={{
             transform: 'rotateY(16deg) rotateX(8deg) translateZ(30px)',
@@ -137,6 +139,7 @@ export function TrioScene({
         {/* 3. PHONE (iPhone 16 Pro - Front Center)                           */}
         {/* ================================================================= */}
         <div
+          id="mockup-target-mobile"
           className="absolute left-[44%] sm:left-[45%] bottom-0 sm:bottom-4 w-[140px] sm:w-[170px] lg:w-[200px] z-30 transition-transform duration-300"
           style={{
             transform: 'rotateY(-4deg) rotateX(2deg) translateZ(90px)',
@@ -214,6 +217,7 @@ export function LongScrollLaptopScene({
         
         {/* Floating Laptop Body */}
         <div
+          id="mockup-target-desktop"
           className="relative w-[360px] sm:w-[520px] lg:w-[620px] z-20"
           style={{
             transform: 'rotateY(-12deg) rotateX(16deg) rotateZ(-3deg)',
@@ -330,6 +334,7 @@ export function HandheldDuoScene({
         {/* THE TABLET / DUO DEVICE CASING                                  */}
         {/* =============================================================== */}
         <div
+          id="mockup-target-tablet"
           className="relative w-[340px] sm:w-[620px] lg:w-[740px] bg-[#18181b] p-3 sm:p-4 rounded-[28px] sm:rounded-[36px] border-2 border-black shadow-2xl z-20"
           style={{
             boxShadow: `0 ${30 * shadowIntensity}px ${50 * shadowIntensity}px rgba(0,0,0,0.45)`,
