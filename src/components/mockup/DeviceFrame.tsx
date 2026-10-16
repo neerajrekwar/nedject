@@ -82,7 +82,7 @@ export function DeviceFrame({
               {device.notchType === 'dynamic-island' && (
                 <div className="w-28 h-6 bg-black rounded-full mt-2 border border-zinc-800/80 flex items-center justify-between px-2.5 shadow-md">
                   <div className="w-2.5 h-2.5 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center">
-                    <div className="w-1 h-1 rounded-full bg-blue-900/60" />
+                    <div className="w-1 h-1 rounded-full bg-zinc-800" />
                   </div>
                   <div className="w-2.5 h-2.5 rounded-full bg-zinc-900" />
                 </div>

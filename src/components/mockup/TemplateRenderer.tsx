@@ -183,7 +183,7 @@ function ApexLogisticsTemplate({ isMobile, isTablet }: { isMobile: boolean; isTa
       {/* Top Header */}
       <div className="border-b border-zinc-800 bg-[#161b22] px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Barcode className="w-5 h-5 text-blue-400" />
+          <Barcode className="w-5 h-5 text-[#ccff00]" />
           <span className="font-black text-sm text-white tracking-tight font-mono">
             APEX LOGISTICS // BARCODE CORE
           </span>
@@ -207,7 +207,7 @@ function ApexLogisticsTemplate({ isMobile, isTablet }: { isMobile: boolean; isTa
           </div>
           <div className="bg-[#161b22] border border-zinc-800 p-3 rounded">
             <div className="text-zinc-500 uppercase text-[10px]">LINE SPEED</div>
-            <div className="text-lg font-black text-blue-400 mt-0.5">14.2 m/s</div>
+            <div className="text-lg font-black text-[#ccff00] mt-0.5">14.2 m/s</div>
           </div>
           <div className="bg-[#161b22] border border-zinc-800 p-3 rounded">
             <div className="text-zinc-500 uppercase text-[10px]">THERMAL QUEUE</div>
@@ -236,7 +236,7 @@ function ApexLogisticsTemplate({ isMobile, isTablet }: { isMobile: boolean; isTa
                     setScannedCount((c) => c + 1);
                   }}
                   className={`px-2.5 py-1 rounded font-bold transition-colors ${
-                    symbology === sym ? 'bg-blue-600 text-white' : 'bg-zinc-800 text-zinc-400 hover:text-white'
+                    symbology === sym ? 'bg-[#ccff00] text-black font-black' : 'bg-zinc-800 text-zinc-400 hover:text-white'
                   }`}
                 >
                   {sym}
@@ -426,7 +426,7 @@ function PulseBiometricsTemplate({ isMobile, isTablet }: { isMobile: boolean; is
             </div>
             <div className="flex items-center justify-between p-2 bg-[#181a28] rounded">
               <span className="text-white font-bold">12:30 - Post-prandial Optical Scan &amp; BP</span>
-              <span className="text-blue-400 font-bold">120/78 mmHg</span>
+              <span className="text-[#ccff00] font-bold">120/78 mmHg</span>
             </div>
             <div className="flex items-center justify-between p-2 bg-[#181a28] rounded">
               <span className="text-zinc-400">18:00 - High-Intensity Plyometrics</span>
