@@ -16,12 +16,72 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+import { getSiteUrl, SITE_NAME, DEFAULT_BRAND_TITLE, DEFAULT_DESCRIPTION } from "@/lib/seo";
+
+const siteUrl = getSiteUrl();
+
 export const metadata: Metadata = {
-  title: "Nedject — genQRstudio 300 DPI Photo QR Code Generator",
-  description: "genQRstudio — Industrial 300 DPI Photo QR Code Generator with B/W print calibration, multi-format export, and event pass matrix engineering.",
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: DEFAULT_BRAND_TITLE,
+    template: `%s | ${SITE_NAME}`,
+  },
+  description: DEFAULT_DESCRIPTION,
+  applicationName: SITE_NAME,
+  authors: [{ name: SITE_NAME, url: siteUrl }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  keywords: [
+    "300 DPI QR code",
+    "photo QR code generator",
+    "high resolution QR code",
+    "vector barcode generator",
+    "FNSKU barcode",
+    "UPC barcode generator",
+    "Code 128 generator",
+    "Google Fit API dashboard",
+    "fitness smart glass",
+    "biometrics telemetry",
+  ],
+  alternates: {
+    canonical: "/",
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
   openGraph: {
-    title: "Nedject — genQRstudio 300 DPI Photo QR Code Generator",
-    description: "genQRstudio — Industrial 300 DPI Photo QR Code Generator with B/W print calibration, multi-format export, and event pass matrix engineering.",
+    type: "website",
+    locale: "en_US",
+    url: siteUrl,
+    title: DEFAULT_BRAND_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    siteName: SITE_NAME,
+    images: [
+      {
+        url: `${siteUrl}/opengraph-image`,
+        width: 1200,
+        height: 630,
+        alt: DEFAULT_BRAND_TITLE,
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: DEFAULT_BRAND_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    creator: "@Nedject",
+    images: [`${siteUrl}/opengraph-image`],
+  },
+  verification: {
+    google: "google4859c180d3ad54a0",
   },
 };
 
@@ -63,6 +123,43 @@ export default function RootLayout({
           <GlobalNavbar />
           <div className="flex-1 flex flex-col">{children}</div>
         </AuthProvider>
+
+        {/* Global Schema.org JSON-LD Structured Data */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify([
+              {
+                "@context": "https://schema.org",
+                "@type": "WebSite",
+                "name": SITE_NAME,
+                "url": siteUrl,
+                "description": DEFAULT_DESCRIPTION,
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "Organization",
+                "name": SITE_NAME,
+                "url": siteUrl,
+                "logo": `${siteUrl}/opengraph-image`,
+              },
+              {
+                "@context": "https://schema.org",
+                "@type": "WebApplication",
+                "name": DEFAULT_BRAND_TITLE,
+                "url": siteUrl,
+                "applicationCategory": "MultimediaApplication",
+                "operatingSystem": "All",
+                "description": DEFAULT_DESCRIPTION,
+                "offers": {
+                  "@type": "Offer",
+                  "price": "0",
+                  "priceCurrency": "USD",
+                },
+              },
+            ]),
+          }}
+        />
       </body>
     </html>
   );

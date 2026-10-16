@@ -4,11 +4,21 @@ import Link from 'next/link';
 import { GoogleFitDashboard } from '@/components/google-fit/GoogleFitDashboard';
 import { ArrowLeft, Activity, ShieldCheck, Smartphone, Watch } from 'lucide-react';
 
-export const metadata: Metadata = {
-  title: 'Google Fit Cloud Sync & 3 Measurable Targets Analysis | Nedject',
+import { createPageMetadata, buildSoftwareApplicationJsonLd, buildBreadcrumbJsonLd } from '@/lib/seo';
+
+export const metadata: Metadata = createPageMetadata({
+  title: 'Google Fit Cloud Sync & Measurable Target Goals',
   description:
-    'End-to-end Google Fit REST API integration syncing Steps, Weight, Height, Blood Pressure, and Workout Sessions with 3 Measurable Targets & Goals Analysis.',
-};
+    'End-to-end Google Fit REST API integration syncing Steps, Weight, Height, Blood Pressure, and Workout Sessions with measurable fitness target goals.',
+  path: '/google-fit',
+  keywords: [
+    'Google Fit integration',
+    'Google Fitness API',
+    'fitness goals companion',
+    'steps and calorie sync',
+    'wearable fitness telemetry',
+  ],
+});
 
 export default function GoogleFitPage() {
   return (
@@ -60,6 +70,25 @@ export default function GoogleFitPage() {
       <div className="max-w-7xl mx-auto px-4 mt-6">
         <GoogleFitDashboard />
       </div>
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([
+            buildSoftwareApplicationJsonLd({
+              name: 'Google Fit Cloud Telemetry Companion',
+              description:
+                'End-to-end Google Fit REST API sync for Steps, Weight, Height, Blood Pressure, and Workout Sessions.',
+              path: '/google-fit',
+              category: 'HealthApplication',
+            }),
+            buildBreadcrumbJsonLd([
+              { name: 'Home', path: '/' },
+              { name: 'Google Fit Companion', path: '/google-fit' },
+            ]),
+          ]),
+        }}
+      />
     </main>
   );
 }
