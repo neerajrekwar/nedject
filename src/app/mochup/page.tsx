@@ -85,6 +85,8 @@ export default function MochupPage() {
   const [resolutionTier, setResolutionTier] = useState<ResolutionTier>('2x');
   const [isExporting, setIsExporting] = useState<boolean>(false);
   const [exportProgress, setExportProgress] = useState<string>('');
+  const [readyDownload, setReadyDownload] = useState<{ url: string; filename: string; format: string } | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState<boolean>(false);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -160,6 +162,22 @@ export default function MochupPage() {
   }, []);
 
   // Calculate pixel ratio scale for selected resolution
+  // Convert DataURL to binary Blob to prevent browser popup block and URL truncation
+  const dataURLtoBlob = (dataUrl: string): Blob => {
+    const parts = dataUrl.split(';base64,');
+    if (parts.length === 2) {
+      const contentType = parts[0].split(':')[1] || 'image/png';
+      const raw = window.atob(parts[1]);
+      const rawLength = raw.length;
+      const uInt8Array = new Uint8Array(rawLength);
+      for (let i = 0; i < rawLength; ++i) {
+        uInt8Array[i] = raw.charCodeAt(i);
+      }
+      return new Blob([uInt8Array], { type: contentType });
+    }
+    return new Blob([decodeURIComponent(dataUrl.split(',')[1] || '')], { type: 'image/svg+xml;charset=utf-8' });
+  };
+
   const getPixelRatio = (tier: ResolutionTier): number => {
     switch (tier) {
       case '1x':
@@ -167,9 +185,9 @@ export default function MochupPage() {
       case '2x':
         return 2.0;
       case '3x':
-        return 3.0;
+        return 2.5;
       case '300dpi':
-        return 4.0;
+        return 3.0;
       default:
         return 2.0;
     }
@@ -185,18 +203,21 @@ export default function MochupPage() {
 
     let target = document.getElementById(targetId);
     if (!target) {
-      // Fallback to main scene target
       target = document.getElementById('mockup-export-target');
     }
     if (!target) return;
 
     try {
       setIsExporting(true);
+      setExportError(null);
       setExportProgress(`Calibrating ${resolutionTier.toUpperCase()} ${exportFormat.toUpperCase()} render matrix...`);
 
       const pixelRatio = getPixelRatio(resolutionTier);
+      // skipFonts: true and fontEmbedCSS: '' are CRITICAL to prevent html-to-image from throwing CORS errors
       const options = {
         pixelRatio,
+        skipFonts: true,
+        fontEmbedCSS: '',
         cacheBust: true,
         quality: 0.96,
         backgroundColor: exportFormat === 'jpeg' ? '#0d0e12' : undefined,
@@ -219,28 +240,35 @@ export default function MochupPage() {
         downloadDataUrl = await toSvg(target, options);
       }
 
-      setExportProgress('Finalizing download payload...');
-      const cleanHost = submittedUrl ? submittedUrl.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '-') : 'custom';
+      setExportProgress('Packaging image blob...');
+      const cleanHost = submittedUrl ? submittedUrl.replace(/https?:\/\//, '').replace(/[^a-zA-Z0-9]/g, '-') : 'nedject-studio';
       const filename = `nedject-mockup-${exportTarget}-${cleanHost}-${resolutionTier}-${Date.now()}.${exportFormat}`;
 
+      // Convert to Blob and Object URL (Never blocked by popups or URL length limits!)
+      const blob = dataURLtoBlob(downloadDataUrl);
+      const blobUrl = URL.createObjectURL(blob);
+
+      setReadyDownload({
+        url: blobUrl,
+        filename,
+        format: exportFormat.toUpperCase(),
+      });
+
+      // Direct download trigger via virtual anchor
       const link = document.createElement('a');
       link.download = filename;
-      link.href = downloadDataUrl;
+      link.href = blobUrl;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
 
-      setExportProgress('Download complete!');
-      setTimeout(() => {
-        setIsExporting(false);
-        setExportProgress('');
-        setShowExportModal(false);
-      }, 700);
+      setExportProgress('Download ready! Click the button below if your browser did not automatically save the file.');
+      setIsExporting(false);
     } catch (err: any) {
       console.error('Export error:', err);
       setIsExporting(false);
       setExportProgress('');
-      alert(`Export note: Browser prepared the mockup. If download was blocked, please allow popup downloads.`);
+      setExportError(err?.message || 'Failed to rasterize mockup image.');
     }
   };
 
@@ -932,9 +960,48 @@ export default function MochupPage() {
 
               {/* Progress message if exporting */}
               {isExporting && (
-                <div className="flex items-center gap-2 text-xs text-[#ccff00]">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                <div className="flex items-center gap-2 text-xs text-[#ccff00] p-3 bg-black border border-[#ccff00]/40 rounded-lg">
+                  <Loader2 className="w-4 h-4 animate-spin text-[#ccff00]" />
                   <span>{exportProgress}</span>
+                </div>
+              )}
+
+              {/* Ready Download Notification & Direct Save Action */}
+              {readyDownload && !isExporting && (
+                <div className="p-4 bg-emerald-950/60 border-2 border-emerald-500 rounded-lg text-emerald-200">
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <CheckCircle2 className="w-5 h-5 text-[#ccff00]" />
+                    <span className="font-bold text-xs uppercase text-white">Mockup Successfully Generated!</span>
+                  </div>
+                  <p className="text-[11px] text-zinc-300 mb-3">
+                    Your {readyDownload.format} image has been generated in high resolution. If your browser didn&apos;t automatically save it, click below:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <a
+                      href={readyDownload.url}
+                      download={readyDownload.filename}
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#ccff00] text-black font-black text-xs rounded border border-black hover:bg-white shadow-[2px_2px_0px_#000000] cursor-pointer"
+                    >
+                      <Download className="w-4 h-4" />
+                      <span>CLICK HERE TO SAVE {readyDownload.format}</span>
+                    </a>
+                    <a
+                      href={readyDownload.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-3 py-2 bg-black text-zinc-300 font-bold text-xs rounded border border-zinc-700 hover:text-white flex items-center gap-1.5"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      <span>VIEW IMAGE</span>
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Export Error Alert */}
+              {exportError && (
+                <div className="p-3 bg-rose-950/60 border border-rose-500 rounded-lg text-rose-300 text-xs">
+                  <strong>Export Note:</strong> {exportError}
                 </div>
               )}
             </div>
@@ -943,10 +1010,14 @@ export default function MochupPage() {
             <div className="mt-6 pt-4 border-t border-zinc-800 flex items-center justify-end gap-3">
               <button
                 type="button"
-                onClick={() => setShowExportModal(false)}
+                onClick={() => {
+                  setShowExportModal(false);
+                  setReadyDownload(null);
+                  setExportError(null);
+                }}
                 className="px-4 py-2 bg-black hover:bg-zinc-800 text-zinc-300 font-bold text-xs rounded border border-zinc-700 transition-colors cursor-pointer"
               >
-                CANCEL
+                CLOSE
               </button>
 
               <button
@@ -963,7 +1034,7 @@ export default function MochupPage() {
                 ) : (
                   <>
                     <Download className="w-3.5 h-3.5" />
-                    <span>DOWNLOAD {exportFormat.toUpperCase()}</span>
+                    <span>{readyDownload ? 'RE-GENERATE & DOWNLOAD' : `DOWNLOAD ${exportFormat.toUpperCase()}`}</span>
                   </>
                 )}
               </button>
