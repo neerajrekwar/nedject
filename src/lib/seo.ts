@@ -10,7 +10,7 @@ export const DEFAULT_DESCRIPTION =
  */
 export function getSiteUrl(): string {
   const rawUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.NEXTAUTH_URL ||
     process.env.APP_URL ||
     'https://ais-pre-wu4yus7fs652j6wksn2vmo-615430009365.asia-southeast1.run.app';
 
