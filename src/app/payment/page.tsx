@@ -773,8 +773,8 @@ export default function PlansAndPaymentPage() {
               <h4 className="font-mono font-black text-black uppercase">Need custom invoice or business support?</h4>
               <p className="text-zinc-600 leading-relaxed font-medium">
                 Nedject is developed by neerajrekwar. If your company requires a GST invoice, bulk license, or custom barcode integrations, email directly at{' '}
-                <a href="mailto:neerajrekwar817@gmail.com" className="font-mono font-black text-black underline">
-                  neerajrekwar817@gmail.com
+                <a href="mailto:dev.neerajrekwar@gmail.com" className="font-mono font-black text-black underline">
+                  dev.neerajrekwar@gmail.com
                 </a>.
               </p>
             </div>

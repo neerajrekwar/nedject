@@ -78,7 +78,7 @@ const SAMPLE_SPECIMENS = [
       const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
       const payload = btoa(
         JSON.stringify({
-          sub: 'neerajrekwar817@gmail.com',
+          sub: 'dev.neerajrekwar@gmail.com',
           role: 'SENIOR_SYSTEMS_ARCHITECT',
           iss: 'Nedject.dev',
           iat: Math.floor(Date.now() / 1000),
@@ -102,7 +102,7 @@ const SAMPLE_SPECIMENS = [
     tag: 'STRUCTURED vCARD',
     description: 'Professional developer contact schema with MIME types',
     generatePayload: async () =>
-      'BEGIN:VCARD\nVERSION:4.0\nN:Rekwar;Neeraj;;;\nFN:Neeraj Rekwar\nTITLE:Senior Systems Architect\nEMAIL:neerajrekwar817@gmail.com\nURL:https://Nedject.dev\nEND:VCARD',
+      'BEGIN:VCARD\nVERSION:4.0\nN:Rekwar;Neeraj;;;\nFN:Neeraj Rekwar\nTITLE:Senior Systems Architect\nEMAIL:dev.neerajrekwar@gmail.com\nURL:https://Nedject.dev\nEND:VCARD',
   },
 ];
 

@@ -46,7 +46,7 @@ export function TechnicalFooter({ onOpenQRArtifact }: TechnicalFooterProps) {
               {[
                 { icon: GitBranch, href: 'https://github.com/neerajrekwar/nedject', label: 'GitHub Repository' },
                 { icon: Globe, href: 'https://github.com/neerajrekwar', label: 'Developer Profile' },
-                { icon: Share2, href: 'mailto:neerajrekwar817@gmail.com', label: 'Contact Developer' },
+                { icon: Share2, href: 'mailto:dev.neerajrekwar@gmail.com', label: 'Contact Developer' },
                 { icon: Terminal, href: '/qr-crush', label: 'QR Crush Lab' },
               ].map((item) => {
                 const Icon = item.icon;

@@ -59,13 +59,13 @@ export function getInitialDefaultSeeds(): QRHistoryItem[] {
     {
       id: 'seed-architect-profile',
       title: 'Principal Architect // Contact Matrix',
-      content: 'NEERAJ REKWAR // SENIOR SYSTEMS & FULLSTACK ARCHITECT\nPORTFOLIO: https://Nedject.dev\nSTATUS: AVAILABLE Q4 2026\nCONTACT: neerajrekwar817@gmail.com',
+      content: 'NEERAJ REKWAR // SENIOR SYSTEMS & FULLSTACK ARCHITECT\nPORTFOLIO: https://Nedject.dev\nSTATUS: AVAILABLE Q4 2026\nCONTACT: dev.neerajrekwar@gmail.com',
       timestamp: Date.now() - 3600000 * 8,
       dateFormatted: 'Today, 8h ago',
       contrast: 21.0,
       format: '600 DPI Master',
       options: {
-        text: 'NEERAJ REKWAR // SENIOR SYSTEMS & FULLSTACK ARCHITECT\nPORTFOLIO: https://Nedject.dev\nSTATUS: AVAILABLE Q4 2026\nCONTACT: neerajrekwar817@gmail.com',
+        text: 'NEERAJ REKWAR // SENIOR SYSTEMS & FULLSTACK ARCHITECT\nPORTFOLIO: https://Nedject.dev\nSTATUS: AVAILABLE Q4 2026\nCONTACT: dev.neerajrekwar@gmail.com',
         foregroundColor: '#000000',
         backgroundColor: '#ffffff',
         gradientEnabled: false,

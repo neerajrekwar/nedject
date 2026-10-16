@@ -48,7 +48,7 @@ export function LiveArtifactModal({ isOpen, onClose }: LiveArtifactModalProps) {
 
   // Master QR State
   const [qrOptions, setQrOptions] = useState<QROptions>({
-    text: 'NEERAJ REKWAR // SENIOR SYSTEMS & FULLSTACK ARCHITECT\nPORTFOLIO: https://Nedject.dev\nSTATUS: AVAILABLE Q4 2026\nCONTACT: neerajrekwar817@gmail.com',
+    text: 'NEERAJ REKWAR // SENIOR SYSTEMS & FULLSTACK ARCHITECT\nPORTFOLIO: https://Nedject.dev\nSTATUS: AVAILABLE Q4 2026\nCONTACT: dev.neerajrekwar@gmail.com',
     foregroundColor: '#000000',
     backgroundColor: '#ffffff',
     gradientEnabled: false,

@@ -71,10 +71,10 @@ export function ContactBlock() {
                 <div className="p-3 border border-zinc-800 bg-zinc-900/80">
                   <div className="text-[10px] text-zinc-500 font-bold uppercase">PRIMARY DISPATCH EMAIL</div>
                   <a
-                    href="mailto:neerajrekwar817@gmail.com"
+                    href="mailto:dev.neerajrekwar@gmail.com"
                     className="text-[#ccff00] font-black text-sm hover:underline block mt-0.5"
                   >
-                    neerajrekwar817@gmail.com
+                    dev.neerajrekwar@gmail.com
                   </a>
                 </div>
 

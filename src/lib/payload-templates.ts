@@ -83,7 +83,7 @@ export const RAPID_PAYLOAD_TEMPLATES: PayloadTemplate[] = [
     title: 'Digital Business Card (vCard 3.0)',
     iconName: 'UserCheck',
     description: 'Scannable digital contact card saved directly to phone contacts',
-    templateValue: `BEGIN:VCARD\nVERSION:3.0\nN:Rekwar;Neeraj;;;\nFN:Neeraj Rekwar\nORG:Nedject Engineering\nTITLE:Principal Systems Architect\nTEL;TYPE=CELL:+919876543210\nEMAIL;TYPE=WORK:neerajrekwar817@gmail.com\nURL:https://ko-fi.com/neerajrekwar2001\nNOTE:Fullstack Developer & High-DPI Photo QR Architect\nEND:VCARD`,
+    templateValue: `BEGIN:VCARD\nVERSION:3.0\nN:Rekwar;Neeraj;;;\nFN:Neeraj Rekwar\nORG:Nedject Engineering\nTITLE:Principal Systems Architect\nTEL;TYPE=CELL:+919876543210\nEMAIL;TYPE=WORK:dev.neerajrekwar@gmail.com\nURL:https://ko-fi.com/neerajrekwar2001\nNOTE:Fullstack Developer & High-DPI Photo QR Architect\nEND:VCARD`,
   },
   {
     id: 'contact-email',
@@ -91,7 +91,7 @@ export const RAPID_PAYLOAD_TEMPLATES: PayloadTemplate[] = [
     title: 'Pre-filled Mailto Email',
     iconName: 'Mail',
     description: 'Opens default mail app with recipient, subject, and body',
-    templateValue: 'mailto:neerajrekwar817@gmail.com?subject=Collaboration%20Inquiry&body=Hi%20Neeraj,%20I%20love%20the%20Nedject%20platform.',
+    templateValue: 'mailto:dev.neerajrekwar@gmail.com?subject=Collaboration%20Inquiry&body=Hi%20Neeraj,%20I%20love%20the%20Nedject%20platform.',
   },
   {
     id: 'contact-whatsapp',
@@ -143,7 +143,7 @@ export const RAPID_PAYLOAD_TEMPLATES: PayloadTemplate[] = [
     title: 'UPI Instant Payment QR',
     iconName: 'QrCode',
     description: 'BHIM, GPay, PhonePe, and Paytm compatible payment URI',
-    templateValue: 'upi://pay?pa=neerajrekwar817@okaxis&pn=Neeraj%20Rekwar&am=5.00&cu=INR&tn=Coffee%20Contribution',
+    templateValue: 'upi://pay?pa=dev.neerajrekwar@okaxis&pn=Neeraj%20Rekwar&am=5.00&cu=INR&tn=Coffee%20Contribution',
   },
   {
     id: 'pay-btc',
