@@ -80,9 +80,9 @@ export function GlobalNavbar() {
     { href: '/', label: '300 DPI Photo QR' },
     { href: '/normal-dpi-photo', label: 'Normal DPI' },
     { href: '/barcode-pick', label: 'Barcode Pick' },
+    { href: '/mochup', label: 'Mockup Studio' },
     { href: '/blog', label: 'Blog' },
     { href: '/fitness-glass', label: 'Fitness Glass' },
-    { href: '/google-fit', label: 'Google Fit Sync' },
     { href: '/payment', label: 'Plans & Pricing' },
   ];
 

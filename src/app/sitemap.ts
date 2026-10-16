@@ -28,6 +28,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     ...blogPostEntries,
     {
+      url: `${siteUrl}/mochup`,
+      lastModified: lastMod,
+      changeFrequency: 'weekly',
+      priority: 0.9,
+    },
+    {
       url: `${siteUrl}/normal-dpi-photo`,
       lastModified: lastMod,
       changeFrequency: 'weekly',
