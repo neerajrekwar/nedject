@@ -36,6 +36,8 @@ import {
   ZoomIn,
   ZoomOut,
   Ratio,
+  Star,
+  ChevronDown,
 } from 'lucide-react';
 import { toCanvas } from 'html-to-image';
 import {
@@ -69,13 +71,14 @@ interface PurposePreset {
   idealFor: string;
 }
 
-interface SavedCustomResolution {
+export interface SavedCustomResolution {
   id: string;
   name: string;
   width: number;
   height: number;
   ratio: string;
   createdAt: number;
+  isFavorite?: boolean;
 }
 
 const IDEAL_PURPOSE_PRESETS: PurposePreset[] = [
@@ -112,7 +115,7 @@ const IDEAL_PURPOSE_PRESETS: PurposePreset[] = [
     name: 'Behance 4K Master',
     category: 'Showcase',
     width: 3840,
-    height: 2100,
+    height: 2160,
     ratio: '16:9',
     idealFor: 'Ultra-HD portfolio case study',
   },
@@ -219,7 +222,7 @@ const IDEAL_PURPOSE_PRESETS: PurposePreset[] = [
   },
 ];
 
-const LOCAL_STORAGE_CUSTOM_RESOLUTIONS_KEY = 'nedject_saved_custom_mockup_resolutions';
+const LOCAL_STORAGE_CUSTOM_RESOLUTIONS_KEY = 'nedject_saved_custom_mockup_resolutions_v2';
 
 export default function MochupPage() {
   // =========================================================================
@@ -231,7 +234,6 @@ export default function MochupPage() {
   });
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [screenScale, setScreenScale] = useState<number>(1.0);
-  const [screenMode, setScreenMode] = useState<'fit' | '100vw-100vh' | 'expanded'>('100vw-100vh');
 
   // Track live client screen resolution safely on mount & resize
   useEffect(() => {
@@ -268,15 +270,31 @@ export default function MochupPage() {
   };
 
   // =========================================================================
-  // 2. PURPOSE RESOLUTION FOR DOWNLOAD (Presets + Custom + Saved Customs)
+  // 2. PURPOSE RESOLUTION FOR DOWNLOAD (Presets + Custom + Favorites)
   // =========================================================================
   const [selectedPurposeId, setSelectedPurposeId] = useState<string>('dribbble-std');
   const [customWidth, setCustomWidth] = useState<number>(1920);
   const [customHeight, setCustomHeight] = useState<number>(1080);
   const [aspectRatioLock, setAspectRatioLock] = useState<AspectRatioOption>('16:9');
   const [customPresetName, setCustomPresetName] = useState<string>('');
+  const [saveAsFavorite, setSaveAsFavorite] = useState<boolean>(true);
   const [savedCustoms, setSavedCustoms] = useState<SavedCustomResolution[]>([]);
   const [framingMode, setFramingMode] = useState<FramingMode>('contain');
+
+  // Export Resolution Dropdown open state
+  const [isExportDropdownOpen, setIsExportDropdownOpen] = useState<boolean>(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target as Node)) {
+        setIsExportDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   // Export Target & File Format
   const [exportTarget, setExportTarget] = useState<ExportTarget>('scene');
@@ -292,6 +310,30 @@ export default function MochupPage() {
         if (Array.isArray(parsed)) {
           setSavedCustoms(parsed);
         }
+      } else {
+        // Seed initial popular custom presets with favorite flags
+        const initialCustoms: SavedCustomResolution[] = [
+          {
+            id: 'custom-hero-banner',
+            name: 'Hero Showcase Banner',
+            width: 2400,
+            height: 1350,
+            ratio: '16:9',
+            createdAt: Date.now() - 10000,
+            isFavorite: true,
+          },
+          {
+            id: 'custom-mobile-lead',
+            name: 'Mobile App Store Lead',
+            width: 1242,
+            height: 2688,
+            ratio: '9:16',
+            createdAt: Date.now() - 5000,
+            isFavorite: true,
+          },
+        ];
+        setSavedCustoms(initialCustoms);
+        localStorage.setItem(LOCAL_STORAGE_CUSTOM_RESOLUTIONS_KEY, JSON.stringify(initialCustoms));
       }
     } catch (e) {
       console.warn('Error reading saved custom resolutions from localStorage:', e);
@@ -309,10 +351,12 @@ export default function MochupPage() {
       height: customHeight,
       ratio: aspectRatioLock === 'free' ? `${customWidth}:${customHeight}` : aspectRatioLock,
       createdAt: Date.now(),
+      isFavorite: saveAsFavorite,
     };
 
     const updated = [newPreset, ...savedCustoms.filter((item) => item.width !== customWidth || item.height !== customHeight)];
     setSavedCustoms(updated);
+    setSelectedPurposeId(newPreset.id);
     setCustomPresetName('');
 
     if (typeof window !== 'undefined') {
@@ -324,11 +368,33 @@ export default function MochupPage() {
     }
   };
 
+  // Toggle favorite flag for any saved custom resolution
+  const handleToggleFavorite = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const updated = savedCustoms.map((item) => {
+      if (item.id === id) {
+        return { ...item, isFavorite: !item.isFavorite };
+      }
+      return item;
+    });
+    setSavedCustoms(updated);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem(LOCAL_STORAGE_CUSTOM_RESOLUTIONS_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Failed to update favorite state in localStorage:', e);
+      }
+    }
+  };
+
   // Delete a saved custom resolution
   const handleDeleteCustomResolution = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     const updated = savedCustoms.filter((item) => item.id !== id);
     setSavedCustoms(updated);
+    if (selectedPurposeId === id) {
+      setSelectedPurposeId('dribbble-std');
+    }
     if (typeof window !== 'undefined') {
       try {
         localStorage.setItem(LOCAL_STORAGE_CUSTOM_RESOLUTIONS_KEY, JSON.stringify(updated));
@@ -338,8 +404,11 @@ export default function MochupPage() {
     }
   };
 
+  // Favorites list
+  const favoriteCustoms = savedCustoms.filter((item) => item.isFavorite);
+
   // Compute active target download dimensions based on user's selected purpose
-  const getActivePurposeDimensions = (): { width: number; height: number; ratio: string; label: string } => {
+  const getActivePurposeDimensions = (): { width: number; height: number; ratio: string; label: string; isFavorite?: boolean } => {
     if (selectedPurposeId === 'custom') {
       return {
         width: Math.max(100, customWidth),
@@ -366,6 +435,7 @@ export default function MochupPage() {
         height: savedMatch.height,
         ratio: savedMatch.ratio,
         label: `${savedMatch.name} (${savedMatch.width} × ${savedMatch.height} px)`,
+        isFavorite: savedMatch.isFavorite,
       };
     }
 
@@ -552,7 +622,6 @@ export default function MochupPage() {
   // 4. DOWNLOAD EXPORT ENGINE (Render to Exact Purpose Resolution)
   // =========================================================================
   const handleGenerateDownload = async (directDownload = false) => {
-    // 1. Identify which target mockup element to capture
     let targetId = 'mockup-export-target';
     if (exportTarget === 'desktop') targetId = 'mockup-target-desktop';
     if (exportTarget === 'tablet') targetId = 'mockup-target-tablet';
@@ -574,7 +643,6 @@ export default function MochupPage() {
       setExportError(null);
       setExportProgress(`Capturing ${exportTarget.toUpperCase()} into ${targetWidth} × ${targetHeight} px (${activeRatio})...`);
 
-      // High-resolution source capture via html-to-image
       const sourceCanvas = await toCanvas(target, {
         pixelRatio: 2.0,
         skipFonts: true,
@@ -585,7 +653,6 @@ export default function MochupPage() {
 
       setExportProgress(`Rendering Purpose Resolution: ${targetWidth} × ${targetHeight} px canvas...`);
 
-      // Create Purpose Canvas with the user's exact requested dimensions
       const purposeCanvas = document.createElement('canvas');
       purposeCanvas.width = targetWidth;
       purposeCanvas.height = targetHeight;
@@ -604,7 +671,7 @@ export default function MochupPage() {
         ctx.fillRect(0, 0, targetWidth, targetHeight);
       }
 
-      // Framing: Contain (default with subtle padding) or Cover (fill frame)
+      // Framing: Contain or Cover
       if (framingMode === 'cover') {
         const scale = Math.max(targetWidth / sourceCanvas.width, targetHeight / sourceCanvas.height);
         const drawW = sourceCanvas.width * scale;
@@ -613,7 +680,6 @@ export default function MochupPage() {
         const offsetY = (targetHeight - drawH) / 2;
         ctx.drawImage(sourceCanvas, offsetX, offsetY, drawW, drawH);
       } else {
-        // Contain mode with 92% aesthetic breathing room
         const scale = Math.min((targetWidth * 0.92) / sourceCanvas.width, (targetHeight * 0.92) / sourceCanvas.height);
         const drawW = sourceCanvas.width * scale;
         const drawH = sourceCanvas.height * scale;
@@ -785,7 +851,7 @@ export default function MochupPage() {
               <button
                 type="button"
                 onClick={() => setScreenScale((prev) => Math.max(0.6, Number((prev - 0.1).toFixed(1))))}
-                className="p-1 text-zinc-400 hover:text-white"
+                className="p-1 text-zinc-400 hover:text-white cursor-pointer"
                 title="Zoom Out Screen View"
               >
                 <ZoomOut className="w-3 h-3" />
@@ -796,7 +862,7 @@ export default function MochupPage() {
               <button
                 type="button"
                 onClick={() => setScreenScale((prev) => Math.min(1.4, Number((prev + 0.1).toFixed(1))))}
-                className="p-1 text-zinc-400 hover:text-white"
+                className="p-1 text-zinc-400 hover:text-white cursor-pointer"
                 title="Zoom In Screen View"
               >
                 <ZoomIn className="w-3 h-3" />
@@ -804,7 +870,7 @@ export default function MochupPage() {
               <button
                 type="button"
                 onClick={() => setScreenScale(1.0)}
-                className="ml-1 text-[9px] text-[#ccff00] hover:underline uppercase font-bold"
+                className="ml-1 text-[9px] text-[#ccff00] hover:underline uppercase font-bold cursor-pointer"
               >
                 RESET
               </button>
@@ -846,7 +912,7 @@ export default function MochupPage() {
       </header>
 
       {/* =================================================================== */}
-      {/* URL / SOURCE CAPTURE INPUT BAR                                     */}
+      {/* URL / SOURCE CAPTURE INPUT BAR + EXPORT RESOLUTION DROPDOWN         */}
       {/* =================================================================== */}
       <div className="border-b-2 border-black bg-[#16171b] px-4 py-2.5 select-none z-20 font-mono text-xs">
         <div className="w-full max-w-7xl mx-auto flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
@@ -919,22 +985,192 @@ export default function MochupPage() {
             )}
           </form>
 
-          {/* Quick Purpose Resolution Trigger Pill */}
-          <button
-            onClick={() => {
-              setShowExportModal(true);
-              handleGenerateDownload(false);
-            }}
-            className="flex items-center gap-2 bg-black border border-zinc-700 hover:border-[#ccff00] px-3 py-1.5 rounded-lg text-left transition-colors cursor-pointer group"
-          >
-            <Settings2 className="w-3.5 h-3.5 text-[#ccff00] group-hover:rotate-45 transition-transform" />
-            <div>
-              <div className="text-[10px] text-zinc-400 font-mono">PURPOSE RESOLUTION:</div>
-              <div className="text-[11px] font-black text-white group-hover:text-[#ccff00]">
-                {activePurpose.label}
+          {/* =============================================================== */}
+          {/* EXPORT RESOLUTION DROPDOWN (Featuring Pinned Favorite Ratios)   */}
+          {/* =============================================================== */}
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
+              className="w-full md:w-auto flex items-center justify-between gap-3 bg-black border-2 border-zinc-700 hover:border-[#ccff00] px-3 py-1.5 rounded-lg text-left transition-all cursor-pointer shadow-md group"
+            >
+              <div className="flex items-center gap-2">
+                <div className="p-1 bg-[#121316] rounded border border-zinc-700 group-hover:border-[#ccff00]">
+                  {activePurpose.isFavorite ? (
+                    <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                  ) : (
+                    <Ratio className="w-3.5 h-3.5 text-[#ccff00]" />
+                  )}
+                </div>
+                <div>
+                  <div className="text-[10px] text-zinc-400 font-mono flex items-center gap-1">
+                    <span>DOWNLOAD RATIO:</span>
+                    {activePurpose.isFavorite && (
+                      <span className="text-[9px] bg-yellow-400/20 text-yellow-300 px-1 rounded font-bold">★ FAVORITE</span>
+                    )}
+                  </div>
+                  <div className="text-[11px] font-black text-white group-hover:text-[#ccff00] truncate max-w-[210px]">
+                    {activePurpose.label}
+                  </div>
+                </div>
               </div>
-            </div>
-          </button>
+              <ChevronDown className={`w-4 h-4 text-zinc-400 group-hover:text-white transition-transform ${isExportDropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Dropdown Menu Popup */}
+            {isExportDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-[#121316] border-2 border-black rounded-xl shadow-2xl z-50 overflow-hidden font-mono text-xs">
+                
+                <div className="p-2.5 bg-black border-b border-zinc-800 flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" />
+                    <span className="font-black text-white text-[11px] uppercase tracking-wider">
+                      Export Download Ratios
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-zinc-400">
+                    {favoriteCustoms.length} Favorite{favoriteCustoms.length === 1 ? '' : 's'} Pinned
+                  </span>
+                </div>
+
+                <div className="max-h-80 overflow-y-auto p-2 space-y-3">
+                  
+                  {/* GROUP 1: FAVORITE CUSTOM RATIOS (Pinned at the very top) */}
+                  <div>
+                    <div className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider px-2 py-1 flex items-center justify-between">
+                      <span className="flex items-center gap-1">
+                        <Star className="w-3 h-3 fill-yellow-400" />
+                        FAVORITE RATIOS
+                      </span>
+                      <span className="text-[9px] text-zinc-500 font-normal">Quick 1-Click Access</span>
+                    </div>
+
+                    {favoriteCustoms.length === 0 ? (
+                      <div className="px-3 py-2 bg-black/60 rounded border border-dashed border-zinc-800 text-[11px] text-zinc-400">
+                        No custom favorites yet. Star any custom ratio below or in the export modal to pin it here!
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {favoriteCustoms.map((fav) => (
+                          <div
+                            key={fav.id}
+                            onClick={() => {
+                              setSelectedPurposeId(fav.id);
+                              setCustomWidth(fav.width);
+                              setCustomHeight(fav.height);
+                              setIsExportDropdownOpen(false);
+                            }}
+                            className={`p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                              selectedPurposeId === fav.id
+                                ? 'bg-[#ccff00] text-black border-black font-black'
+                                : 'bg-black text-zinc-200 border-zinc-800 hover:border-yellow-400/50 hover:bg-zinc-900'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Star className={`w-3.5 h-3.5 shrink-0 ${selectedPurposeId === fav.id ? 'fill-black text-black' : 'fill-yellow-400 text-yellow-400'}`} />
+                              <div>
+                                <div className="text-xs font-bold leading-tight">{fav.name}</div>
+                                <div className={`text-[10px] ${selectedPurposeId === fav.id ? 'text-black/80' : 'text-zinc-400'}`}>
+                                  {fav.width} × {fav.height} px • {fav.ratio}
+                                </div>
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={(e) => handleToggleFavorite(fav.id, e)}
+                              className="p-1 hover:text-yellow-200 cursor-pointer"
+                              title="Unstar from favorites"
+                            >
+                              <Star className={`w-3 h-3 ${selectedPurposeId === fav.id ? 'fill-black' : 'fill-yellow-400'}`} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* GROUP 2: POPULAR IDEAL MOCKUP PRESETS */}
+                  <div>
+                    <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider px-2 py-1 flex items-center justify-between">
+                      <span>IDEAL MOCKUP PRESETS</span>
+                    </div>
+                    <div className="space-y-1">
+                      {IDEAL_PURPOSE_PRESETS.slice(0, 6).map((preset) => (
+                        <div
+                          key={preset.id}
+                          onClick={() => {
+                            setSelectedPurposeId(preset.id);
+                            setIsExportDropdownOpen(false);
+                          }}
+                          className={`p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                            selectedPurposeId === preset.id
+                              ? 'bg-[#ccff00] text-black border-black font-black'
+                              : 'bg-black text-zinc-300 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-900'
+                          }`}
+                        >
+                          <div>
+                            <div className="text-xs font-bold">{preset.name}</div>
+                            <div className={`text-[10px] ${selectedPurposeId === preset.id ? 'text-black/80' : 'text-zinc-400'}`}>
+                              {preset.width} × {preset.height} px ({preset.ratio})
+                            </div>
+                          </div>
+                          <span className={`text-[9px] px-1 py-0.5 rounded font-bold ${selectedPurposeId === preset.id ? 'bg-black text-[#ccff00]' : 'bg-zinc-800 text-zinc-400'}`}>
+                            {preset.ratio}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* GROUP 3: SCREEN NATIVE RESOLUTION */}
+                  <div>
+                    <div className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider px-2 py-1">
+                      <span>SCREEN RESOLUTION (100vw × 100vh)</span>
+                    </div>
+                    <div
+                      onClick={() => {
+                        setSelectedPurposeId('screen-native');
+                        setIsExportDropdownOpen(false);
+                      }}
+                      className={`p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
+                        selectedPurposeId === 'screen-native'
+                          ? 'bg-[#ccff00] text-black border-black font-black'
+                          : 'bg-black text-zinc-300 border-zinc-800 hover:border-zinc-600'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Monitor className="w-3.5 h-3.5" />
+                        <div>
+                          <div className="text-xs font-bold">Match Current Screen</div>
+                          <div className={`text-[10px] ${selectedPurposeId === 'screen-native' ? 'text-black/80' : 'text-zinc-400'}`}>
+                            {screenResolution.width} × {screenResolution.height} px (100vw × 100vh)
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Footer action to open custom calibration builder */}
+                <div className="p-2.5 bg-black border-t border-zinc-800 flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsExportDropdownOpen(false);
+                      setShowExportModal(true);
+                    }}
+                    className="w-full text-center py-1.5 bg-zinc-800 hover:bg-[#ccff00] hover:text-black text-white font-bold text-xs rounded border border-zinc-700 transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <Settings2 className="w-3.5 h-3.5" />
+                    <span>CONFIGURE CUSTOM RESOLUTION &amp; FAVORITES</span>
+                  </button>
+                </div>
+
+              </div>
+            )}
+          </div>
 
         </div>
 
@@ -1296,7 +1532,10 @@ export default function MochupPage() {
             <span className="text-zinc-600 hidden md:inline">|</span>
             <div className="hidden md:flex items-center gap-1.5">
               <span className="text-zinc-400">Export Purpose:</span>
-              <span className="text-white font-bold">{activePurpose.label}</span>
+              <span className="text-white font-bold flex items-center gap-1">
+                {activePurpose.isFavorite && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
+                <span>{activePurpose.label}</span>
+              </span>
             </div>
           </div>
 
@@ -1334,7 +1573,7 @@ export default function MochupPage() {
                     Purpose Download Resolution Matrix
                   </h3>
                   <p className="text-[11px] text-zinc-400">
-                    Live Screen is 100vw × 100vh. Decide your target purpose resolution, aspect ratio, or save custom dimensions below.
+                    Live Screen is 100vw × 100vh. Decide your target purpose resolution, mark favorites (★), and export.
                   </p>
                 </div>
               </div>
@@ -1369,9 +1608,16 @@ export default function MochupPage() {
                 <div className="flex items-start gap-2.5 border-t md:border-t-0 md:border-l border-zinc-800 pt-2 md:pt-0 md:pl-3">
                   <Ratio className="w-4 h-4 text-[#ccff00] shrink-0 mt-0.5" />
                   <div>
-                    <div className="text-[10px] text-zinc-400 uppercase font-bold">2. Selected Purpose Resolution (For Download):</div>
-                    <div className="text-[#ccff00] font-black text-sm">
-                      {activePurpose.width} × {activePurpose.height} px <span className="text-white text-xs font-mono font-bold">({activePurpose.ratio})</span>
+                    <div className="text-[10px] text-zinc-400 uppercase font-bold flex items-center gap-1.5">
+                      <span>2. Selected Purpose Resolution (For Download):</span>
+                      {activePurpose.isFavorite && (
+                        <span className="text-[9px] bg-yellow-400/20 text-yellow-300 px-1 rounded font-bold">★ FAVORITE</span>
+                      )}
+                    </div>
+                    <div className="text-[#ccff00] font-black text-sm flex items-center gap-1.5">
+                      {activePurpose.isFavorite && <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400 inline" />}
+                      <span>{activePurpose.width} × {activePurpose.height} px</span>
+                      <span className="text-white text-xs font-mono font-bold">({activePurpose.ratio})</span>
                     </div>
                     <div className="text-[10px] text-zinc-400">{activePurpose.label} • {exportFormat.toUpperCase()}</div>
                   </div>
@@ -1411,7 +1657,7 @@ export default function MochupPage() {
                 </div>
               </div>
 
-              {/* SECTION C: PURPOSE RESOLUTION PRESETS (Ideal Mockups, Social, Display) */}
+              {/* SECTION C: FAVORITES & PURPOSE RESOLUTION PRESETS */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-[11px] font-bold text-zinc-300 uppercase flex items-center gap-1.5">
@@ -1421,10 +1667,57 @@ export default function MochupPage() {
                   <span className="text-[10px] text-zinc-500 font-mono">Presets calibrated for high impact</span>
                 </div>
 
+                {/* FAVORITES BANNER IF ANY SAVED */}
+                {favoriteCustoms.length > 0 && (
+                  <div className="mb-3 p-3 bg-yellow-950/20 border border-yellow-500/40 rounded-xl">
+                    <div className="text-[10px] text-yellow-400 font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                      <Star className="w-3.5 h-3.5 fill-yellow-400" />
+                      <span>FAVORITE RATIOS (ACCESSIBLE IN EXPORT DROPDOWN):</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {favoriteCustoms.map((fav) => (
+                        <div
+                          key={fav.id}
+                          onClick={() => {
+                            setSelectedPurposeId(fav.id);
+                            setCustomWidth(fav.width);
+                            setCustomHeight(fav.height);
+                            setReadyDownload(null);
+                          }}
+                          className={`p-2 rounded-lg border flex items-center justify-between transition-all cursor-pointer ${
+                            selectedPurposeId === fav.id
+                              ? 'bg-[#ccff00] text-black border-black font-black shadow-[2px_2px_0px_#000000]'
+                              : 'bg-black text-zinc-200 border-zinc-800 hover:border-yellow-400/60'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Star className={`w-3.5 h-3.5 ${selectedPurposeId === fav.id ? 'fill-black text-black' : 'fill-yellow-400 text-yellow-400'}`} />
+                            <div>
+                              <div className="text-xs font-bold leading-tight">{fav.name}</div>
+                              <div className={`text-[10px] ${selectedPurposeId === fav.id ? 'text-black/80' : 'text-zinc-400'}`}>
+                                {fav.width} × {fav.height} px • {fav.ratio}
+                              </div>
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleFavorite(fav.id, e)}
+                            className="p-1 hover:text-yellow-200 cursor-pointer"
+                            title="Toggle favorite status"
+                          >
+                            <Star className={`w-3.5 h-3.5 ${selectedPurposeId === fav.id ? 'fill-black' : 'fill-yellow-400'}`} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Preset Chips Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   
-                  {/* Option: Current Screen Resolution (100vw × 100vh) */}
+                  {/* Current Screen Resolution (100vw × 100vh) */}
                   <button
                     type="button"
                     onClick={() => {
@@ -1498,7 +1791,7 @@ export default function MochupPage() {
                 </div>
               </div>
 
-              {/* SECTION D: CUSTOM DOWNLOAD RATIO & RESOLUTION (WITH PERSISTENT SAVE) */}
+              {/* SECTION D: CUSTOM DOWNLOAD RATIO & RESOLUTION (WITH FAVORITE FLAG & PERSISTENCE) */}
               <div className="p-4 bg-black border-2 border-zinc-800 rounded-xl space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -1508,7 +1801,7 @@ export default function MochupPage() {
                     </span>
                   </div>
                   <span className="text-[10px] text-zinc-400">
-                    Dimensions and ratios persist automatically to your browser
+                    Dimensions and favorites persist automatically to your browser
                   </span>
                 </div>
 
@@ -1578,8 +1871,8 @@ export default function MochupPage() {
                   </div>
                 </div>
 
-                {/* Save Custom Resolution Action */}
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 border-t border-zinc-800">
+                {/* Save Custom Resolution Action with Favorite Toggle */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-zinc-800">
                   <div className="flex-1 flex items-center bg-[#121316] border border-zinc-700 rounded-lg px-3 py-1.5 focus-within:border-[#ccff00]">
                     <Bookmark className="w-3.5 h-3.5 text-zinc-500 mr-2 shrink-0" />
                     <input
@@ -1591,21 +1884,37 @@ export default function MochupPage() {
                     />
                   </div>
 
+                  {/* Favorite Flag Checkbox Toggle */}
+                  <button
+                    type="button"
+                    onClick={() => setSaveAsFavorite(!saveAsFavorite)}
+                    className={`px-3 py-2 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer shrink-0 ${
+                      saveAsFavorite
+                        ? 'bg-yellow-950/40 border-yellow-500/80 text-yellow-300'
+                        : 'bg-[#121316] border-zinc-700 text-zinc-400 hover:text-white'
+                    }`}
+                    title="Toggle Favorite status: Pinned to top of Export Dropdown"
+                  >
+                    <Star className={`w-3.5 h-3.5 ${saveAsFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-500'}`} />
+                    <span>FAVORITE (PIN TO DROPDOWN)</span>
+                  </button>
+
                   <button
                     type="button"
                     onClick={handleSaveCustomResolution}
-                    className="px-3.5 py-2 bg-zinc-800 hover:bg-[#ccff00] hover:text-black text-white font-bold text-xs rounded-lg border border-zinc-700 transition-colors flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+                    className="px-4 py-2 bg-zinc-800 hover:bg-[#ccff00] hover:text-black text-white font-bold text-xs rounded-lg border border-zinc-700 transition-colors flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
                   >
                     <BookmarkPlus className="w-3.5 h-3.5" />
-                    <span>SAVE CUSTOM PRESET</span>
+                    <span>SAVE PRESET</span>
                   </button>
                 </div>
 
-                {/* Saved Customs List */}
+                {/* Saved Customs List with Star Favorite Controls */}
                 {savedCustoms.length > 0 && (
                   <div className="pt-2">
-                    <div className="text-[10px] text-zinc-400 font-bold uppercase mb-1.5">
-                      Your Saved Custom Resolutions:
+                    <div className="text-[10px] text-zinc-400 font-bold uppercase mb-1.5 flex items-center justify-between">
+                      <span>Your Saved Custom Resolutions:</span>
+                      <span className="text-zinc-500 text-[9px] font-normal">Click star (★) to toggle favorite in dropdown</span>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {savedCustoms.map((saved) => (
@@ -1617,16 +1926,26 @@ export default function MochupPage() {
                             setCustomHeight(saved.height);
                             setReadyDownload(null);
                           }}
-                          className={`px-2.5 py-1 rounded-lg border text-xs flex items-center gap-2 transition-all cursor-pointer ${
+                          className={`px-2.5 py-1.5 rounded-lg border text-xs flex items-center gap-2 transition-all cursor-pointer ${
                             selectedPurposeId === saved.id
                               ? 'bg-[#ccff00] text-black border-black font-black'
                               : 'bg-[#121316] text-zinc-300 border-zinc-700 hover:border-zinc-500'
                           }`}
                         >
+                          <button
+                            type="button"
+                            onClick={(e) => handleToggleFavorite(saved.id, e)}
+                            className="p-0.5 hover:scale-110 transition-transform cursor-pointer"
+                            title={saved.isFavorite ? 'Unfavorite' : 'Mark as favorite (pin to export dropdown)'}
+                          >
+                            <Star className={`w-3.5 h-3.5 ${saved.isFavorite ? 'fill-yellow-400 text-yellow-400' : 'text-zinc-500 hover:text-yellow-400'}`} />
+                          </button>
+
                           <span className="font-bold">{saved.name}</span>
                           <span className="text-[10px] opacity-75">
                             ({saved.width} × {saved.height} • {saved.ratio})
                           </span>
+
                           <button
                             type="button"
                             onClick={(e) => handleDeleteCustomResolution(saved.id, e)}
@@ -1779,9 +2098,14 @@ export default function MochupPage() {
 
             {/* Modal Bottom Actions */}
             <div className="pt-3 border-t-2 border-black flex flex-wrap items-center justify-between gap-3 shrink-0">
-              <div className="text-[11px] text-zinc-400">
-                Target: <span className="text-white font-bold">{exportTarget.toUpperCase()}</span> • Purpose:{' '}
-                <span className="text-[#ccff00] font-bold">{activePurpose.width} × {activePurpose.height} px</span>
+              <div className="text-[11px] text-zinc-400 flex items-center gap-2">
+                <span>Target: <strong className="text-white">{exportTarget.toUpperCase()}</strong></span>
+                <span>•</span>
+                <span className="flex items-center gap-1">
+                  Purpose:{' '}
+                  {activePurpose.isFavorite && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400" />}
+                  <strong className="text-[#ccff00]">{activePurpose.width} × {activePurpose.height} px</strong>
+                </span>
               </div>
 
               <div className="flex items-center gap-2">
