@@ -847,10 +847,10 @@ export function HeroSection({
                   <BarcodeIcon className="w-3.5 h-3.5" />
                   <span>Barcode Pick →</span>
                 </Link>
-                <Link
-                  href="/qr-crush"
-                  className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
-                >
+                // <Link
+                //   href="/qr-crush"
+                //   className="font-black text-black hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer"
+                // >
                   <Scan className="w-3.5 h-3.5" />
                   <span>QR Crush Forensics →</span>
                 </Link>

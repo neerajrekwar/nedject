@@ -1,22 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   Smartphone,
-  Laptop,
   QrCode,
   Barcode as BarcodeIcon,
-  Sparkles,
   ArrowRight,
   ExternalLink,
   ShieldCheck,
   CheckCircle2,
-  SlidersHorizontal,
   Layers,
   Zap,
   Globe,
-  Maximize2,
 } from 'lucide-react';
 
 interface UniversalHeroSectionProps {
@@ -35,7 +31,6 @@ export function UniversalHeroSection({
   onScrollToQRStudio,
 }: UniversalHeroSectionProps) {
   const [activeTab, setActiveTab] = useState<UniversalTab>('mockup');
-  const [interactiveUrlInput, setInteractiveUrlInput] = useState('https://nedject.dev');
   const [activeDevicePreview, setActiveDevicePreview] = useState<'iphone' | 'macbook' | 'trio'>('iphone');
 
   const scrollToQR = () => {
@@ -481,10 +476,10 @@ export function UniversalHeroSection({
                         <div className="font-black text-black text-[11px]">03 // BARCODES</div>
                         <div className="text-[10px] text-zinc-600">1D / 2D Symbologies</div>
                       </Link>
-                      <Link
-                        href="/qr-crush"
-                        className="p-2 border border-black bg-zinc-50 hover:bg-[#ccff00] transition-colors"
-                      >
+                      // <Link
+                      //   href="/qr-crush"
+                      //   className="p-2 border border-black bg-zinc-50 hover:bg-[#ccff00] transition-colors"
+                      // >
                         <div className="font-black text-black text-[11px]">04 // QR CRUSH</div>
                         <div className="text-[10px] text-zinc-600">Optical Forensics Lab</div>
                       </Link>

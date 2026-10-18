@@ -94,24 +94,24 @@ const NEDJECT_TOOLS: ToolItem[] = [
     actionText: 'GENERATE BARCODES →',
     accent: '#ffffff',
   },
-  {
-    id: 'qr-crush',
-    code: 'TOOL // 04',
-    title: 'QR CRUSH FORENSIC & CRYPTO LAB',
-    tag: 'SECURITY & REVERSE ENGINEERING',
-    badge: 'OPTICAL ANALYSIS',
-    description:
-      'Optical QR forensics and encrypted container generator. Analyze Shannon entropy, detect obscured QR finder patterns, dissect structured payloads, and build AES-256-GCM cipher containers with camera scanning.',
-    features: [
-      'Four-Pass Adaptive Forensic Optical Decoder',
-      'AES-256-GCM PBKDF2 Password-Protected Payloads',
-      'Live Camera Viewfinder with Continuous Scan',
-      'Shannon Entropy Meter & Wi-Fi / JWT / vCard Parser',
-    ],
-    href: '/qr-crush',
-    actionText: 'INSPECT & CRUSH QR →',
-    accent: '#ffffff',
-  },
+  // {
+  //   id: 'qr-crush',
+  //   code: 'TOOL // 04',
+  //   title: 'QR CRUSH FORENSIC & CRYPTO LAB',
+  //   tag: 'SECURITY & REVERSE ENGINEERING',
+  //   badge: 'OPTICAL ANALYSIS',
+  //   description:
+  //     'Optical QR forensics and encrypted container generator. Analyze Shannon entropy, detect obscured QR finder patterns, dissect structured payloads, and build AES-256-GCM cipher containers with camera scanning.',
+  //   features: [
+  //     'Four-Pass Adaptive Forensic Optical Decoder',
+  //     'AES-256-GCM PBKDF2 Password-Protected Payloads',
+  //     'Live Camera Viewfinder with Continuous Scan',
+  //     'Shannon Entropy Meter & Wi-Fi / JWT / vCard Parser',
+  //   ],
+  //   href: '/qr-crush',
+  //   actionText: 'INSPECT & CRUSH QR →',
+  //   accent: '#ffffff',
+  // },
   {
     id: 'fitness-glass',
     code: 'TOOL // 05',
