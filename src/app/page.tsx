@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Navbar } from '@/components/portfolio/Navbar';
+import { UniversalHeroSection } from '@/components/portfolio/UniversalHeroSection';
 import { HeroSection } from '@/components/portfolio/HeroSection';
 import { MarqueeBanner } from '@/components/portfolio/MarqueeBanner';
 import { ProjectShowcase } from '@/components/portfolio/ProjectShowcase';
@@ -34,6 +35,13 @@ export default function Home() {
     }
   };
 
+  const handleScrollToQRStudio = () => {
+    const qrElem = document.getElementById('qr-studio');
+    if (qrElem) {
+      qrElem.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-sans selection:bg-[#ccff00] selection:text-black relative flex flex-col">
       
@@ -45,7 +53,15 @@ export default function Home() {
 
       {/* MAIN CONTENT RUNTIME - PURE TOOLS FOCUS UNDER BRAND "NEDJECT" */}
       <main className="flex-1 w-full">
-        {/* 2. CORE 300 DPI PHOTO QR CODE STUDIO HERO */}
+        {/* 2. TOP HERO SECTION FOR UNIVERSAL USE FOR WHOLE INTERPRET WEBSITE (h-70vh) */}
+        <UniversalHeroSection
+          onExploreProjects={handleExploreProjects}
+          onExploreRegistry={handleExploreRegistry}
+          onOpenQRArtifact={() => setIsArtifactModalOpen(true)}
+          onScrollToQRStudio={handleScrollToQRStudio}
+        />
+
+        {/* 3. CORE 300 DPI PHOTO QR CODE STUDIO HERO */}
         <HeroSection
           onExploreProjects={handleExploreProjects}
           onExploreRegistry={handleExploreRegistry}

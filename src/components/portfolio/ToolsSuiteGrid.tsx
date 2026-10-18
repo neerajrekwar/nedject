@@ -23,6 +23,24 @@ interface ToolItem {
 
 const NEDJECT_TOOLS: ToolItem[] = [
   {
+    id: 'mockup-studio',
+    code: 'TOOL // 00',
+    title: 'INTERACTIVE DEVICE MOCKUP STUDIO',
+    tag: 'MULTI-DEVICE IFRAME & 9:16 MOBILE',
+    badge: '★ CORE FLAGSHIP',
+    description:
+      'Live responsive device staging lab. Embed any live URL or website template in real-time sandboxed iframes inside Apple Flagship Trio, MacBook Pro, and iPhone 16 Pro (9:16) with 4K PNG export.',
+    features: [
+      'Interactive Live Sandboxed Iframes (No Recursion)',
+      'iPhone 16 Pro 9:16 Portrait with Dynamic Island',
+      'Apple Responsive Trio (Desktop + Tablet + Phone)',
+      'Direct One-Click Download & Clean Studio Reset',
+    ],
+    href: '/mochup',
+    actionText: 'LAUNCH MOCKUP STUDIO →',
+    accent: '#ccff00',
+  },
+  {
     id: 'photo-qr',
     code: 'TOOL // 01',
     title: '300 DPI PHOTO QR CODE STUDIO',

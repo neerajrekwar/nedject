@@ -45,8 +45,14 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
         {/* Center: Minimalist Text Links for Tools */}
         <nav className="hidden lg:flex items-center gap-1 border-2 border-black bg-white p-1 shadow-[4px_4px_0px_#000000]">
           <Link
-            href="/"
+            href="/mochup"
             className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1"
+          >
+            <span>MOCKUP STUDIO</span>
+          </Link>
+          <Link
+            href="/"
+            className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
           >
             <span>300 DPI QR</span>
           </Link>
@@ -141,6 +147,13 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
                 {link.label}
               </a>
             ))}
+            <Link
+              href="/mochup"
+              onClick={() => setMobileMenuOpen(false)}
+              className="block p-3 border-2 border-black bg-[#ccff00] font-mono text-xs font-black tracking-widest text-black shadow-[3px_3px_0px_#000000] hover:bg-black hover:text-[#ccff00]"
+            >
+              📱 MOCKUP STUDIO (INTERACTIVE IFRAME & 9:16) →
+            </Link>
             <Link
               href="/normal-dpi-photo"
               onClick={() => setMobileMenuOpen(false)}

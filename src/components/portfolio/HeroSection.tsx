@@ -293,7 +293,8 @@ export function HeroSection({
   };
 
   return (
-    <section id="about" className="w-full py-10 md:py-16 border-b-2 border-black bg-[#f5f5f0] relative">
+    <section id="qr-studio" className="w-full py-10 md:py-16 border-b-2 border-black bg-[#f5f5f0] relative">
+      <div id="about" className="absolute -top-24 left-0 pointer-events-none" />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 space-y-8">
         
         {/* HERO TITLE & DOSSIER HEADER */}
