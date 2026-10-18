@@ -70,12 +70,12 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
             <BarcodeIcon className="w-3.5 h-3.5" />
             <span>BARCODES</span>
           </Link>
-          // <Link
-          //   href="/qr-crush"
-          //   className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
-          // >
-          //   <span>QR CRUSH</span>
-          // </Link>
+          {/* <Link
+            href="/qr-crush"
+            className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
+          >
+            <span>QR CRUSH</span>
+          </Link> */}
           <Link
             href="/fitness-glass"
             className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"

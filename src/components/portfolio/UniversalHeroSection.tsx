@@ -476,13 +476,13 @@ export function UniversalHeroSection({
                         <div className="font-black text-black text-[11px]">03 // BARCODES</div>
                         <div className="text-[10px] text-zinc-600">1D / 2D Symbologies</div>
                       </Link>
-                      // <Link
-                      //   href="/qr-crush"
-                      //   className="p-2 border border-black bg-zinc-50 hover:bg-[#ccff00] transition-colors"
-                      // >
+                      {/* <Link
+                        href="/qr-crush"
+                        className="p-2 border border-black bg-zinc-50 hover:bg-[#ccff00] transition-colors"
+                      >
                         <div className="font-black text-black text-[11px]">04 // QR CRUSH</div>
                         <div className="text-[10px] text-zinc-600">Optical Forensics Lab</div>
-                      </Link>
+                      </Link> */}
                     </div>
 
                     <div className="flex items-center justify-between pt-2">
