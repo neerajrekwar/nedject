@@ -260,6 +260,49 @@ export default function MochupPage() {
     };
   }, []);
 
+  // Shield parent Next.js application from any iframe, proxy, or cross-origin script errors
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleGlobalError = (event: ErrorEvent) => {
+      const msg = event?.message || '';
+      if (
+        msg.includes('Script error') ||
+        msg.includes('ResizeObserver') ||
+        msg.includes('SecurityError') ||
+        msg.includes('cross-origin') ||
+        msg.includes('frame') ||
+        msg.includes('proxy') ||
+        msg.includes('Failed to read a named property')
+      ) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        return true;
+      }
+    };
+
+    const handleRejection = (event: PromiseRejectionEvent) => {
+      const reasonMsg = event?.reason?.message || String(event?.reason || '');
+      if (
+        reasonMsg.includes('SecurityError') ||
+        reasonMsg.includes('cross-origin') ||
+        reasonMsg.includes('iframe') ||
+        reasonMsg.includes('Failed to read a named property')
+      ) {
+        event.preventDefault();
+        return true;
+      }
+    };
+
+    window.addEventListener('error', handleGlobalError, true);
+    window.addEventListener('unhandledrejection', handleRejection, true);
+
+    return () => {
+      window.removeEventListener('error', handleGlobalError, true);
+      window.removeEventListener('unhandledrejection', handleRejection, true);
+    };
+  }, []);
+
   const toggleFullscreen = () => {
     if (typeof document === 'undefined') return;
     if (!document.fullscreenElement) {
@@ -530,6 +573,7 @@ export default function MochupPage() {
   const [readyDownload, setReadyDownload] = useState<{ url: string; filename: string; format: string; width: number; height: number } | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
+  const [isRasterizingExport, setIsRasterizingExport] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // URL Submission Pipeline
@@ -546,7 +590,6 @@ export default function MochupPage() {
     setIsGenerating(true);
     setPreviewReady(false);
     setSourceType('url');
-    setRenderMode('snapshot');
 
     setGenerationStep('Analyzing website URL and resolving host...');
     await new Promise((r) => setTimeout(r, 450));
@@ -637,6 +680,12 @@ export default function MochupPage() {
     }
 
     const { width: targetWidth, height: targetHeight, ratio: activeRatio } = getActivePurposeDimensions();
+
+    const wasInteractive = renderMode === 'interactive';
+    if (wasInteractive) {
+      setIsRasterizingExport(true);
+      await new Promise((r) => setTimeout(r, 120));
+    }
 
     try {
       setIsExporting(true);
@@ -739,6 +788,10 @@ export default function MochupPage() {
       setIsExporting(false);
       setExportProgress('');
       setExportError(err?.message || 'Failed to rasterize mockup at selected resolution.');
+    } finally {
+      if (wasInteractive) {
+        setIsRasterizingExport(false);
+      }
     }
   };
 
@@ -772,27 +825,63 @@ export default function MochupPage() {
       return <TemplateRenderer templateId={selectedTemplate.id} viewportWidth={width} />;
     }
 
-    if (renderMode === 'interactive') {
-      const proxiedSrc = `/api/mockup/proxy?url=${encodeURIComponent(submittedUrl)}`;
+    const targetUrl = submittedUrl || websiteUrl;
+
+    // Interactive Iframe Mode (Strictly isolated with zero cross-origin leak to parent Next.js)
+    if (renderMode === 'interactive' && !isRasterizingExport) {
+      if (!targetUrl) {
+        return (
+          <div className="w-full h-full bg-[#121316] flex flex-col items-center justify-center p-4 text-center select-none">
+            <Globe className="w-8 h-8 text-[#ccff00] mb-2 opacity-80" />
+            <p className="text-xs font-mono text-white font-bold mb-1">Interactive Iframe Viewport</p>
+            <p className="text-[11px] font-mono text-zinc-400">Enter your website URL above and click Preview.</p>
+          </div>
+        );
+      }
+
+      const proxiedSrc = `/api/mockup/proxy?url=${encodeURIComponent(targetUrl)}`;
+
       return (
-        <div className="w-full h-full relative bg-white">
+        <div className="w-full h-full relative bg-white flex flex-col overflow-hidden">
+          {/* Subtle live indicator header */}
+          <div className="bg-[#0a0b0e] border-b border-zinc-800 px-2 py-0.5 flex items-center justify-between text-[9px] font-mono text-zinc-400 select-none shrink-0 z-10">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-zinc-200 font-bold truncate max-w-[120px] sm:max-w-[180px]">{targetUrl}</span>
+            </div>
+            <a
+              href={targetUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[#ccff00] hover:underline flex items-center gap-0.5"
+              title="Open website in new window"
+            >
+              <span>OPEN</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          </div>
+
+          {/* Securely sandboxed iframe: allow-scripts, allow-forms, allow-popups WITHOUT allow-same-origin */}
+          {/* Omission of allow-same-origin makes this frame an isolated opaque origin (null), preventing ANY child script error from crashing nedject.vercel.app */}
           <iframe
             src={proxiedSrc}
-            className="w-full h-full border-0 bg-white"
+            className="w-full flex-1 border-0 bg-white"
             title={`${viewport} Viewport Preview`}
-            sandbox="allow-scripts allow-same-origin allow-forms"
+            sandbox="allow-scripts allow-forms allow-popups allow-modals allow-downloads"
+            loading="lazy"
           />
         </div>
       );
     }
 
-    const snapshotEndpoint = `/api/mockup/snapshot?url=${encodeURIComponent(submittedUrl)}&viewport=${viewport}`;
+    // Default HD Snapshot Mode (or during export rasterization)
+    const snapshotEndpoint = `/api/mockup/snapshot?url=${encodeURIComponent(targetUrl)}&viewport=${viewport}`;
 
     return (
       <div className="w-full h-full relative bg-[#121316] overflow-y-auto flex flex-col items-center">
         <img
           src={snapshotEndpoint}
-          alt={`Website preview for ${submittedUrl} on ${viewport}`}
+          alt={`Website preview for ${targetUrl} on ${viewport}`}
           className="w-full object-cover object-top block"
           crossOrigin="anonymous"
           loading="eager"
@@ -803,7 +892,7 @@ export default function MochupPage() {
         />
       </div>
     );
-  }, [sourceType, uploadedScreenshot, selectedTemplate, renderMode, submittedUrl]);
+  }, [sourceType, uploadedScreenshot, selectedTemplate, renderMode, submittedUrl, websiteUrl, isRasterizingExport]);
 
   const activePurpose = getActivePurposeDimensions();
 

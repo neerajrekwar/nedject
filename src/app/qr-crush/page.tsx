@@ -547,20 +547,80 @@ export default function QRCrushSecretPage() {
               {/* Viewport Display Area */}
               <div className="border border-zinc-800 bg-zinc-950 p-4 flex flex-col items-center justify-center min-h-[340px] relative overflow-hidden">
                 {isCameraActive ? (
-                  <div className="relative w-full aspect-square max-w-[320px] border-2 border-[#ccff00] overflow-hidden flex items-center justify-center bg-black">
+                  <div className="relative w-full aspect-square max-w-[320px] border-2 border-[#ccff00] overflow-hidden flex items-center justify-center bg-black shadow-[0_0_20px_rgba(204,255,0,0.25)]">
                     <video ref={videoRef} className="w-full h-full object-cover" playsInline muted />
-                    {/* Viewfinder Target Reticle */}
-                    <div className="absolute inset-8 border border-[#ccff00]/60 pointer-events-none flex flex-col justify-between p-2">
-                      <div className="flex justify-between text-[9px] font-mono text-[#ccff00]">
-                        <span>SCANNING FOR FINDERS</span>
-                        <span className="animate-pulse">● REC</span>
+                    
+                    {/* Darkened Outer Vignette */}
+                    <div className="absolute inset-0 bg-radial from-transparent via-black/20 to-black/60 pointer-events-none" />
+
+                    {/* Viewfinder Target Reticle Frame */}
+                    <div className="absolute inset-6 pointer-events-none flex flex-col justify-between p-2">
+                      
+                      {/* Top Cybernetic Corner Brackets & Telemetry */}
+                      <div className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                          <div className="w-5 h-5 border-t-2 border-l-2 border-[#ccff00] shadow-[0_0_8px_#ccff00]" />
+                          <span className="text-[9px] font-mono text-[#ccff00] font-black mt-1 tracking-wider">OPTICAL SEEK</span>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-black/80 px-2 py-0.5 rounded border border-[#ccff00]/40 text-[9px] font-mono text-[#ccff00]">
+                          <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-ping" />
+                          <span className="font-bold">LIVE FEED 45 FPS</span>
+                        </div>
+                        <div className="w-5 h-5 border-t-2 border-r-2 border-[#ccff00] shadow-[0_0_8px_#ccff00] self-start" />
                       </div>
-                      <div className="w-full h-0.5 bg-[#ccff00]/80 shadow-[0_0_8px_#ccff00] animate-bounce" />
-                      <div className="flex justify-between text-[9px] font-mono text-[#ccff00]">
-                        <span>ISO/IEC 18004</span>
-                        <span>TARGET LOCK</span>
+
+                      {/* Center Crosshair Target Ring */}
+                      <div className="absolute inset-0 m-auto w-24 h-24 border border-[#ccff00]/30 rounded-lg flex items-center justify-center pointer-events-none">
+                        <div className="w-2 h-2 bg-[#ccff00]/80 rounded-full animate-ping" />
+                        <div className="absolute inset-0 border-t border-b border-[#ccff00]/20" />
+                        <div className="absolute inset-0 border-l border-r border-[#ccff00]/20" />
                       </div>
+
+                      {/* Continuous Smooth Laser Scanning Line Overlay */}
+                      <div className="absolute inset-x-4 top-4 bottom-4 pointer-events-none overflow-hidden">
+                        <div
+                          className="absolute inset-x-0 h-16 pointer-events-none"
+                          style={{
+                            animation: 'qrScannerLaserSweep 2.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate',
+                          }}
+                        >
+                          {/* Laser Trailing Sheet Gradient */}
+                          <div className="w-full h-full bg-gradient-to-b from-transparent via-[#ccff00]/15 to-[#ccff00]/35" />
+                          {/* Glowing Sharp Laser Line */}
+                          <div className="w-full h-0.5 bg-[#ccff00] shadow-[0_0_12px_#ccff00,0_0_24px_rgba(204,255,0,0.8)]" />
+                        </div>
+                      </div>
+
+                      {/* Bottom Cybernetic Corner Brackets & Telemetry */}
+                      <div className="flex justify-between items-end">
+                        <div className="w-5 h-5 border-b-2 border-l-2 border-[#ccff00] shadow-[0_0_8px_#ccff00]" />
+                        <div className="text-center font-mono text-[9px] text-[#ccff00] bg-black/80 px-2 py-0.5 rounded border border-[#ccff00]/40 font-bold">
+                          ISO/IEC 18004 • SCANNER ACTIVE
+                        </div>
+                        <div className="w-5 h-5 border-b-2 border-r-2 border-[#ccff00] shadow-[0_0_8px_#ccff00]" />
+                      </div>
+
                     </div>
+
+                    {/* Inline Keyframe Definition for Ultra-Smooth Continuous Scanning Sweep */}
+                    <style dangerouslySetInnerHTML={{ __html: `
+                      @keyframes qrScannerLaserSweep {
+                        0% {
+                          top: 0%;
+                          opacity: 0.8;
+                        }
+                        15% {
+                          opacity: 1;
+                        }
+                        85% {
+                          opacity: 1;
+                        }
+                        100% {
+                          top: calc(100% - 64px);
+                          opacity: 0.8;
+                        }
+                      }
+                    ` }} />
                   </div>
                 ) : currentImageSrc ? (
                   <div className="relative p-2 bg-white border-2 border-black max-w-[300px] shadow-[4px_4px_0px_#ccff00]">
