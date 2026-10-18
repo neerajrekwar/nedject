@@ -88,7 +88,7 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
           >
             <span>WINTER ARC</span>
           </Link>
-          {onOpenQRArtifact && (
+          {/* {onOpenQRArtifact && (
             <button
               onClick={onOpenQRArtifact}
               className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black border-l-2 border-black hover:bg-black hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
@@ -96,7 +96,7 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
               <span>POPUP STUDIO</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
             </button>
-          )}
+          )} */}
         </nav>
 
         {/* Right: System Status Capsule Widget & Quick Tool Action */}
