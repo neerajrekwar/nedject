@@ -2,7 +2,18 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { QrCode, Sparkles, ArrowRight, ExternalLink, Menu, Search, ShoppingBag } from 'lucide-react';
+import {
+  QrCode,
+  Sparkles,
+  ArrowRight,
+  ExternalLink,
+  Menu,
+  Search,
+  ShoppingBag,
+  RotateCw,
+  Smartphone,
+  Check,
+} from 'lucide-react';
 
 interface SceneProps {
   url?: string;
@@ -379,17 +390,176 @@ export function HandheldDuoScene({
 }
 
 /**
+ * SCENE 4: Mobile Studio Screen (Valid 9:16 / 19.5:9 Mobile Mockup)
+ * Dedicated, upright, ultra-realistic flagship smartphone mockup for mobile resolution export.
+ * Features:
+ * - Dynamic Island with dual sensor optics
+ * - iOS status bar (9:41, 5G, Battery)
+ * - True mobile aspect ratio
+ * - Chassis finish options (Space Black, Natural Titanium, Silver, Gold)
+ * - Orientation switch (Portrait / Landscape)
+ * - Home indicator bar
+ * - Studio floor shadow & reflection
+ */
+export function MobileStudioScene({
+  contentRenderer,
+  backdropTheme,
+  shadowIntensity,
+  reflectionEnabled,
+  orientation = 'portrait',
+  onToggleOrientation,
+  chassisColor = 'space-black',
+}: SceneProps & {
+  orientation?: 'portrait' | 'landscape';
+  onToggleOrientation?: () => void;
+  chassisColor?: string;
+}) {
+  const isLandscape = orientation === 'landscape';
+
+  const backdropBg =
+    backdropTheme === 'concrete'
+      ? 'bg-[#e2e2dc] text-zinc-900'
+      : backdropTheme === 'volt'
+      ? 'bg-[#0c0d10] text-zinc-100 border-2 border-black'
+      : backdropTheme === 'dark'
+      ? 'bg-[#121316] text-white'
+      : backdropTheme === 'white'
+      ? 'bg-[#f6f6f2] text-zinc-900'
+      : 'bg-transparent text-zinc-900';
+
+  const finishBorder =
+    chassisColor === 'titanium'
+      ? '#71717a'
+      : chassisColor === 'silver'
+      ? '#d4d4d8'
+      : chassisColor === 'gold'
+      ? '#d97706'
+      : '#27272a';
+
+  return (
+    <div
+      id="mockup-export-target"
+      className={`relative w-full max-w-4xl mx-auto min-h-[660px] sm:min-h-[780px] rounded-2xl overflow-hidden p-6 sm:p-12 flex flex-col items-center justify-center select-none transition-colors duration-300 ${backdropBg}`}
+      style={{ perspective: '1200px' }}
+    >
+      {/* Studio stage texture */}
+      {backdropTheme === 'concrete' && (
+        <div className="absolute inset-0 pointer-events-none opacity-40 mix-blend-multiply bg-[radial-gradient(#888_1px,transparent_1px)] [background-size:16px_16px]" />
+      )}
+      {backdropTheme === 'volt' && (
+        <div className="absolute inset-0 pointer-events-none bg-[radial-gradient(circle_at_50%_40%,rgba(204,255,0,0.09),transparent_65%)]" />
+      )}
+
+      {/* Quick Orientation Switch Button */}
+      {onToggleOrientation && (
+        <div className="mb-4 z-30">
+          <button
+            type="button"
+            onClick={onToggleOrientation}
+            className="bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-3.5 py-1.5 text-xs font-mono font-black border-2 border-black rounded-lg shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all cursor-pointer"
+            title={`Rotate to ${isLandscape ? 'Portrait (9:16)' : 'Landscape (16:9)'}`}
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>ROTATE ({isLandscape ? 'PORTRAIT 9:16' : 'LANDSCAPE 16:9'})</span>
+          </button>
+        </div>
+      )}
+
+      {/* Dedicated Centered Mobile Target */}
+      <div
+        id="mockup-target-mobile"
+        className="relative transition-all duration-300"
+        style={{
+          width: isLandscape ? '680px' : '360px',
+          maxWidth: '92vw',
+          filter: `drop-shadow(0 ${28 * shadowIntensity}px ${35 * shadowIntensity}px rgba(0,0,0,0.5))`,
+        }}
+      >
+        {/* Outer Titanium Chassis */}
+        <div
+          className="relative rounded-[48px] p-3 shadow-2xl transition-all"
+          style={{
+            backgroundColor: finishBorder,
+            boxShadow: `0 0 0 1px rgba(255,255,255,0.2) inset, 0 30px 60px -15px rgba(0,0,0,0.7)`,
+          }}
+        >
+          {/* Hardware Buttons (Volume & Power) */}
+          {!isLandscape && (
+            <>
+              {/* Action Button & Volume Up/Down on Left */}
+              <div className="absolute -left-1.5 top-24 w-1.5 h-7 bg-zinc-600 rounded-l-sm" />
+              <div className="absolute -left-1.5 top-36 w-1.5 h-12 bg-zinc-600 rounded-l-sm" />
+              <div className="absolute -left-1.5 top-52 w-1.5 h-12 bg-zinc-600 rounded-l-sm" />
+              {/* Power / Siri Button on Right */}
+              <div className="absolute -right-1.5 top-32 w-1.5 h-16 bg-zinc-600 rounded-r-sm" />
+            </>
+          )}
+
+          {/* Screen Bezel & Display */}
+          <div
+            className="relative bg-black rounded-[38px] overflow-hidden flex flex-col border border-zinc-900"
+            style={{
+              height: isLandscape ? '360px' : '720px',
+            }}
+          >
+            {/* iOS Status Bar */}
+            <div className="absolute top-0 inset-x-0 h-9 px-6 flex items-center justify-between text-white text-[11px] font-sans font-semibold z-30 pointer-events-none select-none">
+              <span>9:41</span>
+              {/* Dynamic Island */}
+              <div className="w-24 h-5 bg-black rounded-full border border-zinc-800/90 flex items-center justify-between px-2.5 shadow-md">
+                <div className="w-2 h-2 rounded-full bg-zinc-900 border border-zinc-700 flex items-center justify-center">
+                  <div className="w-1 h-1 rounded-full bg-zinc-800" />
+                </div>
+                <div className="w-2 h-2 rounded-full bg-zinc-900" />
+              </div>
+              <div className="flex items-center gap-1.5 text-zinc-200">
+                <span className="text-[10px] font-mono font-bold">5G</span>
+                <div className="w-4 h-2.5 border border-white rounded-[2px] p-0.5 flex items-center">
+                  <div className="w-full h-full bg-white rounded-[1px]" />
+                </div>
+              </div>
+            </div>
+
+            {/* Reflection Glass Overlay */}
+            {reflectionEnabled && (
+              <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-tr from-transparent via-white/5 to-white/15" />
+            )}
+
+            {/* Screen Content Viewport (Valid Mobile Layout) */}
+            <div className="w-full h-full pt-9 pb-3 overflow-y-auto bg-white relative z-10">
+              {contentRenderer('mobile')}
+            </div>
+
+            {/* iOS Home Indicator Bar */}
+            {!isLandscape && (
+              <div className="absolute bottom-1 inset-x-0 h-3 z-30 pointer-events-none flex items-center justify-center">
+                <div className="w-32 h-1 bg-zinc-500/80 rounded-full" />
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-4 text-xs font-mono text-zinc-400 text-center flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full bg-[#ccff00]" />
+        <span>Mobile Screen Studio • iPhone 16 Pro Flagship Frame • 9:16 / 19.5:9 True Mobile Aspect Ratio</span>
+      </div>
+    </div>
+  );
+}
+
+/**
  * High-end Minimal Architecture & Furniture Template (Matching Image 3)
  */
 export function MinimalInteriorTemplate({ viewport }: { viewport: 'desktop' | 'tablet' | 'mobile' }) {
   const isMobile = viewport === 'mobile';
 
   return (
-    <div className="w-full min-h-full bg-white text-zinc-900 font-sans">
+    <div className="w-full min-h-full bg-white text-zinc-900 font-sans flex flex-col justify-between">
       {/* Top Navigation */}
-      <header className="border-b-2 border-black px-4 sm:px-8 py-3 flex items-center justify-between">
+      <header className="border-b-2 border-black px-4 sm:px-8 py-2.5 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <span className="font-serif text-base sm:text-lg font-black tracking-widest text-black">
+          <span className="font-serif text-sm sm:text-lg font-black tracking-widest text-black">
             MOCKUP
           </span>
         </div>
@@ -403,41 +573,80 @@ export function MinimalInteriorTemplate({ viewport }: { viewport: 'desktop' | 't
             <span className="hover:text-black cursor-pointer">Blog</span>
           </nav>
         ) : (
-          <Menu className="w-4 h-4 text-black" />
+          <div className="flex items-center gap-2">
+            <Search className="w-3.5 h-3.5 text-zinc-600" />
+            <Menu className="w-4 h-4 text-black cursor-pointer" />
+          </div>
         )}
 
-        <div className="flex items-center gap-3">
-          <button className="px-3 py-1 bg-black text-[#ccff00] text-xs font-mono font-bold border border-black hover:bg-[#ccff00] hover:text-black transition-colors">
-            Contact Us
+        <div className="flex items-center gap-2">
+          <button className="px-2.5 py-1 bg-black text-[#ccff00] text-[11px] sm:text-xs font-mono font-bold border border-black hover:bg-[#ccff00] hover:text-black transition-colors">
+            {isMobile ? 'Contact' : 'Contact Us'}
           </button>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <div className="p-4 sm:p-8 max-w-4xl mx-auto">
+      {/* Hero Section (Adaptive for Mobile) */}
+      <div className="p-4 sm:p-8 max-w-4xl mx-auto flex-1 flex flex-col justify-center">
         <div className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 mb-1">
           {viewport.toUpperCase()} VIEWPORT MOCKUP
         </div>
-        <h1 className="text-2xl sm:text-4xl font-serif font-black text-black leading-tight">
+        <h1 className="text-xl sm:text-4xl font-serif font-black text-black leading-tight">
           {viewport === 'desktop'
             ? 'Laptop Mockup'
             : viewport === 'tablet'
             ? 'Tablet Mockup'
             : 'Phone Screen Mockup'}
         </h1>
-        <p className="mt-2 text-xs sm:text-sm text-zinc-600 max-w-md leading-relaxed font-sans">
+        <p className="mt-1.5 text-xs sm:text-sm text-zinc-600 max-w-md leading-relaxed font-sans">
           Curated minimalist design systems crafted for high-end digital agency portfolios and architectural spatial showrooms.
         </p>
 
         {/* Showcase Image with Modern Chair Graphic */}
-        <div className="mt-6 rounded-xl overflow-hidden bg-[#f5f5f0] border-2 border-black p-6 flex flex-col items-center justify-center text-center">
-          <div className="w-20 h-28 bg-black rounded-t-full rounded-b-lg mb-3 shadow-md flex items-center justify-center text-[#ccff00] font-mono text-xs font-bold">
+        <div className="mt-4 rounded-xl overflow-hidden bg-[#f5f5f0] border-2 border-black p-4 sm:p-6 flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-20 sm:w-20 sm:h-28 bg-black rounded-t-full rounded-b-lg mb-2 shadow-md flex items-center justify-center text-[#ccff00] font-mono text-base sm:text-lg font-bold">
             🪑
           </div>
-          <div className="font-serif text-sm font-bold text-black">Aalto Lounge Edition</div>
-          <div className="text-[11px] text-zinc-600 font-mono">Nordic Oak &amp; Top-Grain Leather</div>
+          <div className="font-serif text-xs sm:text-sm font-bold text-black">Aalto Lounge Edition</div>
+          <div className="text-[10px] sm:text-[11px] text-zinc-600 font-mono">Nordic Oak &amp; Top-Grain Leather</div>
         </div>
+
+        {/* Mobile Extra Product Feed (Makes mobile screen rich and valid) */}
+        {isMobile && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <div className="p-2.5 bg-zinc-50 border border-black rounded-lg text-center">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase block">Craft</span>
+              <span className="text-xs font-serif font-bold text-black">Solid Walnut</span>
+            </div>
+            <div className="p-2.5 bg-zinc-50 border border-black rounded-lg text-center">
+              <span className="text-[10px] font-mono text-zinc-500 uppercase block">Warranty</span>
+              <span className="text-xs font-serif font-bold text-black">10-Year Studio</span>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Mobile Bottom Tab Bar for Valid Smartphone App/Web Layout */}
+      {isMobile && (
+        <div className="border-t border-zinc-200 bg-white px-6 py-2 flex items-center justify-between text-zinc-500 text-[10px] font-mono shrink-0">
+          <span className="text-black font-bold flex flex-col items-center gap-0.5">
+            <span>●</span>
+            <span>Home</span>
+          </span>
+          <span className="flex flex-col items-center gap-0.5 hover:text-black cursor-pointer">
+            <span>⌕</span>
+            <span>Explore</span>
+          </span>
+          <span className="flex flex-col items-center gap-0.5 hover:text-black cursor-pointer">
+            <span>♡</span>
+            <span>Saved</span>
+          </span>
+          <span className="flex flex-col items-center gap-0.5 hover:text-black cursor-pointer">
+            <span>☰</span>
+            <span>More</span>
+          </span>
+        </div>
+      )}
     </div>
   );
 }

@@ -52,10 +52,11 @@ import {
   TrioScene,
   LongScrollLaptopScene,
   HandheldDuoScene,
+  MobileStudioScene,
   MinimalInteriorTemplate,
 } from '@/components/mockup/MockupScenes';
 
-type SceneMode = 'trio' | 'long-scroll' | 'handheld' | 'matrix' | 'single';
+type SceneMode = 'mobile' | 'trio' | 'long-scroll' | 'handheld' | 'matrix' | 'single';
 type ExportTarget = 'scene' | 'desktop' | 'tablet' | 'mobile';
 type ExportFormat = 'png' | 'jpeg' | 'webp' | 'svg';
 type AspectRatioOption = 'free' | '16:9' | '4:3' | '1:1' | '9:16' | '4:5' | '3:2' | '21:9';
@@ -82,6 +83,43 @@ export interface SavedCustomResolution {
 }
 
 const IDEAL_PURPOSE_PRESETS: PurposePreset[] = [
+  // Mobile Device Screens (Ideal Valid Mobile Layouts)
+  {
+    id: 'iphone-16-pro',
+    name: 'iPhone 16 Pro (Mobile Screen)',
+    category: 'Ideal Mockup',
+    width: 1179,
+    height: 2556,
+    ratio: '19.5:9',
+    idealFor: 'Native Apple Retina OLED vertical mobile layout',
+  },
+  {
+    id: 'iphone-16-promax',
+    name: 'iPhone 16 Pro Max',
+    category: 'Ideal Mockup',
+    width: 1290,
+    height: 2796,
+    ratio: '19.5:9',
+    idealFor: 'Flagship Apple large mobile display',
+  },
+  {
+    id: 'galaxy-s24',
+    name: 'Samsung Galaxy S24 Ultra',
+    category: 'Ideal Mockup',
+    width: 1440,
+    height: 3120,
+    ratio: '19.5:9',
+    idealFor: 'Android flagship QHD+ AMOLED mobile resolution',
+  },
+  {
+    id: 'mobile-fhd',
+    name: 'Universal Smartphone FHD+',
+    category: 'Ideal Mockup',
+    width: 1080,
+    height: 2400,
+    ratio: '20:9',
+    idealFor: 'Standard modern smartphone mobile display',
+  },
   // Ideal Mockups & Showcase
   {
     id: 'dribbble-std',
@@ -574,7 +612,86 @@ export default function MochupPage() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [copiedLink, setCopiedLink] = useState<boolean>(false);
   const [isRasterizingExport, setIsRasterizingExport] = useState<boolean>(false);
+  const [resetToast, setResetToast] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Complete Mockup Studio Reset Handler
+  const handleResetMockup = () => {
+    setSourceType('template');
+    setSelectedTemplate(WEBSITE_TEMPLATES[0]);
+    setWebsiteUrl('');
+    setSubmittedUrl('');
+    setUploadedScreenshot(null);
+    setRenderMode('snapshot');
+
+    setActiveScene('trio');
+    setSelectedDevice(MOCKUP_DEVICES[0]);
+    setOrientation('portrait');
+    setBezelStyle('chassis');
+    setChassisColor('space-black');
+    setZoomScale(0.85);
+
+    setBackdropTheme('dark');
+    setShadowIntensity(1.0);
+    setReflectionEnabled(true);
+    setScreenScale(1.0);
+
+    setSelectedPurposeId('dribbble-std');
+    setExportTarget('scene');
+    setExportFormat('png');
+    setFramingMode('contain');
+    setCustomWidth(1920);
+    setCustomHeight(1080);
+    setAspectRatioLock('16:9');
+
+    setReadyDownload(null);
+    setDownloadPreviewUrl(null);
+    setExportError(null);
+    setIsGenerating(false);
+    setIsExporting(false);
+    setPreviewReady(true);
+    setExportProgress('');
+
+    setResetToast('Mockup studio & viewports cleanly reset to defaults');
+    setTimeout(() => setResetToast(null), 3500);
+  };
+
+  // Dedicated Reset to Mobile Screen & Valid Mobile Layout
+  const handleResetToMobileLayout = () => {
+    setActiveScene('mobile');
+    setSelectedPurposeId('iphone-16-pro');
+    setExportTarget('mobile');
+    setOrientation('portrait');
+    setFramingMode('contain');
+    setScreenScale(1.0);
+    setZoomScale(0.85);
+    setBackdropTheme('dark');
+    setReadyDownload(null);
+    setDownloadPreviewUrl(null);
+    setExportError(null);
+    setResetToast('Configured ideal mobile resolution (1179 × 2556 px) & valid mobile screen layout');
+    setTimeout(() => setResetToast(null), 3500);
+  };
+
+  // Select purpose resolution and auto-align export target for valid mobile layouts
+  const handleSelectPurpose = (presetId: string) => {
+    setSelectedPurposeId(presetId);
+    setReadyDownload(null);
+    const mobilePresets = [
+      'iphone-16-pro',
+      'iphone-16-promax',
+      'galaxy-s24',
+      'mobile-fhd',
+      'story-reel',
+      'ig-portrait',
+    ];
+    if (mobilePresets.includes(presetId)) {
+      setExportTarget('mobile');
+      if (activeScene === 'long-scroll' || activeScene === 'handheld') {
+        setActiveScene('mobile');
+      }
+    }
+  };
 
   // URL Submission Pipeline
   const handleApplyUrl = async (e?: React.FormEvent) => {
@@ -666,11 +783,34 @@ export default function MochupPage() {
   // =========================================================================
   const handleGenerateDownload = async (directDownload = false) => {
     let targetId = 'mockup-export-target';
-    if (exportTarget === 'desktop') targetId = 'mockup-target-desktop';
-    if (exportTarget === 'tablet') targetId = 'mockup-target-tablet';
-    if (exportTarget === 'mobile') targetId = 'mockup-target-mobile';
+    if (exportTarget === 'mobile') {
+      if (activeScene === 'mobile') {
+        targetId = 'mockup-export-target';
+      } else if (activeScene === 'single' && selectedDevice.category === 'mobile') {
+        targetId = 'mockup-export-target';
+      } else {
+        targetId = 'mockup-isolated-mobile';
+      }
+    } else if (exportTarget === 'desktop') {
+      if (activeScene === 'long-scroll' || (activeScene === 'single' && selectedDevice.category === 'desktop')) {
+        targetId = 'mockup-export-target';
+      } else {
+        targetId = 'mockup-isolated-desktop';
+      }
+    } else if (exportTarget === 'tablet') {
+      if (activeScene === 'handheld' || (activeScene === 'single' && selectedDevice.category === 'tablet')) {
+        targetId = 'mockup-export-target';
+      } else {
+        targetId = 'mockup-isolated-tablet';
+      }
+    }
 
     let target = document.getElementById(targetId);
+    if (!target) {
+      if (exportTarget === 'mobile') target = document.getElementById('mockup-target-mobile');
+      if (exportTarget === 'desktop') target = document.getElementById('mockup-target-desktop');
+      if (exportTarget === 'tablet') target = document.getElementById('mockup-target-tablet');
+    }
     if (!target) {
       target = document.getElementById('mockup-export-target');
     }
@@ -692,13 +832,30 @@ export default function MochupPage() {
       setExportError(null);
       setExportProgress(`Capturing ${exportTarget.toUpperCase()} into ${targetWidth} × ${targetHeight} px (${activeRatio})...`);
 
-      const sourceCanvas = await toCanvas(target, {
-        pixelRatio: 2.0,
-        skipFonts: true,
-        fontEmbedCSS: '',
-        cacheBust: true,
-        backgroundColor: exportFormat === 'jpeg' ? getBackdropHex(backdropTheme) : undefined,
-      });
+      let sourceCanvas: HTMLCanvasElement;
+      try {
+        sourceCanvas = await toCanvas(target, {
+          pixelRatio: 2.0,
+          skipFonts: true,
+          fontEmbedCSS: '',
+          cacheBust: true,
+          backgroundColor: exportFormat === 'jpeg' ? getBackdropHex(backdropTheme) : undefined,
+        });
+      } catch (captureErr) {
+        console.warn('Isolated target capture failed, attempting fallback to visible workspace canvas:', captureErr);
+        const fallbackTarget = document.getElementById('mockup-export-target') || target;
+        sourceCanvas = await toCanvas(fallbackTarget, {
+          pixelRatio: 2.0,
+          skipFonts: true,
+          fontEmbedCSS: '',
+          cacheBust: true,
+          backgroundColor: exportFormat === 'jpeg' ? getBackdropHex(backdropTheme) : undefined,
+        });
+      }
+
+      if (!sourceCanvas || sourceCanvas.width === 0 || sourceCanvas.height === 0) {
+        throw new Error('Canvas render failed: Target dimensions are invalid.');
+      }
 
       setExportProgress(`Rendering Purpose Resolution: ${targetWidth} × ${targetHeight} px canvas...`);
 
@@ -778,7 +935,13 @@ export default function MochupPage() {
         link.href = blobUrl;
         document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        setTimeout(() => {
+          if (document.body.contains(link)) {
+            document.body.removeChild(link);
+          }
+        }, 300);
+        setResetToast(`Downloaded ${filename} successfully (${targetWidth} × ${targetHeight} px)!`);
+        setTimeout(() => setResetToast(null), 3500);
       }
 
       setExportProgress('Purpose Resolution mockup preview ready for download!');
@@ -899,6 +1062,24 @@ export default function MochupPage() {
   return (
     <div className="min-h-screen w-screen bg-[#0a0b0e] text-zinc-100 font-sans flex flex-col selection:bg-[#ccff00] selection:text-black overflow-x-hidden">
       
+      {/* Reset Confirmation Toast Banner */}
+      {resetToast && (
+        <div className="bg-[#ccff00] text-black font-mono font-black text-xs px-4 py-2 border-b-2 border-black flex items-center justify-between z-50 animate-in fade-in duration-200">
+          <div className="max-w-7xl mx-auto w-full flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Check className="w-4 h-4 text-black stroke-[3]" />
+              <span>{resetToast}</span>
+            </div>
+            <button
+              onClick={() => setResetToast(null)}
+              className="text-black hover:opacity-75 font-bold cursor-pointer text-sm"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* =================================================================== */}
       {/* TOP HEADER: BRAND + SCREEN RESOLUTION (100vw × 100vh) STATUS BAR   */}
       {/* =================================================================== */}
@@ -964,6 +1145,26 @@ export default function MochupPage() {
                 RESET
               </button>
             </div>
+
+            {/* Quick Mobile Layout Preset Button */}
+            <button
+              onClick={handleResetToMobileLayout}
+              className="px-2.5 py-1.5 border-2 border-zinc-700 hover:border-[#ccff00] bg-black hover:bg-zinc-800 text-zinc-300 hover:text-[#ccff00] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Quick switch to ideal Mobile Resolution & Valid Mobile Screen Layout"
+            >
+              <Smartphone className="w-3.5 h-3.5 text-[#ccff00]" />
+              <span className="hidden sm:inline">MOBILE PRESET</span>
+            </button>
+
+            {/* Reset Mockup Studio Button */}
+            <button
+              onClick={handleResetMockup}
+              className="px-2.5 py-1.5 border-2 border-zinc-700 hover:border-[#ccff00] bg-black hover:bg-zinc-800 text-zinc-300 hover:text-[#ccff00] font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+              title="Reset Mockup & Studio to Default Settings"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-[#ccff00]" />
+              <span className="hidden sm:inline">RESET MOCKUP</span>
+            </button>
 
             {/* Fullscreen 100vw × 100vh Toggle */}
             <button
@@ -1189,7 +1390,7 @@ export default function MochupPage() {
                         <div
                           key={preset.id}
                           onClick={() => {
-                            setSelectedPurposeId(preset.id);
+                            handleSelectPurpose(preset.id);
                             setIsExportDropdownOpen(false);
                           }}
                           className={`p-2 rounded-lg border flex items-center justify-between transition-colors cursor-pointer ${
@@ -1352,6 +1553,22 @@ export default function MochupPage() {
             
             <button
               onClick={() => {
+                setActiveScene('mobile');
+                setBackdropTheme('dark');
+                setExportTarget('mobile');
+              }}
+              className={`px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 transition-all border cursor-pointer ${
+                activeScene === 'mobile'
+                  ? 'bg-[#ccff00] text-black border-black shadow-[2px_2px_0px_#000000]'
+                  : 'bg-black text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-white'
+              }`}
+            >
+              <Smartphone className="w-3.5 h-3.5" />
+              <span>Mobile Screen (Valid 9:16)</span>
+            </button>
+
+            <button
+              onClick={() => {
                 setActiveScene('trio');
                 setBackdropTheme('dark');
               }}
@@ -1449,6 +1666,15 @@ export default function MochupPage() {
             </button>
 
             <button
+              onClick={handleResetMockup}
+              className="px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500 bg-black text-zinc-300 hover:text-[#ccff00] text-[11px] transition-colors flex items-center gap-1 cursor-pointer"
+              title="Reset Mockup Studio to Default Settings"
+            >
+              <RefreshCw className="w-3 h-3 text-[#ccff00]" />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+
+            <button
               onClick={() => {
                 setShowExportModal(true);
                 handleGenerateDownload(false);
@@ -1475,6 +1701,22 @@ export default function MochupPage() {
         }}
       >
         
+        {/* SCENE: MOBILE STUDIO SCREEN (VALID 9:16 / 19.5:9 MOBILE LAYOUT) */}
+        {activeScene === 'mobile' && (
+          <div className="w-full flex flex-col items-center">
+            <MobileStudioScene
+              backdropTheme={backdropTheme}
+              shadowIntensity={shadowIntensity}
+              reflectionEnabled={reflectionEnabled}
+              activeTemplate={selectedTemplate.id}
+              contentRenderer={renderViewportContent}
+              orientation={orientation}
+              onToggleOrientation={() => setOrientation(orientation === 'portrait' ? 'landscape' : 'portrait')}
+              chassisColor={chassisColor}
+            />
+          </div>
+        )}
+
         {/* SCENE 1: APPLE RESPONSIVE TRIO */}
         {activeScene === 'trio' && (
           <div className="w-full flex flex-col items-center">
@@ -1721,10 +1963,10 @@ export default function MochupPage() {
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
+                    { id: 'mobile', label: '📱 Mobile Only', sub: 'iPhone 16 Pro (Valid 9:16)' },
                     { id: 'scene', label: 'Entire Scene', sub: `${activeScene.toUpperCase()} 3D Studio` },
                     { id: 'desktop', label: 'Desktop Only', sub: 'MacBook Pro Mockup' },
                     { id: 'tablet', label: 'Tablet Only', sub: 'iPad Pro Mockup' },
-                    { id: 'mobile', label: 'Mobile Only', sub: 'iPhone 16 Pro Mockup' },
                   ].map((item) => (
                     <button
                       key={item.id}
@@ -1732,6 +1974,9 @@ export default function MochupPage() {
                       onClick={() => {
                         setExportTarget(item.id as ExportTarget);
                         setReadyDownload(null);
+                        if (item.id === 'mobile' && (activeScene === 'long-scroll' || activeScene === 'handheld')) {
+                          setActiveScene('mobile');
+                        }
                       }}
                       className={`p-2.5 rounded-lg border text-left transition-all cursor-pointer ${
                         exportTarget === item.id
@@ -1748,12 +1993,20 @@ export default function MochupPage() {
 
               {/* SECTION C: FAVORITES & PURPOSE RESOLUTION PRESETS */}
               <div>
-                <div className="flex items-center justify-between mb-2">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                   <label className="text-[11px] font-bold text-zinc-300 uppercase flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
                     <span>Step 2: Choose Purpose Download Resolution:</span>
                   </label>
-                  <span className="text-[10px] text-zinc-500 font-mono">Presets calibrated for high impact</span>
+                  <button
+                    type="button"
+                    onClick={handleResetToMobileLayout}
+                    className="px-2 py-0.5 rounded border border-[#ccff00]/60 bg-black hover:bg-[#ccff00] text-[#ccff00] hover:text-black text-[10px] font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer"
+                    title="One-click reset to ideal Mobile Resolution and valid layout"
+                  >
+                    <Smartphone className="w-3 h-3" />
+                    <span>RESET TO MOBILE PRESET (1179 × 2556)</span>
+                  </button>
                 </div>
 
                 {/* FAVORITES BANNER IF ANY SAVED */}
@@ -2244,6 +2497,108 @@ export default function MochupPage() {
           </div>
         </div>
       )}
+
+      {/* =================================================================== */}
+      {/* DEDICATED HIGH-RES ISOLATED EXPORT TARGETS (MOBILE, DESKTOP, TABLET)*/}
+      {/* Ensures crisp, valid, un-tilted layouts for mobile & device exports  */}
+      {/* =================================================================== */}
+      <div
+        id="offscreen-export-staging"
+        style={{
+          position: 'fixed',
+          left: '-99999px',
+          top: '0px',
+          width: '1600px',
+          height: '2400px',
+          opacity: 1,
+          visibility: 'visible',
+          pointerEvents: 'none',
+          zIndex: -9999,
+          overflow: 'hidden',
+        }}
+        aria-hidden="true"
+      >
+        {/* Dedicated Mobile Target (iPhone 16 Pro - Upright, True Aspect, Valid Layout) */}
+        <div
+          id="mockup-isolated-mobile"
+          className={`p-12 flex items-center justify-center ${
+            backdropTheme === 'volt'
+              ? 'bg-[#ccff00]'
+              : backdropTheme === 'white'
+              ? 'bg-[#ffffff]'
+              : backdropTheme === 'concrete'
+              ? 'bg-[#e2e2dc]'
+              : backdropTheme === 'transparent'
+              ? 'bg-transparent'
+              : 'bg-[#0a0b0e]'
+          }`}
+          style={{ width: '640px', height: '1180px' }}
+        >
+          <DeviceFrame
+            device={MOCKUP_DEVICES[0]} // iPhone 16 Pro
+            orientation={orientation}
+            bezelStyle={bezelStyle}
+            chassisColor={chassisColor}
+            zoomScale={1.15}
+          >
+            {renderViewportContent('mobile')}
+          </DeviceFrame>
+        </div>
+
+        {/* Dedicated Desktop Target (MacBook Pro 16" - Upright, Valid Layout) */}
+        <div
+          id="mockup-isolated-desktop"
+          className={`p-12 flex items-center justify-center ${
+            backdropTheme === 'volt'
+              ? 'bg-[#ccff00]'
+              : backdropTheme === 'white'
+              ? 'bg-[#ffffff]'
+              : backdropTheme === 'concrete'
+              ? 'bg-[#e2e2dc]'
+              : backdropTheme === 'transparent'
+              ? 'bg-transparent'
+              : 'bg-[#0a0b0e]'
+          }`}
+          style={{ width: '1360px', height: '940px' }}
+        >
+          <DeviceFrame
+            device={MOCKUP_DEVICES[7]} // MacBook Pro 16"
+            orientation="landscape"
+            bezelStyle={bezelStyle}
+            chassisColor={chassisColor}
+            zoomScale={0.88}
+          >
+            {renderViewportContent('desktop')}
+          </DeviceFrame>
+        </div>
+
+        {/* Dedicated Tablet Target (iPad Pro 11" - Upright, Valid Layout) */}
+        <div
+          id="mockup-isolated-tablet"
+          className={`p-12 flex items-center justify-center ${
+            backdropTheme === 'volt'
+              ? 'bg-[#ccff00]'
+              : backdropTheme === 'white'
+              ? 'bg-[#ffffff]'
+              : backdropTheme === 'concrete'
+              ? 'bg-[#e2e2dc]'
+              : backdropTheme === 'transparent'
+              ? 'bg-transparent'
+              : 'bg-[#0a0b0e]'
+          }`}
+          style={{ width: '980px', height: '1240px' }}
+        >
+          <DeviceFrame
+            device={MOCKUP_DEVICES[4]} // iPad Pro 11"
+            orientation="portrait"
+            bezelStyle={bezelStyle}
+            chassisColor={chassisColor}
+            zoomScale={0.95}
+          >
+            {renderViewportContent('tablet')}
+          </DeviceFrame>
+        </div>
+      </div>
 
     </div>
   );
