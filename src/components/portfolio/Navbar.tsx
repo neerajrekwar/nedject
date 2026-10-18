@@ -74,8 +74,8 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
           //   href="/qr-crush"
           //   className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
           // >
-            <span>QR CRUSH</span>
-          </Link>
+          //   <span>QR CRUSH</span>
+          // </Link>
           <Link
             href="/fitness-glass"
             className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
