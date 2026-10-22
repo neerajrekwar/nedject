@@ -6,9 +6,10 @@ import { GitBranch, Globe, Share2, Terminal, ArrowUp } from 'lucide-react';
 
 interface TechnicalFooterProps {
   onOpenQRArtifact?: () => void;
+  onOpenSocialCards?: () => void;
 }
 
-export function TechnicalFooter({ onOpenQRArtifact }: TechnicalFooterProps) {
+export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: TechnicalFooterProps) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -125,6 +126,16 @@ export function TechnicalFooter({ onOpenQRArtifact }: TechnicalFooterProps) {
                     <span>[07]</span> <span>UPGRADE &amp; PLANS</span>
                   </Link>
                 </li>
+                {onOpenSocialCards && (
+                  <li>
+                    <button
+                      onClick={onOpenSocialCards}
+                      className="text-[#ccff00] hover:text-white transition-colors text-left flex items-center gap-1 cursor-pointer font-black"
+                    >
+                      <span>[★]</span> <span>TWITTER &amp; OG CARDS</span>
+                    </button>
+                  </li>
+                )}
                 <li>
                   <a
                     href="https://github.com/neerajrekwar"

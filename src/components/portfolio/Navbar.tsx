@@ -7,9 +7,10 @@ import { Menu, X, ArrowUpRight, Terminal, Printer, Barcode as BarcodeIcon } from
 interface NavbarProps {
   onOpenContact?: () => void;
   onOpenQRArtifact?: () => void;
+  onOpenSocialCards?: () => void;
 }
 
-export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
+export function Navbar({ onOpenContact, onOpenQRArtifact, onOpenSocialCards }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navLinks: any[] = [
@@ -88,15 +89,16 @@ export function Navbar({ onOpenContact, onOpenQRArtifact }: NavbarProps) {
           >
             <span>WINTER ARC</span>
           </Link>
-          {/* {onOpenQRArtifact && (
+          {onOpenSocialCards && (
             <button
-              onClick={onOpenQRArtifact}
-              className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black border-l-2 border-black hover:bg-black hover:text-white transition-colors flex items-center gap-1 cursor-pointer"
+              onClick={onOpenSocialCards}
+              className="px-3 py-2 font-mono text-xs font-black tracking-wider text-black border-l-2 border-black hover:bg-[#ccff00] transition-colors flex items-center gap-1 cursor-pointer bg-white"
+              title="Preview all page Twitter & OpenGraph Cards"
             >
-              <span>POPUP STUDIO</span>
-              <ArrowUpRight className="w-3.5 h-3.5" />
+              <span className="text-amber-500">★</span>
+              <span>OG CARDS</span>
             </button>
-          )} */}
+          )}
         </nav>
 
         {/* Right: System Status Capsule Widget & Quick Tool Action */}

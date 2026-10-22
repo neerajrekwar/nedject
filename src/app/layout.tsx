@@ -66,7 +66,7 @@ export const metadata: Metadata = {
     siteName: SITE_NAME,
     images: [
       {
-        url: `${siteUrl}/opengraph-image`,
+        url: `${siteUrl}/api/og?page=home`,
         width: 1200,
         height: 630,
         alt: DEFAULT_BRAND_TITLE,
@@ -78,7 +78,7 @@ export const metadata: Metadata = {
     title: DEFAULT_BRAND_TITLE,
     description: DEFAULT_DESCRIPTION,
     creator: "@Nedject",
-    images: [`${siteUrl}/opengraph-image`],
+    images: [`${siteUrl}/api/og?page=home`],
   },
   verification: {
     google: "google4859c180d3ad54a0",

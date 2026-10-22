@@ -10,9 +10,11 @@ import { OpenSourceRegistry } from '@/components/portfolio/OpenSourceRegistry';
 import { ToolsSuiteGrid } from '@/components/portfolio/ToolsSuiteGrid';
 import { TechnicalFooter } from '@/components/portfolio/TechnicalFooter';
 import { LiveArtifactModal } from '@/components/portfolio/LiveArtifactModal';
+import { SocialCardsModal } from '@/components/portfolio/SocialCardsModal';
 
 export default function Home() {
   const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
+  const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
 
   const handleOpenContact = () => {
     const contactElem = document.getElementById('tools-catalog');
@@ -49,6 +51,7 @@ export default function Home() {
       <Navbar
         onOpenContact={handleOpenContact}
         onOpenQRArtifact={() => setIsArtifactModalOpen(true)}
+        onOpenSocialCards={() => setIsSocialModalOpen(true)}
       />
 
       {/* MAIN CONTENT RUNTIME - PURE TOOLS FOCUS UNDER BRAND "NEDJECT" */}
@@ -82,12 +85,21 @@ export default function Home() {
       </main>
 
       {/* 7. TECHNICAL FOOTER WITH ATTRIBUTION: DEVELOPED BY NEERAJREKWAR */}
-      <TechnicalFooter onOpenQRArtifact={() => setIsArtifactModalOpen(true)} />
+      <TechnicalFooter
+        onOpenQRArtifact={() => setIsArtifactModalOpen(true)}
+        onOpenSocialCards={() => setIsSocialModalOpen(true)}
+      />
 
       {/* 8. INTERACTIVE LIVE ARTIFACT POPUP MODAL (300 DPI QR Studio & Pass Engine) */}
       <LiveArtifactModal
         isOpen={isArtifactModalOpen}
         onClose={() => setIsArtifactModalOpen(false)}
+      />
+
+      {/* 9. INTERACTIVE SOCIAL CARDS & OPENGRAPH STUDIO (CANVAS 1200×630) */}
+      <SocialCardsModal
+        isOpen={isSocialModalOpen}
+        onClose={() => setIsSocialModalOpen(false)}
       />
 
     </div>

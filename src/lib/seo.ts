@@ -56,9 +56,13 @@ export function createPageMetadata({
 }: PageMetadataParams): Metadata {
   const siteUrl = getSiteUrl();
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const pageSlug =
+    normalizedPath === '/'
+      ? 'home'
+      : normalizedPath.replace(/^\//, '').replace(/\/$/, '').replace(/\//g, '-');
   const resolvedCanonical = canonicalUrl || `${siteUrl}${normalizedPath === '/' ? '' : normalizedPath}`;
   const fullPageUrl = `${siteUrl}${normalizedPath === '/' ? '' : normalizedPath}`;
-  const resolvedImage = imageUrl || `${siteUrl}/opengraph-image`;
+  const resolvedImage = imageUrl || `${siteUrl}/api/og?page=${encodeURIComponent(pageSlug)}`;
 
   const defaultKeywords = [
     '300 DPI QR code',
