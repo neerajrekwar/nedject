@@ -126,6 +126,22 @@ export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: Technic
                     <span>[07]</span> <span>UPGRADE &amp; PLANS</span>
                   </Link>
                 </li>
+                <li>
+                  <Link
+                    href="/privacy"
+                    className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer font-bold text-white"
+                  >
+                    <span>[08]</span> <span>PRIVACY POLICY</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/terms"
+                    className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer font-bold text-white"
+                  >
+                    <span>[09]</span> <span>TERMS OF SERVICE</span>
+                  </Link>
+                </li>
                 {onOpenSocialCards && (
                   <li>
                     <button
@@ -162,6 +178,9 @@ export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: Technic
               <div>CALIBRATION: 300 DPI B/W (21:1)</div>
               <div>PRINT CHUNK: PHYSICAL pHYs INJECTED</div>
               <div>BOUNDARIES: 2PX SOLID BLACK</div>
+              <div className="pt-1 border-t border-zinc-800 text-[10px] text-zinc-400">
+                GOOGLE OAUTH: LIMITED USE COMPLIANT
+              </div>
             </div>
 
             <button
@@ -181,11 +200,17 @@ export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: Technic
             © {new Date().getFullYear()} NEDJECT // DEVELOPED BY NEERAJREKWAR // ALL RIGHTS RESERVED.
           </div>
 
-          <div className="flex items-center gap-4 flex-wrap justify-center">
-            <span>LOC: 37.7749° N, 122.4194° W</span>
-            <span className="text-zinc-700">|</span>
+          <div className="flex items-center gap-3 flex-wrap justify-center text-xs">
+            <Link href="/privacy" className="text-zinc-400 hover:text-[#ccff00] transition-colors underline">
+              PRIVACY POLICY
+            </Link>
+            <span className="text-zinc-700">•</span>
+            <Link href="/terms" className="text-zinc-400 hover:text-[#ccff00] transition-colors underline">
+              TERMS OF SERVICE
+            </Link>
+            <span className="text-zinc-700">•</span>
             <span>DEVELOPER: neerajrekwar</span>
-            <span className="text-zinc-700">|</span>
+            <span className="text-zinc-700">•</span>
             <span className="text-emerald-400 font-bold">STATUS: PROD_STABLE</span>
           </div>
         </div>

@@ -419,6 +419,29 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </form>
         )}
 
+        {/* Legal Disclosures */}
+        <div className="pt-2 border-t border-zinc-200 text-center text-[10px] text-zinc-500 font-sans">
+          <span>By signing in or registering, you agree to our </span>
+          <a
+            href="/terms"
+            target="_blank"
+            rel="noreferrer"
+            className="font-bold underline text-black hover:text-blue-700"
+          >
+            Terms of Service
+          </a>
+          <span> &amp; </span>
+          <a
+            href="/privacy"
+            target="_blank"
+            rel="noreferrer"
+            className="font-bold underline text-black hover:text-blue-700"
+          >
+            Privacy Policy
+          </a>
+          .
+        </div>
+
       </div>
     </div>
   );

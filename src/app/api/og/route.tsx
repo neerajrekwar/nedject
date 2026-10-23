@@ -373,7 +373,7 @@ export async function GET(req: NextRequest) {
                     <div style={{ fontSize: 9, color: '#ccff00', fontFamily: 'monospace', fontWeight: 'bold' }}>9:16 IPHONE</div>
                   </div>
                   <div style={{ width: 200, height: 140, border: '3px solid #475569', backgroundColor: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', padding: 10 }}>
-                    <div style={{ fontSize: 10, color: '#38bdf8', fontFamily: 'monospace', fontWeight: 'bold' }}>MACBOOK PRO 16"</div>
+                    <div style={{ fontSize: 10, color: '#38bdf8', fontFamily: 'monospace', fontWeight: 'bold' }}>MACBOOK PRO 16&quot;</div>
                     <div style={{ width: '100%', height: 70, backgroundColor: '#1e293b', marginTop: 10 }} />
                   </div>
                 </div>
