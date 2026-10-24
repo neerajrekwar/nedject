@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import Script from "next/script";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { GlobalNavbar } from "@/components/auth/GlobalNavbar";
@@ -100,17 +99,16 @@ export default function RootLayout({
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#f5f5f0] text-black">
-        {/* Google Analytics 4 (gtag.js) */}
+      <head>
+        {/* Google Analytics 4 (gtag.js) in <head> for Google Search Console ownership verification */}
         {GA_TRACKING_ID && (
           <>
-            <Script
-              strategy="afterInteractive"
+            <script
+              async
               src={`https://www.googletagmanager.com/gtag/js?id=${GA_TRACKING_ID}`}
             />
-            <Script
+            <script
               id="google-analytics"
-              strategy="afterInteractive"
               dangerouslySetInnerHTML={{
                 __html: `
                   window.dataLayer = window.dataLayer || [];
@@ -124,6 +122,8 @@ export default function RootLayout({
             />
           </>
         )}
+      </head>
+      <body className="min-h-full flex flex-col bg-[#f5f5f0] text-black">
         <AuthProvider>
           <GlobalNavbar />
           <div className="flex-1 flex flex-col">{children}</div>
