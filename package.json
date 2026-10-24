@@ -9,7 +9,13 @@
     "lint": "eslint",
     "admin": "node scripts/admin.mjs",
     "admin:auth": "node scripts/admin-auth.mjs",
+    "admin:seed": "node scripts/admin-auth.mjs seed",
+    "verify": "node scripts/admin-auth.mjs verify",
     "seed": "node scripts/admin.mjs seed"
+  },
+  "bin": {
+    "verify": "./scripts/admin-auth.mjs",
+    "admin-auth": "./scripts/admin-auth.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^1.0.13",

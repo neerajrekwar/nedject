@@ -271,11 +271,11 @@ export default function AdminSeedManagerPage() {
         </div>
 
         <div className="border-2 border-black bg-white p-4 shadow-[4px_4px_0px_#000000] space-y-1">
-          <div className="text-[10px] text-zinc-500 font-bold uppercase">PRESET AUTHORS</div>
+          <div className="text-[10px] text-zinc-500 font-bold uppercase">ADMIN OPERATOR</div>
           <div className="text-3xl font-black text-black">
-            {Object.keys(PRESET_AUTHORS).length} Authors
+            Neeraj Rekwar
           </div>
-          <div className="text-[11px] text-zinc-600">Alex Vance, Marcus Chen, Elena Rostova</div>
+          <div className="text-[11px] text-zinc-600">Super Admin &bull; Terminal CLI Verified</div>
         </div>
       </div>
 

@@ -405,23 +405,22 @@ const STORAGE_KEY = 'nedject_sanity_posts_v1';
 
 export function getAllPosts(): SanityPost[] {
   if (typeof window === 'undefined') {
-    return PRESET_POSTS;
+    return [];
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(PRESET_POSTS));
-      return PRESET_POSTS;
+      return [];
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length > 0) {
+    if (Array.isArray(parsed)) {
       return parsed;
     }
-    return PRESET_POSTS;
+    return [];
   } catch (e) {
     console.warn('Error reading from localStorage:', e);
-    return PRESET_POSTS;
+    return [];
   }
 }
 

@@ -17,7 +17,9 @@ import {
   QrCode,
   Flame,
   Zap,
-  ChevronRight,
+  Sliders,
+  Terminal,
+  Activity,
 } from 'lucide-react';
 import { clearAdminSession, AdminUser } from '@/lib/admin-auth';
 
@@ -36,40 +38,82 @@ export function AdminSidebar({ user, isOpen = true, onClose }: AdminSidebarProps
     router.push('/admin/login');
   };
 
-  const navItems = [
+  const navSections = [
     {
-      title: 'Dashboard',
-      href: '/admin/dashboard',
-      icon: LayoutDashboard,
-      badge: 'LIVE',
-      activeMatch: (p: string) => p === '/admin' || p === '/admin/dashboard' || p === '/admin/adm',
+      group: 'CORE OPERATIONS',
+      items: [
+        {
+          title: 'Dashboard',
+          href: '/admin/dashboard',
+          icon: LayoutDashboard,
+          badge: 'LIVE',
+          activeMatch: (p: string) => p === '/admin' || p === '/admin/dashboard' || p === '/admin/adm',
+        },
+        {
+          title: 'User Accounts',
+          href: '/admin/users',
+          icon: Users,
+          badge: 'TIERS',
+          activeMatch: (p: string) => p === '/admin/users',
+        },
+        {
+          title: 'Studio Audit Log',
+          href: '/admin/generations',
+          icon: QrCode,
+          badge: 'FEED',
+          activeMatch: (p: string) => p === '/admin/generations',
+        },
+      ],
     },
     {
-      title: 'Blog Manager',
-      href: '/admin/blog',
-      icon: FileText,
-      activeMatch: (p: string) => p === '/admin/blog',
+      group: 'PUBLICATIONS & CMS',
+      items: [
+        {
+          title: 'Blog Manager',
+          href: '/admin/blog',
+          icon: FileText,
+          activeMatch: (p: string) => p === '/admin/blog',
+        },
+        {
+          title: 'Write New Post',
+          href: '/admin/blog/new',
+          icon: PenSquare,
+          badge: 'NOTION',
+          activeMatch: (p: string) => p === '/admin/blog/new',
+        },
+      ],
     },
     {
-      title: 'Write New Post',
-      href: '/admin/blog/new',
-      icon: PenSquare,
-      badge: 'NOTION',
-      activeMatch: (p: string) => p === '/admin/blog/new',
-    },
-    {
-      title: 'Analytics & Telemetry',
-      href: '/admin/analytics',
-      icon: BarChart3,
-      badge: 'GA4 + REVENUE',
-      activeMatch: (p: string) => p.includes('analytics'),
-    },
-    {
-      title: 'Database & Seeder',
-      href: '/admin/seed',
-      icon: Database,
-      badge: 'CRUD',
-      activeMatch: (p: string) => p === '/admin/seed',
+      group: 'SYSTEM & SECURITY',
+      items: [
+        {
+          title: 'Analytics & Metrics',
+          href: '/admin/analytics',
+          icon: BarChart3,
+          activeMatch: (p: string) => p.includes('analytics'),
+        },
+        {
+          title: 'Database & Seeder',
+          href: '/admin/seed',
+          icon: Database,
+          badge: 'CRUD',
+          activeMatch: (p: string) => p === '/admin/seed',
+        },
+        {
+          title: 'Security & Terminal CLI',
+          href: '/admin/security',
+          icon: ShieldCheck,
+          badge: 'PBKDF2',
+          activeMatch: (p: string) => p === '/admin/security',
+        },
+        {
+          title: 'System Diagnostics',
+          href: '/admin/settings',
+          icon: Settings,
+          badge: 'FLAGS',
+          activeMatch: (p: string) => p === '/admin/settings',
+        },
+      ],
     },
   ];
 
@@ -106,50 +150,52 @@ export function AdminSidebar({ user, isOpen = true, onClose }: AdminSidebarProps
         </div>
 
         {/* 2. NAVIGATION LINKS */}
-        <div className="p-4 space-y-6">
-          <div>
-            <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-2 px-2">
-              CORE MANAGEMENT
+        <div className="p-4 space-y-5 overflow-y-auto max-h-[calc(100vh-140px)]">
+          {navSections.map((section) => (
+            <div key={section.group}>
+              <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-1.5 px-2">
+                {section.group}
+              </div>
+              <nav className="space-y-1">
+                {section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = item.activeMatch(pathname);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={onClose}
+                      className={`flex items-center justify-between px-3 py-2 text-xs font-bold transition-all border ${
+                        isActive
+                          ? 'bg-[#ccff00] text-black border-black shadow-[2px_2px_0px_#ffffff] font-black'
+                          : 'text-zinc-300 hover:text-white hover:bg-zinc-900 border-transparent'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <Icon className={`w-4 h-4 ${isActive ? 'text-black' : 'text-zinc-400'}`} />
+                        <span>{item.title}</span>
+                      </div>
+                      {item.badge && (
+                        <span
+                          className={`text-[9px] px-1 py-0.2 border ${
+                            isActive
+                              ? 'bg-black text-[#ccff00] border-black'
+                              : 'bg-zinc-800 text-zinc-300 border-zinc-700'
+                          }`}
+                        >
+                          {item.badge}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </nav>
             </div>
-            <nav className="space-y-1">
-              {navItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = item.activeMatch(pathname);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={onClose}
-                    className={`flex items-center justify-between px-3 py-2 text-xs font-bold transition-all border ${
-                      isActive
-                        ? 'bg-[#ccff00] text-black border-black shadow-[2px_2px_0px_#ffffff] font-black'
-                        : 'text-zinc-300 hover:text-white hover:bg-zinc-900 border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <Icon className={`w-4 h-4 ${isActive ? 'text-black' : 'text-zinc-400'}`} />
-                      <span>{item.title}</span>
-                    </div>
-                    {item.badge && (
-                      <span
-                        className={`text-[9px] px-1 py-0.2 border ${
-                          isActive
-                            ? 'bg-black text-[#ccff00] border-black'
-                            : 'bg-zinc-800 text-zinc-300 border-zinc-700'
-                        }`}
-                      >
-                        {item.badge}
-                      </span>
-                    )}
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+          ))}
 
           {/* Quick Studio Links */}
           <div>
-            <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-2 px-2">
+            <div className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider mb-1.5 px-2">
               PUBLIC PORTALS
             </div>
             <div className="space-y-1">

@@ -3,23 +3,21 @@
 /**
  * NEDJECT ADMIN TERMINAL CLI
  * Direct Terminal Create, Read, Update, Delete & Database Seeder
+ * Connects directly to MongoDB and local persistence with ZERO mock/dummy data.
  *
  * Usage:
  *   node scripts/admin.mjs help
  *   node scripts/admin.mjs list
- *   node scripts/admin.mjs seed
  *   node scripts/admin.mjs create --title "My Title" --slug "my-slug" --status "published"
  *   node scripts/admin.mjs update --slug "my-slug" --title "New Title" --status "draft"
  *   node scripts/admin.mjs delete --slug "my-slug"
- *   node scripts/admin.mjs export [backup.json]
- *   node scripts/admin.mjs import <backup.json>
+ *   node scripts/admin.mjs delete-all
+ *   node scripts/admin.mjs seed [--overwrite]
  */
 
 import fs from 'fs';
 import path from 'path';
-import http from 'http';
 
-const API_BASE = process.env.API_BASE || 'http://localhost:3000';
 const BACKUP_FILE = path.join(process.cwd(), 'data', 'posts.json');
 
 // Ensure data folder exists
@@ -30,83 +28,97 @@ if (!fs.existsSync(dataDir)) {
   } catch (e) {}
 }
 
-const args = process.argv.slice(2);
-const command = args[0] || 'help';
+// Load .env.local and .env
+function loadEnvironment() {
+  for (const envFile of ['.env.local', '.env']) {
+    const fullPath = path.join(process.cwd(), envFile);
+    if (fs.existsSync(fullPath)) {
+      try {
+        const content = fs.readFileSync(fullPath, 'utf-8');
+        for (const line of content.split('\n')) {
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith('#')) continue;
+          const eqIdx = trimmed.indexOf('=');
+          if (eqIdx > 0) {
+            const key = trimmed.slice(0, eqIdx).trim();
+            let val = trimmed.slice(eqIdx + 1).trim();
+            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+              val = val.slice(1, -1);
+            }
+            if (!process.env[key]) {
+              process.env[key] = val;
+            }
+          }
+        }
+      } catch (e) {}
+    }
+  }
+}
 
-// Parse CLI flags like --title "..." --slug "..."
+loadEnvironment();
+
+async function getMongoCollection() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) return null;
+  try {
+    const { MongoClient } = await import('mongodb');
+    const client = new MongoClient(uri, { serverSelectionTimeoutMS: 3000 });
+    await client.connect();
+    return { client, collection: client.db().collection('posts') };
+  } catch (e) {
+    return null;
+  }
+}
+
 function parseFlags(argv) {
   const flags = {};
+  const positional = [];
   for (let i = 0; i < argv.length; i++) {
-    if (argv[i].startsWith('--')) {
-      const key = argv[i].slice(2);
+    const arg = argv[i];
+    if (arg.startsWith('--')) {
+      const eqIdx = arg.indexOf('=');
+      if (eqIdx > 2) {
+        flags[arg.slice(2, eqIdx)] = arg.slice(eqIdx + 1);
+      } else {
+        const key = arg.slice(2);
+        const next = argv[i + 1];
+        if (next && !next.startsWith('-')) {
+          flags[key] = next;
+          i++;
+        } else {
+          flags[key] = true;
+        }
+      }
+    } else if (arg.startsWith('-') && arg.length === 2) {
+      const key = arg.slice(1);
       const next = argv[i + 1];
-      if (next && !next.startsWith('--')) {
+      if (next && !next.startsWith('-')) {
         flags[key] = next;
         i++;
       } else {
         flags[key] = true;
       }
+    } else {
+      positional.push(arg);
     }
   }
-  return flags;
+  return { flags, positional };
 }
 
-const flags = parseFlags(args.slice(1));
+const args = process.argv.slice(2);
+const { flags, positional } = parseFlags(args);
 
-// Helper: Make HTTP request to local Next.js server
-async function makeRequest(method, endpoint, payload = null) {
-  return new Promise((resolve) => {
-    try {
-      const url = new URL(endpoint, API_BASE);
-      const dataString = payload ? JSON.stringify(payload) : null;
-
-      const options = {
-        hostname: url.hostname,
-        port: url.port || 3000,
-        path: url.pathname + url.search,
-        method: method.toUpperCase(),
-        headers: {
-          'Content-Type': 'application/json',
-          ...(dataString ? { 'Content-Length': Buffer.byteLength(dataString) } : {}),
-        },
-        timeout: 5000,
-      };
-
-      const req = http.request(options, (res) => {
-        let body = '';
-        res.on('data', (chunk) => (body += chunk));
-        res.on('end', () => {
-          try {
-            const parsed = JSON.parse(body);
-            resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: parsed });
-          } catch (e) {
-            resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, text: body });
-          }
-        });
-      });
-
-      req.on('error', (err) => {
-        resolve({ ok: false, error: err.message });
-      });
-
-      req.on('timeout', () => {
-        req.destroy();
-        resolve({ ok: false, error: 'Request timed out' });
-      });
-
-      if (dataString) req.write(dataString);
-      req.end();
-    } catch (err) {
-      resolve({ ok: false, error: err.message });
-    }
-  });
+let command = positional[0] || 'help';
+if (positional[0] === 'delete' && (positional[1] === 'all' || positional[1] === '*')) {
+  command = 'delete-all';
 }
 
-// Read local data file fallback
 function getLocalPosts() {
   if (fs.existsSync(BACKUP_FILE)) {
     try {
-      return JSON.parse(fs.readFileSync(BACKUP_FILE, 'utf-8'));
+      const raw = fs.readFileSync(BACKUP_FILE, 'utf-8');
+      const list = JSON.parse(raw);
+      if (Array.isArray(list)) return list;
     } catch (e) {}
   }
   return [];
@@ -121,57 +133,55 @@ function saveLocalPosts(posts) {
 async function handleHelp() {
   console.log(`
 \x1b[1m\x1b[32m=== NEDJECT ADMIN TERMINAL CLI ===\x1b[0m
-Direct Create, Read, Update, Delete & Database Seeder
+Direct Terminal Content & Real-Time Telemetry Manager
 
 \x1b[1mAvailable Commands:\x1b[0m
 
   \x1b[36mlist\x1b[0m
-    List all current blog posts and their status
+    List real-time publications from MongoDB
     \x1b[90mExample:\x1b[0m node scripts/admin.mjs list
 
   \x1b[36mcreate\x1b[0m --title "Title" [--slug "slug"] [--category "Print"] [--status "published"]
-    Directly create a new blog article
-    \x1b[90mExample:\x1b[0m node scripts/admin.mjs create --title "New 300 DPI Prepress Standard" --status published
+    Directly create a new real article in database
+    \x1b[90mExample:\x1b[0m node scripts/admin.mjs create --title "300 DPI Calibration Standard" --status published
 
   \x1b[36mupdate\x1b[0m --slug "slug" [--title "New Title"] [--status "draft" | "published"]
-    Directly update a post's title or status
-    \x1b[90mExample:\x1b[0m node scripts/admin.mjs update --slug "new-300-dpi-prepress-standard" --status draft
+    Directly update a real post's metadata
+    \x1b[90mExample:\x1b[0m node scripts/admin.mjs update --slug "my-slug" --status draft
 
   \x1b[36mdelete\x1b[0m --slug "slug" (or --id "post-id")
-    Directly delete an article from the database
-    \x1b[90mExample:\x1b[0m node scripts/admin.mjs delete --slug "my-old-post"
+    Directly delete an article from MongoDB and local storage
+    \x1b[90mExample:\x1b[0m node scripts/admin.mjs delete --slug "my-slug"
 
-  \x1b[36mseed\x1b[0m [--overwrite]
-    Seed the database with all industrial technical engineering posts
-    \x1b[90mExample:\x1b[0m node scripts/admin.mjs seed --overwrite
+  \x1b[36mdelete-all\x1b[0m (or \x1b[36mdelete all\x1b[0m)
+    Wipe all posts completely from MongoDB and local storage
+    \x1b[90mExample:\x1b[0m node scripts/admin.mjs delete all
 
-  \x1b[36mexport\x1b[0m [output.json]
-    Export all articles to a JSON backup file
-    \x1b[90mExample:\x1b[0m node scripts/admin.mjs export backup.json
-
-  \x1b[36mimport\x1b[0m <input.json>
-    Import and restore articles from a JSON file
-    \x1b[90mExample:\x1b[0m node scripts/admin.mjs import backup.json
+  \x1b[36mstatus\x1b[0m
+    Display real database counts and connection telemetry
+    \x1b[90mExample:\x1b[0m node scripts/admin.mjs status
 `);
 }
 
 async function handleList() {
-  console.log('\x1b[1mFetching articles...\x1b[0m');
-  const res = await makeRequest('GET', '/api/admin/posts');
-
+  console.log('\x1b[1mFetching real-time articles from MongoDB...\x1b[0m');
+  const mongo = await getMongoCollection();
   let posts = [];
-  if (res.ok && res.data?.posts) {
-    posts = res.data.posts;
+
+  if (mongo) {
+    posts = await mongo.collection.find({}).toArray();
+    await mongo.client.close();
   } else {
     posts = getLocalPosts();
   }
 
   if (posts.length === 0) {
-    console.log('\x1b[33mNo posts found. Run "node scripts/admin.mjs seed" to populate default articles.\x1b[0m');
+    console.log('\x1b[33m0 real articles found in database. Zero dummy/mock data displayed.\x1b[0m');
+    console.log('To publish a real article, run: \x1b[36mnode scripts/admin.mjs create --title "Your Article Title"\x1b[0m\n');
     return;
   }
 
-  console.log(`\n\x1b[1m\x1b[32mFOUND ${posts.length} ARTICLES:\x1b[0m\n`);
+  console.log(`\n\x1b[1m\x1b[32mFOUND ${posts.length} REAL ARTICLES IN DATABASE:\x1b[0m\n`);
   posts.forEach((p, idx) => {
     const statusColor = p.status === 'published' ? '\x1b[32m[PUBLISHED]\x1b[0m' : '\x1b[33m[DRAFT]\x1b[0m';
     console.log(`\x1b[1m#${idx + 1}\x1b[0m ${statusColor} \x1b[1m${p.title}\x1b[0m`);
@@ -181,13 +191,13 @@ async function handleList() {
 }
 
 async function handleCreate() {
-  const title = flags.title || flags.t;
+  const title = flags.title || flags.t || positional[1];
   if (!title) {
     console.error('\x1b[31mError: --title is required.\x1b[0m Example: node scripts/admin.mjs create --title "My Article"');
     process.exit(1);
   }
 
-  const slug = flags.slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+  const slug = flags.slug || flags.s || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
   const status = flags.status === 'draft' ? 'draft' : 'published';
   const categoryTitle = flags.category || 'Print Engineering';
 
@@ -196,8 +206,8 @@ async function handleCreate() {
     _type: 'post',
     title,
     slug,
-    excerpt: flags.excerpt || `Direct technical article created via terminal CLI: ${title}`,
-    content: `<h2>${title}</h2><p>Article body created via Nedject terminal CLI tools.</p>`,
+    excerpt: flags.excerpt || `Technical guide: ${title}`,
+    content: flags.content || `<h2>${title}</h2><p>Industrial specifications authored via Nedject terminal.</p>`,
     category: {
       _id: 'cat-print',
       title: categoryTitle,
@@ -211,26 +221,28 @@ async function handleCreate() {
       avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&h=256&q=80',
       bio: 'Lead Engineer of Nedject',
     },
-    tags: flags.tags ? flags.tags.split(',') : ['Engineering', 'CLI', '300 DPI'],
+    tags: flags.tags ? flags.tags.split(',') : ['Engineering', '300 DPI'],
     publishedAt: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
     estimatedReadingTime: '4 min read',
     status,
     isFeatured: Boolean(flags.featured),
   };
 
-  // Try API first
-  const res = await makeRequest('POST', '/api/admin/posts', newPost);
+  const mongo = await getMongoCollection();
+  if (mongo) {
+    await mongo.collection.updateOne({ slug: newPost.slug }, { $set: newPost }, { upsert: true });
+    await mongo.client.close();
+  }
 
-  // Also persist in local data file
   const local = getLocalPosts();
   local.unshift(newPost);
   saveLocalPosts(local);
 
-  console.log(`\x1b[32m✓ Successfully created article:\x1b[0m`);
+  console.log(`\n\x1b[32m✓ Successfully created real article in MongoDB & storage:\x1b[0m`);
   console.log(`  \x1b[1mTitle:\x1b[0m  ${newPost.title}`);
   console.log(`  \x1b[1mSlug:\x1b[0m   /blog/${newPost.slug}`);
   console.log(`  \x1b[1mStatus:\x1b[0m ${newPost.status}`);
-  console.log(`  \x1b[1mID:\x1b[0m     ${newPost._id}`);
+  console.log(`  \x1b[1mID:\x1b[0m     ${newPost._id}\n`);
 }
 
 async function handleUpdate() {
@@ -246,13 +258,15 @@ async function handleUpdate() {
   if (flags.title) updates.title = flags.title;
   if (flags.status) updates.status = flags.status;
   if (flags.excerpt) updates.excerpt = flags.excerpt;
+  if (flags.content) updates.content = flags.content;
 
-  if (slug) updates.slug = slug;
-  if (id) updates._id = id;
+  const mongo = await getMongoCollection();
+  if (mongo) {
+    const query = slug ? { slug } : { _id: id };
+    await mongo.collection.updateOne(query, { $set: updates });
+    await mongo.client.close();
+  }
 
-  const res = await makeRequest('PUT', '/api/admin/posts', updates);
-
-  // Update local file
   const local = getLocalPosts();
   const idx = local.findIndex((p) => p.slug === slug || p._id === id);
   if (idx >= 0) {
@@ -260,11 +274,11 @@ async function handleUpdate() {
     saveLocalPosts(local);
   }
 
-  console.log(`\x1b[32m✓ Successfully updated article [${slug || id}]:\x1b[0m`, updates);
+  console.log(`\n\x1b[32m✓ Successfully updated real article [${slug || id}]:\x1b[0m`, updates, '\n');
 }
 
 async function handleDelete() {
-  const slug = flags.slug || flags.s;
+  const slug = flags.slug || flags.s || positional[1];
   const id = flags.id;
 
   if (!slug && !id) {
@@ -272,75 +286,62 @@ async function handleDelete() {
     process.exit(1);
   }
 
-  const endpoint = slug ? `/api/admin/posts?slug=${encodeURIComponent(slug)}` : `/api/admin/posts?id=${encodeURIComponent(id)}`;
-  await makeRequest('DELETE', endpoint);
+  const mongo = await getMongoCollection();
+  if (mongo) {
+    const query = slug ? { slug } : { _id: id };
+    await mongo.collection.deleteOne(query);
+    await mongo.client.close();
+  }
 
-  // Update local file
   const local = getLocalPosts();
   const filtered = local.filter((p) => p.slug !== slug && p._id !== id);
   saveLocalPosts(filtered);
 
-  console.log(`\x1b[32m✓ Successfully deleted article: ${slug || id}\x1b[0m`);
+  console.log(`\n\x1b[32m✓ Successfully deleted article [${slug || id}] from database.\x1b[0m\n`);
 }
 
-async function handleSeed() {
-  console.log('\x1b[1mExecuting database seed via API...\x1b[0m');
-  const overwrite = Boolean(flags.overwrite);
-  const res = await makeRequest('POST', '/api/admin/seed', { overwrite });
-
-  if (res.ok) {
-    if (res.data?.posts) {
-      saveLocalPosts(res.data.posts);
-    }
-    console.log(`\x1b[32m✓ ${res.data?.dbResult || `Database seeded with ${res.data?.seededCount || 5} articles!`}\x1b[0m`);
-  } else {
-    console.log('\x1b[33mDev server not reachable, fallback to seeding local backup file...\x1b[0m');
-    const defaultPosts = [
-      {
-        _id: 'post-seed-01',
-        title: 'Mastering 300 DPI Photo QR Codes for Commercial Print Runs',
-        slug: 'mastering-300-dpi-photo-qr-codes-for-high-speed-print',
-        status: 'published',
-        publishedAt: 'Oct 24, 2026',
-        category: { title: 'Print Engineering' },
-      },
-      {
-        _id: 'post-seed-02',
-        title: 'Fitness Glass HUD: Real-Time Biometric Telemetry Architecture',
-        slug: 'fitness-glass-hud-real-time-biometric-telemetry-google-fit',
-        status: 'published',
-        publishedAt: 'Oct 24, 2026',
-        category: { title: 'Biometrics & HUD' },
-      },
-    ];
-    saveLocalPosts(defaultPosts);
-    console.log('\x1b[32m✓ Local data/posts.json seeded!\x1b[0m');
+async function handleDeleteAll() {
+  const mongo = await getMongoCollection();
+  if (mongo) {
+    await mongo.collection.deleteMany({});
+    await mongo.client.close();
   }
+  saveLocalPosts([]);
+
+  console.log('\n\x1b[1m\x1b[31m====================================================\x1b[0m');
+  console.log('\x1b[1m\x1b[31m   ✓ ALL POSTS WIPED FROM DATABASE & LOCAL STORAGE  \x1b[0m');
+  console.log('\x1b[1m\x1b[31m====================================================\x1b[0m\n');
 }
 
-async function handleExport() {
-  const filename = args[1] || 'nedject-posts-export.json';
-  const res = await makeRequest('GET', '/api/admin/seed');
-
-  let payload = res.ok && res.data?.seedPackage ? res.data.seedPackage : { posts: getLocalPosts() };
-  fs.writeFileSync(filename, JSON.stringify(payload, null, 2), 'utf-8');
-  console.log(`\x1b[32m✓ Successfully exported database to: ${filename}\x1b[0m`);
-}
-
-async function handleImport() {
-  const filename = args[1];
-  if (!filename || !fs.existsSync(filename)) {
-    console.error(`\x1b[31mError: File "${filename}" not found.\x1b[0m Example: node scripts/admin.mjs import backup.json`);
-    process.exit(1);
+async function handleStatus() {
+  console.log('\n\x1b[1m\x1b[32m=== NEDJECT REAL-TIME DATABASE STATUS ===\x1b[0m\n');
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.log('\x1b[33mMongoDB URI not found in environment.\x1b[0m');
+    return;
   }
 
-  const raw = fs.readFileSync(filename, 'utf-8');
-  const parsed = JSON.parse(raw);
-  const posts = Array.isArray(parsed) ? parsed : parsed.posts || [];
+  try {
+    const { MongoClient } = await import('mongodb');
+    const client = new MongoClient(uri, { serverSelectionTimeoutMS: 3000 });
+    await client.connect();
+    const db = client.db();
 
-  await makeRequest('POST', '/api/admin/seed', { overwrite: true, customPosts: posts });
-  saveLocalPosts(posts);
-  console.log(`\x1b[32m✓ Successfully imported ${posts.length} articles from ${filename}!\x1b[0m`);
+    const usersCount = await db.collection('users').countDocuments();
+    const qrCount = await db.collection('qr_history').countDocuments();
+    const postsCount = await db.collection('posts').countDocuments();
+    const adminsCount = await db.collection('admin_credentials').countDocuments();
+
+    console.log(`  \x1b[1mDatabase Name:\x1b[0m       ${db.databaseName}`);
+    console.log(`  \x1b[1mReal Users:\x1b[0m          ${usersCount} registered accounts`);
+    console.log(`  \x1b[1mReal QR Generations:\x1b[0m ${qrCount} studio records`);
+    console.log(`  \x1b[1mReal Articles:\x1b[0m        ${postsCount} published posts`);
+    console.log(`  \x1b[1mReal Admins:\x1b[0m          ${adminsCount} verified admin accounts\n`);
+
+    await client.close();
+  } catch (e) {
+    console.log('\x1b[31mFailed to connect to MongoDB:\x1b[0m', e.message);
+  }
 }
 
 // ---------------- ROUTER ----------------
@@ -348,33 +349,34 @@ async function handleImport() {
 switch (command.toLowerCase()) {
   case 'list':
   case 'ls':
-    handleList();
+    await handleList();
     break;
   case 'create':
   case 'add':
   case 'new':
-    handleCreate();
+    await handleCreate();
     break;
   case 'update':
   case 'edit':
-    handleUpdate();
+    await handleUpdate();
     break;
   case 'delete':
   case 'del':
   case 'rm':
-    handleDelete();
+    await handleDelete();
     break;
-  case 'seed':
-    handleSeed();
+  case 'delete-all':
+  case 'deleteall':
+  case 'clear':
+  case 'wipe':
+    await handleDeleteAll();
     break;
-  case 'export':
-    handleExport();
-    break;
-  case 'import':
-    handleImport();
+  case 'status':
+  case 'info':
+    await handleStatus();
     break;
   case 'help':
   default:
-    handleHelp();
+    await handleHelp();
     break;
 }

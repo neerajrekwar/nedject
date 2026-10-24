@@ -29,6 +29,11 @@ export function AdminTopBar({ user, onToggleSidebar }: AdminTopBarProps) {
     if (pathname.includes('/blog/edit')) return ['Admin', 'Blog Management', 'Edit Post'];
     if (pathname.includes('/blog')) return ['Admin', 'Blog Management', 'All Articles'];
     if (pathname.includes('/analytics')) return ['Admin', 'Analytics & Revenue', 'Telemetry'];
+    if (pathname.includes('/users')) return ['Admin', 'User Accounts', 'Access Tiers'];
+    if (pathname.includes('/generations')) return ['Admin', 'Studio Audit', 'Generation Ledger'];
+    if (pathname.includes('/security')) return ['Admin', 'Security & Auth', 'Terminal CLI'];
+    if (pathname.includes('/settings')) return ['Admin', 'System Health', 'Feature Flags'];
+    if (pathname.includes('/seed')) return ['Admin', 'Database', 'CRUD & Seeder'];
     return ['Admin Console', 'Executive Dashboard', 'Overview'];
   };
 

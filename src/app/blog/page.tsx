@@ -320,17 +320,25 @@ export default function BlogIndexPage() {
       {/* Empty State */}
       {filteredPosts.length === 0 && (
         <div className="border-4 border-black bg-white p-12 text-center shadow-[6px_6px_0px_#000000] font-mono">
-          <p className="text-lg font-bold text-black">No technical publications found matching &quot;{searchQuery}&quot;</p>
-          <p className="text-sm text-zinc-600 mt-1">Try another keyword or reset the category filter.</p>
-          <button
-            onClick={() => {
-              setSearchQuery('');
-              setSelectedCategory('all');
-            }}
-            className="mt-4 px-4 py-2 bg-black text-[#ccff00] font-bold text-xs border-2 border-black"
-          >
-            RESET FILTERS
-          </button>
+          <p className="text-lg font-bold text-black">
+            {posts.length === 0 ? 'No publications published yet.' : `No technical publications found matching "${searchQuery}"`}
+          </p>
+          <p className="text-sm text-zinc-600 mt-1">
+            {posts.length === 0
+              ? 'Real-time articles will appear here once authored in Sanity Studio or created via terminal CLI.'
+              : 'Try another keyword or reset the category filter.'}
+          </p>
+          {posts.length > 0 && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setSelectedCategory('all');
+              }}
+              className="mt-4 px-4 py-2 bg-black text-[#ccff00] font-bold text-xs border-2 border-black"
+            >
+              RESET FILTERS
+            </button>
+          )}
         </div>
       )}
 
