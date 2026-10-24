@@ -86,6 +86,11 @@ export function GlobalNavbar() {
     { href: '/payment', label: 'Plans & Pricing' },
   ];
 
+  // Do not render global navbar inside the admin portal
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <>
       <header className="border-b-4 border-black bg-white sticky top-0 z-40 print:hidden select-none font-mono">
