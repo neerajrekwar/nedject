@@ -1,5 +1,6 @@
 import { getDb } from './mongodb';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 
 export interface GoogleFitUserTokens {
   accessToken: string;
@@ -23,6 +24,8 @@ export interface UserProfile {
   generationsLimit: number;
   generationsUsed: number;
   googleFitTokens?: GoogleFitUserTokens;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -224,4 +227,152 @@ export async function deleteUserGoogleFitTokens(email: string): Promise<void> {
     existing.updatedAt = now;
     memoryUsers.set(normalizedEmail, existing);
   }
+}
+
+/**
+ * Creates a secure password reset token, saves its hash & expiry (1 hour) to MongoDB,
+ * and returns the raw unhashed token for the email link.
+ */
+export async function createPasswordResetToken(
+  email: string
+): Promise<{ token: string; user: UserProfile } | null> {
+  const normalizedEmail = email.toLowerCase().trim();
+  const user = await findUserByEmail(normalizedEmail);
+  if (!user) return null;
+
+  const rawToken = crypto.randomBytes(32).toString('hex');
+  const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+  const expires = new Date(Date.now() + 60 * 60 * 1000).toISOString(); // 1 hour validity
+
+  const db = await getDb();
+  if (db) {
+    try {
+      await db.collection('users').updateOne(
+        { email: normalizedEmail },
+        {
+          $set: {
+            resetPasswordToken: hashedToken,
+            resetPasswordExpires: expires,
+            updatedAt: new Date().toISOString(),
+          },
+        }
+      );
+    } catch (e) {
+      console.warn('Failed to save reset token to MongoDB, updating fallback:', e);
+    }
+  }
+
+  const memUser = memoryUsers.get(normalizedEmail);
+  if (memUser) {
+    memUser.resetPasswordToken = hashedToken;
+    memUser.resetPasswordExpires = expires;
+    memoryUsers.set(normalizedEmail, memUser);
+  }
+
+  return { token: rawToken, user };
+}
+
+/**
+ * Verifies that a password reset token exists and has not expired.
+ */
+export async function verifyPasswordResetToken(token: string): Promise<UserProfile | null> {
+  if (!token || typeof token !== 'string') return null;
+
+  const hashedToken = crypto.createHash('sha256').update(token.trim()).digest('hex');
+  const now = new Date().toISOString();
+  const db = await getDb();
+
+  if (db) {
+    try {
+      const user = await db.collection<UserProfile>('users').findOne({
+        $or: [
+          { resetPasswordToken: hashedToken },
+          { resetPasswordToken: token.trim() },
+        ],
+        resetPasswordExpires: { $gt: now },
+      });
+
+      if (user) {
+        return {
+          ...user,
+          _id: user._id?.toString(),
+        };
+      }
+    } catch (e) {
+      console.warn('Failed to verify token in MongoDB, checking fallback:', e);
+    }
+  }
+
+  for (const memUser of memoryUsers.values()) {
+    if (
+      (memUser.resetPasswordToken === hashedToken || memUser.resetPasswordToken === token.trim()) &&
+      memUser.resetPasswordExpires &&
+      memUser.resetPasswordExpires > now
+    ) {
+      return memUser;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Sets a new password for the user holding a valid reset token,
+ * hashes the password with bcrypt, and invalidates the token.
+ */
+export async function resetPasswordWithToken(
+  token: string,
+  newPassword: string
+): Promise<{ success: boolean; email?: string; error?: string }> {
+  if (!token || typeof token !== 'string') {
+    return { success: false, error: 'Reset token is required' };
+  }
+
+  if (!newPassword || newPassword.length < 6) {
+    return { success: false, error: 'Password must be at least 6 characters long' };
+  }
+
+  const user = await verifyPasswordResetToken(token);
+  if (!user) {
+    return {
+      success: false,
+      error: 'Password reset link is invalid or has expired. Please request a new one.',
+    };
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 10);
+  const now = new Date().toISOString();
+  const db = await getDb();
+
+  if (db) {
+    try {
+      await db.collection('users').updateOne(
+        { email: user.email },
+        {
+          $set: {
+            passwordHash,
+            updatedAt: now,
+          },
+          $unset: {
+            resetPasswordToken: '',
+            resetPasswordExpires: '',
+          },
+        }
+      );
+    } catch (e) {
+      console.error('Failed to update password in MongoDB:', e);
+      return { success: false, error: 'Database update failed. Please try again.' };
+    }
+  }
+
+  const memUser = memoryUsers.get(user.email);
+  if (memUser) {
+    memUser.passwordHash = passwordHash;
+    delete memUser.resetPasswordToken;
+    delete memUser.resetPasswordExpires;
+    memUser.updatedAt = now;
+    memoryUsers.set(user.email, memUser);
+  }
+
+  return { success: true, email: user.email };
 }
