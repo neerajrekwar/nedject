@@ -81,7 +81,12 @@ export const metadata: Metadata = {
     images: [`${siteUrl}/api/og?page=home`],
   },
   verification: {
-    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "google4859c180d3ad54a0",
+    google:
+      process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION &&
+      process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION !== "fdsa" &&
+      process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION.trim().length > 4
+        ? [process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION, "google4859c180d3ad54a0"]
+        : "google4859c180d3ad54a0",
   },
 };
 

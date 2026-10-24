@@ -8,6 +8,7 @@ import { MarqueeBanner } from '@/components/portfolio/MarqueeBanner';
 import { ProjectShowcase } from '@/components/portfolio/ProjectShowcase';
 import { OpenSourceRegistry } from '@/components/portfolio/OpenSourceRegistry';
 import { ToolsSuiteGrid } from '@/components/portfolio/ToolsSuiteGrid';
+import { DataTransparencySection } from '@/components/portfolio/DataTransparencySection';
 import { TechnicalFooter } from '@/components/portfolio/TechnicalFooter';
 import { LiveArtifactModal } from '@/components/portfolio/LiveArtifactModal';
 import { SocialCardsModal } from '@/components/portfolio/SocialCardsModal';
@@ -82,6 +83,9 @@ export default function Home() {
 
         {/* 6. COMPLETE NEDJECT TOOLS SUITE CATALOG */}
         <ToolsSuiteGrid />
+
+        {/* 7. MANDATORY GOOGLE OAUTH & DATA TRANSPARENCY DISCLOSURE */}
+        <DataTransparencySection />
       </main>
 
       {/* 7. TECHNICAL FOOTER WITH ATTRIBUTION: DEVELOPED BY NEERAJREKWAR */}
