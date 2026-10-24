@@ -41,7 +41,7 @@
     "motion": "^13.4.4",
     "next": "16.3.6",
     "next-auth": "^4.24.15",
-    "nodemailer": "^7.0.13",
+    "nodemailer": "^10.1.4",
     "qrcode": "^1.5.4",
     "razorpay": "^2.9.8",
     "react": "19.2.8",
