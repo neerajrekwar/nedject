@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { GlobalNavbar } from "@/components/auth/GlobalNavbar";
+import { StoryShareButton } from "@/components/story/StoryShareButton";
 import { GA_TRACKING_ID } from "@/lib/gtag";
 
 const geistSans = Geist({
@@ -18,6 +19,12 @@ const geistMono = Geist_Mono({
 import { getSiteUrl, SITE_NAME, DEFAULT_BRAND_TITLE, DEFAULT_DESCRIPTION } from "@/lib/seo";
 
 const siteUrl = getSiteUrl();
+
+export const viewport: Viewport = {
+  themeColor: "#09090b",
+  width: "device-width",
+  initialScale: 1,
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -79,6 +86,22 @@ export const metadata: Metadata = {
     creator: "@Nedject",
     images: [`${siteUrl}/api/og?page=home`],
   },
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Nedject",
+  },
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+      { url: "/pwa-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/pwa-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   verification: {
     google:
       process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION &&
@@ -100,6 +123,14 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        {/* PWA Mobile Optimization & Safari Meta */}
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Nedject" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="icon" type="image/svg+xml" href="/icon.svg" />
+
         {/* Google Analytics 4 (gtag.js) in <head> for Google Search Console ownership verification */}
         {GA_TRACKING_ID && (
           <>
@@ -127,6 +158,11 @@ export default function RootLayout({
         <AuthProvider>
           <GlobalNavbar />
           <div className="flex-1 flex flex-col">{children}</div>
+          {/* Global Floating Story Share Button for Each Page */}
+          <StoryShareButton
+            variant="floating"
+            label="SHARE STORY"
+          />
         </AuthProvider>
 
         {/* Global Schema.org JSON-LD Structured Data */}

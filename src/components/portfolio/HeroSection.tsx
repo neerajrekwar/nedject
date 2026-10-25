@@ -21,6 +21,8 @@ import {
   Barcode as BarcodeIcon,
   Activity,
 } from 'lucide-react';
+import { motion } from 'motion/react';
+import { StoryShareButton } from '@/components/story/StoryShareButton';
 import {
   QROptions,
   DotShape,
@@ -888,8 +890,14 @@ export function HeroSection({
               </span>
             </div>
 
-            {/* Central QR Canvas Display (Zero-Radius Neo-Brutalist Frame) */}
-            <div className="relative group p-4 border-2 border-black bg-white shadow-[6px_6px_0px_#000000] flex flex-col items-center">
+            {/* Central QR Canvas Display (Zero-Radius Neo-Brutalist Frame with Smooth Animation Feedback) */}
+            <motion.div
+              key={`${options.text}-${options.photoUrl || ''}-${options.photoContrast}-${options.foregroundColor}`}
+              initial={{ opacity: 0.85, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+              className="relative group p-6 border-2 border-black bg-white shadow-[6px_6px_0px_#000000] flex flex-col items-center"
+            >
               
               {/* Quiet Zone Corner Markers */}
               <div className="absolute top-1 left-1 font-mono text-[9px] text-zinc-400 font-bold">┌ QUIET ZONE</div>
@@ -919,7 +927,7 @@ export function HeroSection({
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
 
             {/* Quick Metrics Bar */}
             <div className="w-full grid grid-cols-3 gap-2 font-mono text-center">
@@ -968,6 +976,18 @@ export function HeroSection({
                   {copied === 'payload' ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
                   <span>{copied === 'payload' ? 'Copied' : 'Copy Payload'}</span>
                 </button>
+              </div>
+
+              {/* Instagram Story & Vector Share Button */}
+              <div className="pt-1">
+                <StoryShareButton
+                  variant="button"
+                  label="SHARE SPECIMEN AS INSTAGRAM / WEB STORY"
+                  pageTitle="Nedject 300 DPI Photo QR Code Specimen"
+                  pageDescription={`Live scannable photo QR code (${options.photoQRMode || 'Halftone'} mode, 300 DPI, contrast ${contrast.toFixed(1)}:1)`}
+                  category="300 DPI PHOTO QR"
+                  className="w-full justify-center !py-2.5 !bg-[#ccff00] !text-black border-2 border-black"
+                />
               </div>
             </div>
 

@@ -18,6 +18,7 @@ import {
   AlertCircle,
   SlidersHorizontal,
 } from 'lucide-react';
+import { StoryShareButton } from '@/components/story/StoryShareButton';
 import {
   QROptions,
   DotShape,
@@ -1094,6 +1095,18 @@ export function QRStudio({ options, onOptionsChange, onCodeExported }: QRStudioP
                   <FileText className="w-3.5 h-3.5 text-emerald-400" />
                   <span>Print PDF</span>
                 </button>
+              </div>
+
+              {/* Instagram Story / Web Story Sharing Button */}
+              <div className="pt-1 w-full">
+                <StoryShareButton
+                  variant="button"
+                  label="SHARE TO INSTAGRAM / WEB STORY"
+                  pageTitle="Photo QR Code Generator - 300 DPI"
+                  pageDescription="Transform photos into scannable 300 DPI QR codes with vector accuracy"
+                  category="300 DPI QR STUDIO"
+                  className="w-full justify-center !py-2.5 !bg-gradient-to-r !from-pink-600 !to-purple-600 !text-white !border-slate-700 !rounded-xl"
+                />
               </div>
             </div>
 

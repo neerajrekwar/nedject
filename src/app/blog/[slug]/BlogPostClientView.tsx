@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import { SanityPost, getPostBySlug, PRESET_POSTS } from '@/lib/sanity';
 import { getSiteUrl } from '@/lib/seo';
+import { StoryShareButton } from '@/components/story/StoryShareButton';
 
 interface Props {
   initialPost: SanityPost;
@@ -170,7 +171,15 @@ export function BlogPostClientView({ initialPost, slug }: Props) {
           </div>
 
           {/* Social Share Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <StoryShareButton
+              variant="button"
+              label="INSTAGRAM / WEB STORY"
+              pageTitle={post.title}
+              pageDescription={post.excerpt}
+              category={post.category.title}
+              className="!bg-[#ccff00] !text-black !border-black"
+            />
             <button
               onClick={handleCopyLink}
               className="inline-flex items-center gap-1 px-3 py-1.5 border border-black bg-zinc-50 hover:bg-zinc-200 text-xs font-bold transition-all shadow-[1px_1px_0px_#000000]"

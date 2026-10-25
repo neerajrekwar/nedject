@@ -19,6 +19,8 @@ import {
 import { AuthModal } from './AuthModal';
 import { UserProfileModal } from './UserProfileModal';
 import { getUsageStats, UsageStats } from '@/lib/usage-limits';
+import { PWAInstallButton } from '@/components/pwa/PWAInstallButton';
+import { StoryShareButton } from '@/components/story/StoryShareButton';
 
 export function GlobalNavbar() {
   const pathname = usePathname();
@@ -158,6 +160,15 @@ export function GlobalNavbar() {
                 </span>
               )}
             </div>
+
+            {/* PWA Install Button */}
+            <PWAInstallButton />
+
+            {/* Story Share Button (Instagram / Web Story) */}
+            <StoryShareButton
+              variant="pill"
+              label="STORY"
+            />
 
             {/* 2. Upgrade Pro Action Link */}
             <Link
