@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { GitBranch, Globe, Share2, Terminal, ArrowUp } from 'lucide-react';
+import { GitBranch, Globe, Share2, Terminal, ArrowUp, MapPin, Phone } from 'lucide-react';
 
 interface TechnicalFooterProps {
   onOpenQRArtifact?: () => void;
@@ -42,13 +42,32 @@ export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: Technic
               Industrial 300 DPI Photo QR Code Generator with B/W print calibration, multi-format export, and optical matrix engineering. Deterministic tool suite built with zero-radius neo-brutalist discipline.
             </p>
 
+            {/* Direct Studio Location & Phone Details */}
+            <div className="pt-3 border-t border-zinc-800 space-y-2 text-xs font-mono">
+              <div className="flex items-start gap-2 text-zinc-300">
+                <MapPin className="w-4 h-4 text-[#ccff00] shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase block">LOCATION</span>
+                  <span className="text-white font-bold">New Delhi, Delhi India</span>
+                </div>
+              </div>
+              <div className="flex items-start gap-2 text-zinc-300">
+                <Phone className="w-4 h-4 text-[#ccff00] shrink-0 mt-0.5" />
+                <div>
+                  <span className="text-[10px] text-zinc-500 font-bold uppercase block">PHONE CONTACT</span>
+                  <a href="tel:+917042149836" className="text-[#ccff00] hover:underline font-bold tracking-wide">
+                    +91 704 214 9836
+                  </a>
+                </div>
+              </div>
+            </div>
+
             {/* Square Social Icon Buttons */}
-            <div className="flex items-center gap-2 pt-2">
+            <div className="flex items-center gap-2 pt-1">
               {[
                 { icon: GitBranch, href: 'https://github.com/neerajrekwar/nedject', label: 'GitHub Repository' },
                 { icon: Globe, href: 'https://github.com/neerajrekwar', label: 'Developer Profile' },
                 { icon: Share2, href: 'mailto:dev.neerajrekwar@gmail.com', label: 'Contact Developer' },
-                // { icon: Terminal, href: '/qr-crush', label: 'QR Crush Lab' },
               ].map((item) => {
                 const Icon = item.icon;
                 return (
@@ -175,6 +194,8 @@ export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: Technic
               </div>
               <div>APP: NEDJECT GENQR_STUDIO</div>
               <div>DEVELOPER: NEERAJREKWAR</div>
+              <div>LOCATION: NEW DELHI, DELHI INDIA</div>
+              <div>PHONE: +91 704 214 9836</div>
               <div>CALIBRATION: 300 DPI B/W (21:1)</div>
               <div>PRINT CHUNK: PHYSICAL pHYs INJECTED</div>
               <div>BOUNDARIES: 2PX SOLID BLACK</div>
@@ -197,10 +218,16 @@ export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: Technic
         {/* Bottom Sub-Bar with Copyright & Technical Coordinates */}
         <div className="mt-12 pt-6 border-t border-zinc-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] text-zinc-500 font-mono">
           <div>
-            © {new Date().getFullYear()} NEDJECT // DEVELOPED BY NEERAJREKWAR // ALL RIGHTS RESERVED.
+            © {new Date().getFullYear()} NEDJECT // DEVELOPED BY NEERAJREKWAR // NEW DELHI, DELHI INDIA.
           </div>
 
           <div className="flex items-center gap-3 flex-wrap justify-center text-xs">
+            <span className="text-zinc-400">NEW DELHI, DELHI INDIA</span>
+            <span className="text-zinc-700">•</span>
+            <a href="tel:+917042149836" className="text-[#ccff00] hover:underline font-bold">
+              +91 704 214 9836
+            </a>
+            <span className="text-zinc-700">•</span>
             <Link href="/privacy" className="text-zinc-400 hover:text-[#ccff00] transition-colors underline">
               PRIVACY POLICY
             </Link>
@@ -208,10 +235,6 @@ export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: Technic
             <Link href="/terms" className="text-zinc-400 hover:text-[#ccff00] transition-colors underline">
               TERMS OF SERVICE
             </Link>
-            <span className="text-zinc-700">•</span>
-            <span>DEVELOPER: neerajrekwar</span>
-            <span className="text-zinc-700">•</span>
-            <span className="text-emerald-400 font-bold">STATUS: PROD_STABLE</span>
           </div>
         </div>
 

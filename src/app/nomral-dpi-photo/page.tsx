@@ -6,7 +6,6 @@ import {
   UploadCloud,
   Download,
   FileText,
-  Printer,
   Check,
   Eye,
   ArrowLeft,
@@ -15,16 +14,18 @@ import {
   Frame,
   Grid3X3,
   RotateCw,
-  Layers,
   Lock,
   Unlock,
   Maximize2,
+  XCircle,
+  CheckCircle2,
+  MapPin,
+  Phone,
 } from 'lucide-react';
 import {
   PhotoDPIOptions,
   BWToneMode,
   CanvasFrameStyle,
-  FrameColorPalette,
   renderPhotoToDPICanvas,
   exportPhotoDPI_PNG,
   exportPhotoDPI_PDF,
@@ -35,7 +36,6 @@ import { UsageBanner } from '@/components/auth/UsageBanner';
 import { useSession } from 'next-auth/react';
 import { consumeToolQuota } from '@/lib/usage-limits';
 import { QuotaLimitModal } from '@/components/auth/QuotaLimitModal';
-import { DPIGlideBar } from '@/components/DPIGlideBar';
 
 const ASPECT_RATIO_PRESETS = [
   { id: '1:1', label: '1:1 Square', w: 6, h: 6, desc: 'Social / PWA / Vinyl' },
@@ -107,6 +107,12 @@ const TONE_MODES: { id: BWToneMode; label: string; desc: string; badge: string }
 
 const FRAME_STYLES: { id: CanvasFrameStyle; label: string; desc: string; badge: string }[] = [
   {
+    id: 'none',
+    label: 'No Frame (Borderless Full-Bleed)',
+    desc: 'Clean edge-to-edge photo with zero margins, decorative borders, or overlays',
+    badge: 'OFF / CLEAN',
+  },
+  {
     id: 'heritage',
     label: 'Heritage Ornate',
     desc: 'Baroque corner filigree, museum gold double pinstripe, and bottom engraved brass plaque',
@@ -142,22 +148,6 @@ const FRAME_STYLES: { id: CanvasFrameStyle; label: string; desc: string; badge: 
     desc: 'Tactical sci-fi HUD frame with corner brackets, target reticle crosshairs, and telemetry',
     badge: 'CYBERPUNK',
   },
-  {
-    id: 'none',
-    label: 'Borderless Full-Bleed',
-    desc: 'Clean edge-to-edge photo with microscopic 1px registration boundary',
-    badge: 'MINIMAL',
-  },
-];
-
-const LPI_PRESETS = [
-  { lpi: 45, label: '45 LPI (Coarse Newspaper)', desc: 'Matches visible halftone dot texture' },
-  { lpi: 55, label: '55 LPI (Editorial Newsprint)', desc: 'Distinctive visible AM dots & lines' },
-  { lpi: 65, label: '65 LPI (Classic Litho)', desc: 'Smooth balanced dot structure' },
-  { lpi: 85, label: '85 LPI (Standard Clean)', desc: 'Standard commercial publication' },
-  { lpi: 100, label: '100 LPI (Fine Offset)', desc: 'Sharp high-quality print' },
-  { lpi: 133, label: '133 LPI (Commercial Photo)', desc: 'Dots become nearly microscopic' },
-  { lpi: 150, label: '150 LPI (Ultra-Fine Art)', desc: 'Continuous-tone appearance' },
 ];
 
 const SCREEN_ANGLES = [
@@ -188,7 +178,7 @@ export default function NormalDPIPhotoPage() {
     targetHeightInches: 5,
     aspectRatio: '4:5',
     aspectMode: 'cover',
-    frameStyle: 'heritage',
+    frameStyle: 'none', // OFF by default as requested: frames are completely optional
     frameWidthPercent: 7,
     frameColorPalette: 'heritage-gold',
     frameCaption: 'ARCHIVAL SPECIMEN № 1926',
@@ -196,7 +186,7 @@ export default function NormalDPIPhotoPage() {
 
   const [isRatioLocked, setIsRatioLocked] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'ratio-frames' | 'halftone-am' | 'tonal' | 'export'>('ratio-frames');
+  const [activeTab, setActiveTab] = useState<'ratio' | 'halftone-am' | 'frames' | 'tonal' | 'export'>('ratio');
   const [showOriginal, setShowOriginal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -236,7 +226,7 @@ export default function NormalDPIPhotoPage() {
       targetWidthInches: preset.w,
       targetHeightInches: preset.h,
     }));
-    showToast(`Aspect Ratio set to ${preset.label} (${preset.w}" × ${preset.h}")`);
+    showToast(`Aspect Ratio: ${preset.label} (${preset.w}" × ${preset.h}")`);
   };
 
   const handleWidthChange = (newWidth: number) => {
@@ -323,6 +313,7 @@ export default function NormalDPIPhotoPage() {
   const heightPx = Math.round(options.targetHeightInches * options.dpi);
   const megapixels = ((widthPx * heightPx) / 1000000).toFixed(2);
   const cellSizePx = (options.dpi / options.lpi).toFixed(1);
+  const hasFrame = options.frameStyle !== 'none';
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-sans selection:bg-[#ccff00] selection:text-black flex flex-col">
@@ -343,7 +334,7 @@ export default function NormalDPIPhotoPage() {
                 <span className="w-1.5 h-1.5 bg-[#ccff00] border border-black inline-block" />
               </div>
               <div className="font-mono text-[10px] text-zinc-600 tracking-wider">
-                RATIOS · CANVAS FRAMES · 600-1200 DPI · 45-65 LPI · 45° AM SCREENING
+                RATIOS · OPTIONAL CANVAS FRAMES · 600-1200 DPI · 45-65 LPI · 45° AM SCREENING
               </div>
             </div>
           </div>
@@ -353,8 +344,8 @@ export default function NormalDPIPhotoPage() {
               <span className="border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
                 {options.dpi} DPI · {options.lpi} LPI
               </span>
-              <span className="border-2 border-black bg-black text-[#ccff00] px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
-                {options.screenAngle}° ANGLE
+              <span className={`border-2 border-black px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000] ${hasFrame ? 'bg-black text-[#ccff00]' : 'bg-white text-zinc-600'}`}>
+                FRAME: {hasFrame ? options.frameStyle.toUpperCase() : 'OFF (BORDERLESS)'}
               </span>
             </div>
 
@@ -370,14 +361,14 @@ export default function NormalDPIPhotoPage() {
       </header>
 
       {/* 2. MAIN APPLICATION WORKSPACE */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         
         {/* Dossier Banner */}
         <div className="space-y-3">
           <div className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 shadow-[3px_3px_0px_#000000]">
             <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black animate-pulse" />
             <span className="font-mono text-xs font-black tracking-widest text-black uppercase">
-              {'// ENGINE: AMPLITUDE MODULATED (AM) HALFTONE SCREENING & VINTAGE CANVAS FRAMES'}
+              {'// ENGINE: AMPLITUDE MODULATED (AM) HALFTONE SCREENING & OPTIONAL CANVAS FRAMES'}
             </span>
           </div>
 
@@ -387,12 +378,12 @@ export default function NormalDPIPhotoPage() {
                 AM HALFTONE STUDIO
               </h1>
               <h2 className="text-4xl sm:text-6xl font-black tracking-tighter uppercase leading-[0.95] text-emerald-800">
-                RATIOS &amp; CANVAS FRAMES
+                RATIOS &amp; OPTIONAL FRAMES
               </h2>
             </div>
 
             <p className="font-mono text-xs sm:text-sm text-zinc-700 max-w-xl leading-relaxed">
-              Convert any photo into scannable <strong>AM line/dot halftone prints</strong> calibrated to 600/1200 DPI and 45–65 LPI at 45° screen angle. Choose from <strong>Heritage, Vintage, Polaroid, and Industrial canvas frames</strong> with real-time aspect ratio control.
+              Convert any photo into <strong>AM line/dot halftone prints</strong> calibrated to 600/1200 DPI and 45–65 LPI at 45° screen angle. Choose your aspect ratio, adjust screening, and <strong>optionally apply Heritage, Vintage, Polaroid, or Industrial canvas frames</strong> as desired.
             </p>
           </div>
         </div>
@@ -400,31 +391,72 @@ export default function NormalDPIPhotoPage() {
         {/* QUOTA & FEATURE FLAG MONETIZATION BANNER */}
         <UsageBanner />
 
-        {/* QUICK ASPECT RATIO SELECTOR BAR */}
-        <div className="border-2 border-black bg-white p-3 shadow-[4px_4px_0px_#000000] flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black inline-block" />
-            <span className="font-mono text-xs font-black uppercase text-black tracking-wider">
-              QUICK ASPECT RATIO:
-            </span>
+        {/* DUAL QUICK SELECTOR STRIP: RATIOS & OPTIONAL FRAMES */}
+        <div className="border-2 border-black bg-white p-3 shadow-[4px_4px_0px_#000000] space-y-2.5">
+          {/* Row 1: Quick Aspect Ratio */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 border-b border-zinc-200 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black inline-block" />
+              <span className="font-mono text-xs font-black uppercase text-black tracking-wider whitespace-nowrap">
+                ASPECT RATIO:
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+              {ASPECT_RATIO_PRESETS.map((p) => {
+                const isSelected = options.aspectRatio === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => selectRatio(p)}
+                    className={`px-2.5 py-1 font-mono text-xs font-black transition-all cursor-pointer whitespace-nowrap border border-black flex items-center gap-1 ${
+                      isSelected
+                        ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
+                        : 'bg-[#fafaf8] text-black hover:bg-zinc-200'
+                    }`}
+                  >
+                    <span>{p.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-            {ASPECT_RATIO_PRESETS.map((p) => {
-              const isSelected = options.aspectRatio === p.id;
-              return (
-                <button
-                  key={p.id}
-                  onClick={() => selectRatio(p)}
-                  className={`px-2.5 py-1.5 font-mono text-xs font-black transition-all cursor-pointer whitespace-nowrap border border-black flex items-center gap-1.5 ${
-                    isSelected
-                      ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
-                      : 'bg-[#fafaf8] text-black hover:bg-zinc-200'
-                  }`}
-                >
-                  <span>{p.label}</span>
-                </button>
-              );
-            })}
+
+          {/* Row 2: Optional Frame Quick Switcher */}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pt-0.5">
+            <div className="flex items-center gap-2">
+              <Frame className="w-3.5 h-3.5 text-black" />
+              <span className="font-mono text-xs font-black uppercase text-black tracking-wider whitespace-nowrap">
+                CANVAS FRAME (OPTIONAL):
+              </span>
+            </div>
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+              {FRAME_STYLES.map((f) => {
+                const isSelected = options.frameStyle === f.id;
+                return (
+                  <button
+                    key={f.id}
+                    onClick={() => {
+                      handleUpdate({ frameStyle: f.id });
+                      showToast(f.id === 'none' ? 'Canvas Frame: OFF (Clean Full-Bleed)' : `Canvas Frame: ${f.label}`);
+                    }}
+                    className={`px-2.5 py-1 font-mono text-xs font-black transition-all cursor-pointer whitespace-nowrap border border-black flex items-center gap-1 ${
+                      isSelected
+                        ? f.id === 'none'
+                          ? 'bg-zinc-900 text-white shadow-[2px_2px_0px_#000000]'
+                          : 'bg-[#ccff00] text-black shadow-[2px_2px_0px_#000000]'
+                        : 'bg-[#fafaf8] text-black hover:bg-zinc-200'
+                    }`}
+                  >
+                    {f.id === 'none' ? (
+                      <XCircle className="w-3 h-3 text-red-500" />
+                    ) : isSelected ? (
+                      <CheckCircle2 className="w-3 h-3 text-black" />
+                    ) : null}
+                    <span>{f.id === 'none' ? 'OFF (NO FRAME)' : f.label.replace(' (Borderless Full-Bleed)', '')}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -436,13 +468,14 @@ export default function NormalDPIPhotoPage() {
             
             <div className="space-y-6">
               
-              {/* Navigation Tabs Bar */}
+              {/* Separate Navigation Tabs Bar */}
               <div className="flex items-center gap-1.5 border-2 border-black bg-[#fafaf8] p-1.5 shadow-[3px_3px_0px_#000000] overflow-x-auto">
                 {[
-                  { id: 'ratio-frames', label: 'RATIOS & CANVAS FRAMES', icon: Frame },
-                  { id: 'halftone-am', label: 'AM SCREENING (DPI/LPI)', icon: Grid3X3 },
-                  { id: 'tonal', label: 'TONAL & UNSHARP MASK', icon: SlidersHorizontal },
-                  { id: 'export', label: 'EXPORT (PNG/PDF)', icon: Download },
+                  { id: 'ratio', label: '1. RATIO & SIZES', icon: Maximize2 },
+                  { id: 'halftone-am', label: '2. AM SCREENING (DPI/LPI)', icon: Grid3X3 },
+                  { id: 'frames', label: '3. CANVAS FRAMES (OPTIONAL)', icon: Frame },
+                  { id: 'tonal', label: '4. TONAL & UNSHARP', icon: SlidersHorizontal },
+                  { id: 'export', label: '5. EXPORT (PNG/PDF)', icon: Download },
                 ].map((tab) => {
                   const Icon = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -458,6 +491,11 @@ export default function NormalDPIPhotoPage() {
                     >
                       <Icon className="w-3.5 h-3.5" />
                       <span>{tab.label}</span>
+                      {tab.id === 'frames' && (
+                        <span className={`text-[9px] px-1 py-0.2 font-black ${hasFrame ? 'bg-[#ccff00] text-black' : 'bg-zinc-200 text-zinc-700'}`}>
+                          {hasFrame ? 'ON' : 'OFF'}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -523,12 +561,12 @@ export default function NormalDPIPhotoPage() {
               </div>
 
               {/* ======================================================== */}
-              {/* TAB 1: RATIOS & CANVAS FRAMES                            */}
+              {/* TAB 1: ASPECT RATIOS & SIZES (STANDALONE)                 */}
               {/* ======================================================== */}
-              {activeTab === 'ratio-frames' && (
+              {activeTab === 'ratio' && (
                 <div className="space-y-6 animate-fadeIn">
                   
-                  {/* 1.1 Ratio Selection & Dimensions */}
+                  {/* Ratio Selection & Dimensions */}
                   <div className="border-2 border-black bg-[#fafaf8] p-4 space-y-4 shadow-[3px_3px_0px_#000000]">
                     <div className="flex items-center justify-between border-b border-zinc-300 pb-2">
                       <span className="font-mono text-xs font-black uppercase text-black flex items-center gap-1.5">
@@ -624,114 +662,6 @@ export default function NormalDPIPhotoPage() {
                         ))}
                       </div>
                     </div>
-                  </div>
-
-                  {/* 1.2 Canvas Frames System */}
-                  <div className="border-2 border-black bg-[#fafaf8] p-4 space-y-4 shadow-[3px_3px_0px_#000000]">
-                    <div className="flex items-center justify-between border-b border-zinc-300 pb-2">
-                      <span className="font-mono text-xs font-black uppercase text-black flex items-center gap-1.5">
-                        <Frame className="w-4 h-4 text-black" />
-                        <span>CANVAS FRAME SELECTION (HERITAGE, VINTAGE, ETC.)</span>
-                      </span>
-                      <span className="font-mono text-[10px] bg-[#ccff00] text-black px-2 py-0.5 font-black border border-black">
-                        {options.frameStyle.toUpperCase()}
-                      </span>
-                    </div>
-
-                    {/* Frame Styles Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {FRAME_STYLES.map((frame) => {
-                        const isSelected = options.frameStyle === frame.id;
-                        return (
-                          <button
-                            key={frame.id}
-                            onClick={() => handleUpdate({ frameStyle: frame.id })}
-                            className={`p-2.5 border-2 border-black text-left font-mono transition-all cursor-pointer ${
-                              isSelected
-                                ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
-                                : 'bg-white text-black hover:bg-zinc-100'
-                            }`}
-                          >
-                            <div className="font-black text-xs uppercase flex items-center justify-between">
-                              <span>{frame.label}</span>
-                              <span className="text-[9px] px-1 font-black bg-zinc-200 text-black">
-                                {frame.badge}
-                              </span>
-                            </div>
-                            <div className="text-[10px] opacity-75 mt-0.5 leading-snug">{frame.desc}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    {/* Frame Customization Controls */}
-                    {options.frameStyle !== 'none' && (
-                      <div className="pt-3 border-t border-zinc-200 space-y-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {/* Frame Margin Slider */}
-                          <div>
-                            <div className="flex justify-between font-mono text-[10px] font-bold text-black mb-1">
-                              <span>FRAME MARGIN / BORDER WIDTH</span>
-                              <span>{options.frameWidthPercent}%</span>
-                            </div>
-                            <input
-                              type="range"
-                              min="3"
-                              max="15"
-                              step="1"
-                              value={options.frameWidthPercent}
-                              onChange={(e) => handleUpdate({ frameWidthPercent: parseInt(e.target.value) })}
-                              className="w-full accent-black cursor-pointer"
-                            />
-                          </div>
-
-                          {/* Frame Color Palette */}
-                          <div>
-                            <span className="block font-mono text-[10px] font-bold text-black mb-1">
-                              FRAME COLOR PALETTE:
-                            </span>
-                            <div className="grid grid-cols-3 gap-1">
-                              {(
-                                [
-                                  { id: 'monochrome', label: 'B/W Ink' },
-                                  { id: 'heritage-gold', label: 'Heritage Gold' },
-                                  { id: 'darkroom-red', label: 'Darkroom' },
-                                  { id: 'cyber-lime', label: 'Cyber Lime' },
-                                  { id: 'blueprint', label: 'Blueprint' },
-                                ] as const
-                              ).map((pal) => (
-                                <button
-                                  key={pal.id}
-                                  onClick={() => handleUpdate({ frameColorPalette: pal.id })}
-                                  className={`p-1 font-mono text-[9px] font-bold border border-black truncate text-center ${
-                                    options.frameColorPalette === pal.id
-                                      ? 'bg-black text-[#ccff00]'
-                                      : 'bg-white text-black hover:bg-zinc-100'
-                                  }`}
-                                >
-                                  {pal.label}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Custom Frame Caption */}
-                        <div>
-                          <label className="block font-mono text-[10px] font-bold text-zinc-700 mb-1">
-                            PLAQUE / STAMP / CAPTION TEXT:
-                          </label>
-                          <input
-                            type="text"
-                            value={options.frameCaption}
-                            onChange={(e) => handleUpdate({ frameCaption: e.target.value })}
-                            placeholder="e.g. ARCHIVAL SPECIMEN № 1926"
-                            className="w-full p-2 border-2 border-black bg-white font-mono text-xs font-bold"
-                          />
-                        </div>
-                      </div>
-                    )}
-
                   </div>
 
                 </div>
@@ -935,7 +865,172 @@ export default function NormalDPIPhotoPage() {
               )}
 
               {/* ======================================================== */}
-              {/* TAB 3: TONAL & UNSHARP MASK                              */}
+              {/* TAB 3: CANVAS FRAMES (OPTIONAL & STANDALONE)             */}
+              {/* ======================================================== */}
+              {activeTab === 'frames' && (
+                <div className="space-y-6 animate-fadeIn">
+                  
+                  {/* Master Toggle Banner */}
+                  <div className={`border-2 border-black p-4 shadow-[4px_4px_0px_#000000] flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${hasFrame ? 'bg-[#fafaf8]' : 'bg-zinc-100'}`}>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-3 h-3 border border-black ${hasFrame ? 'bg-[#ccff00]' : 'bg-zinc-400'}`} />
+                        <span className="font-mono text-sm font-black uppercase text-black">
+                          DECORATIVE CANVAS FRAME: {hasFrame ? 'ACTIVE' : 'DISABLED (CLEAN FULL-BLEED)'}
+                        </span>
+                      </div>
+                      <p className="font-mono text-[11px] text-zinc-600 mt-1">
+                        {hasFrame
+                          ? `Currently rendering ${options.frameStyle.toUpperCase()} frame around the photo.`
+                          : 'No frame applied. Your photo renders 100% full-bleed borderless at the exact ratio.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {hasFrame ? (
+                        <button
+                          onClick={() => {
+                            handleUpdate({ frameStyle: 'none' });
+                            showToast('Turned OFF Canvas Frame');
+                          }}
+                          className="px-3.5 py-2 border-2 border-black bg-white hover:bg-black hover:text-white font-mono text-xs font-black shadow-[2px_2px_0px_#000000] transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <XCircle className="w-4 h-4 text-red-500" />
+                          <span>DISABLE FRAME (BORDERLESS)</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            handleUpdate({ frameStyle: 'heritage' });
+                            showToast('Enabled Heritage Canvas Frame');
+                          }}
+                          className="px-4 py-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] font-mono text-xs font-black shadow-[3px_3px_0px_#000000] transition-all cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Frame className="w-4 h-4 text-black" />
+                          <span>ACTIVATE CANVAS FRAME</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Frame Style Selection Grid */}
+                  <div className="border-2 border-black bg-[#fafaf8] p-4 space-y-4 shadow-[3px_3px_0px_#000000]">
+                    <div className="flex items-center justify-between border-b border-zinc-300 pb-2">
+                      <span className="font-mono text-xs font-black uppercase text-black flex items-center gap-1.5">
+                        <Frame className="w-4 h-4 text-black" />
+                        <span>SELECT FRAME ARCHITECTURE</span>
+                      </span>
+                      <span className="font-mono text-[10px] bg-black text-[#ccff00] px-2 py-0.5 font-bold">
+                        {options.frameStyle.toUpperCase()}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {FRAME_STYLES.map((frame) => {
+                        const isSelected = options.frameStyle === frame.id;
+                        return (
+                          <button
+                            key={frame.id}
+                            onClick={() => {
+                              handleUpdate({ frameStyle: frame.id });
+                              showToast(`Frame set to: ${frame.label}`);
+                            }}
+                            className={`p-2.5 border-2 border-black text-left font-mono transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
+                                : 'bg-white text-black hover:bg-zinc-100'
+                            }`}
+                          >
+                            <div className="font-black text-xs uppercase flex items-center justify-between">
+                              <span className="flex items-center gap-1.5">
+                                {frame.id === 'none' ? <XCircle className="w-3.5 h-3.5 text-zinc-400" /> : null}
+                                <span>{frame.label}</span>
+                              </span>
+                              <span className="text-[9px] px-1 font-black bg-zinc-200 text-black">
+                                {frame.badge}
+                              </span>
+                            </div>
+                            <div className="text-[10px] opacity-75 mt-0.5 leading-snug">{frame.desc}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Frame Customization Controls (Shown only when a frame is active) */}
+                    {hasFrame && (
+                      <div className="pt-3 border-t border-zinc-200 space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {/* Frame Margin Slider */}
+                          <div>
+                            <div className="flex justify-between font-mono text-[10px] font-bold text-black mb-1">
+                              <span>FRAME MARGIN / BORDER WIDTH</span>
+                              <span>{options.frameWidthPercent}%</span>
+                            </div>
+                            <input
+                              type="range"
+                              min="3"
+                              max="15"
+                              step="1"
+                              value={options.frameWidthPercent}
+                              onChange={(e) => handleUpdate({ frameWidthPercent: parseInt(e.target.value) })}
+                              className="w-full accent-black cursor-pointer"
+                            />
+                          </div>
+
+                          {/* Frame Color Palette */}
+                          <div>
+                            <span className="block font-mono text-[10px] font-bold text-black mb-1">
+                              FRAME COLOR PALETTE:
+                            </span>
+                            <div className="grid grid-cols-3 gap-1">
+                              {(
+                                [
+                                  { id: 'monochrome', label: 'B/W Ink' },
+                                  { id: 'heritage-gold', label: 'Heritage Gold' },
+                                  { id: 'darkroom-red', label: 'Darkroom' },
+                                  { id: 'cyber-lime', label: 'Cyber Lime' },
+                                  { id: 'blueprint', label: 'Blueprint' },
+                                ] as const
+                              ).map((pal) => (
+                                <button
+                                  key={pal.id}
+                                  onClick={() => handleUpdate({ frameColorPalette: pal.id })}
+                                  className={`p-1 font-mono text-[9px] font-bold border border-black truncate text-center ${
+                                    options.frameColorPalette === pal.id
+                                      ? 'bg-black text-[#ccff00]'
+                                      : 'bg-white text-black hover:bg-zinc-100'
+                                  }`}
+                                >
+                                  {pal.label}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Custom Frame Caption */}
+                        <div>
+                          <label className="block font-mono text-[10px] font-bold text-zinc-700 mb-1">
+                            PLAQUE / STAMP / CAPTION TEXT:
+                          </label>
+                          <input
+                            type="text"
+                            value={options.frameCaption}
+                            onChange={(e) => handleUpdate({ frameCaption: e.target.value })}
+                            placeholder="e.g. ARCHIVAL SPECIMEN № 1926"
+                            className="w-full p-2 border-2 border-black bg-white font-mono text-xs font-bold"
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* ======================================================== */}
+              {/* TAB 4: TONAL & UNSHARP MASK                              */}
               {/* ======================================================== */}
               {activeTab === 'tonal' && (
                 <div className="space-y-5 animate-fadeIn">
@@ -1035,7 +1130,7 @@ export default function NormalDPIPhotoPage() {
               )}
 
               {/* ======================================================== */}
-              {/* TAB 4: HIGH-RES EXPORT                                   */}
+              {/* TAB 5: HIGH-RES EXPORT                                   */}
               {/* ======================================================== */}
               {activeTab === 'export' && (
                 <div className="space-y-4 animate-fadeIn">
@@ -1076,7 +1171,7 @@ export default function NormalDPIPhotoPage() {
                     </div>
 
                     <div className="font-mono text-[11px] text-zinc-600 bg-white p-3 border border-black mt-2">
-                      <strong>Physical Specification:</strong> {options.targetWidthInches}&quot; × {options.targetHeightInches}&quot; ({options.aspectRatio}) at {options.dpi} DPI / {options.lpi} LPI @ {options.screenAngle}° produces a canvas of {widthPx} × {heightPx} px ({megapixels} MP) with {options.frameStyle.toUpperCase()} frame.
+                      <strong>Physical Specification:</strong> {options.targetWidthInches}&quot; × {options.targetHeightInches}&quot; ({options.aspectRatio}) at {options.dpi} DPI / {options.lpi} LPI @ {options.screenAngle}° produces a canvas of {widthPx} × {heightPx} px ({megapixels} MP). Frame: {hasFrame ? options.frameStyle.toUpperCase() : 'OFF (BORDERLESS FULL-BLEED)'}.
                     </div>
                   </div>
 
@@ -1168,9 +1263,9 @@ export default function NormalDPIPhotoPage() {
                 </div>
               </div>
               <div className="border-2 border-black bg-white p-2 shadow-[2px_2px_0px_#000000]">
-                <div className="text-[9px] text-zinc-500 font-bold uppercase">SCREEN ANGLE</div>
-                <div className="text-xs font-black text-emerald-800 mt-0.5">
-                  {options.screenAngle}° (Optimal)
+                <div className="text-[9px] text-zinc-500 font-bold uppercase">CANVAS FRAME</div>
+                <div className="text-xs font-black text-emerald-800 mt-0.5 truncate">
+                  {hasFrame ? options.frameStyle.toUpperCase() : 'OFF (BORDERLESS)'}
                 </div>
               </div>
               <div className="border-2 border-black bg-white p-2 shadow-[2px_2px_0px_#000000]">
@@ -1217,17 +1312,24 @@ export default function NormalDPIPhotoPage() {
       )}
 
       {/* Footer */}
-      <footer className="w-full border-t-2 border-black bg-white py-6 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono text-xs text-zinc-600">
+      <footer className="w-full border-t-2 border-black bg-white py-6 mt-12 font-mono text-xs">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col md:flex-row items-center justify-between gap-4 text-zinc-700">
           <div>
-            PHOTO DPI MAKER // AM SCREENING · DPI / LPI ALIGNMENT · VINTAGE CANVAS FRAMES
+            PHOTO DPI MAKER // AM SCREENING · DPI / LPI ALIGNMENT · OPTIONAL CANVAS FRAMES
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap justify-center">
+            <span className="flex items-center gap-1.5 font-bold text-black">
+              <MapPin className="w-3.5 h-3.5 text-black shrink-0" />
+              <span>New Delhi, Delhi India</span>
+            </span>
+            <span className="text-zinc-400">•</span>
+            <a href="tel:+917042149836" className="flex items-center gap-1.5 font-bold text-black hover:text-emerald-800 transition-colors">
+              <Phone className="w-3.5 h-3.5 text-black shrink-0" />
+              <span>+91 704 214 9836</span>
+            </a>
+            <span className="text-zinc-400">•</span>
             <Link href="/" className="font-black text-black hover:text-emerald-800 underline">
               genQRstudio (Home)
-            </Link>
-            <Link href="/nomral-dpi-photo" className="font-black text-black hover:text-emerald-800 underline">
-              Photo DPI Maker
             </Link>
           </div>
         </div>
