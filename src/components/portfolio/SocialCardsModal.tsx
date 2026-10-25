@@ -194,7 +194,7 @@ export function SocialCardsModal({ isOpen, onClose, initialPage = 'home' }: Soci
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-sm select-none animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-sm select-none animate-in fade-in duration-200">
       <div className="relative w-full max-w-6xl max-h-[92vh] bg-[#f5f5f0] border-4 border-black shadow-[8px_8px_0px_#ccff00] flex flex-col overflow-hidden font-mono text-black">
         
         {/* Header Bar */}

@@ -508,7 +508,7 @@ export const SocialStoryModal: React.FC<SocialStoryModalProps> = ({
 </html>`;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-md overflow-y-auto font-mono">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 p-3 sm:p-6 backdrop-blur-md overflow-y-auto font-mono">
       <div className="relative w-full max-w-4xl border-4 border-black bg-white shadow-[10px_10px_0px_#000000] my-auto overflow-hidden flex flex-col max-h-[92vh]">
         
         {/* Header */}
