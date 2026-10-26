@@ -1,5 +1,6 @@
 import { jsPDF } from 'jspdf';
 import { insertDpiIntoPngBlob } from './qr-engine';
+import * as CanvasFrames from './photo-dpi-canvas-frames';
 
 export type BWToneMode =
   | 'am-line'          // AM diagonal line halftone (newspaper/engraving line screen)
@@ -15,12 +16,70 @@ export type BWToneMode =
 
 export type CanvasFrameStyle =
   | 'none'
+  // Classic Frames
   | 'heritage'
   | 'vintage'
   | 'polaroid'
   | 'industrial'
   | 'passepartout'
-  | 'cyber-hud';
+  | 'cyber-hud'
+  // 1. Flower Bloom (Separately)
+  | 'flower-sunflower'
+  | 'flower-marigold'
+  | 'flower-devil-tree'
+  | 'flower-tulip'
+  | 'flower-lily'
+  // 2. Vector Seamless Borders
+  | 'border-elephant-odisha'
+  | 'border-lotus-linear'
+  // 3. Mandala Patterns
+  | 'mandala-handdrawn'
+  | 'mandala-lines'
+  | 'mandala-floral'
+  // 4. Indian Vedic Patterns
+  | 'vedic-sri-yantra'
+  | 'vedic-kalash'
+  | 'vedic-swastika'
+  | 'vedic-agni-kund'
+  // 5. Ethnic Indian State Patterns
+  | 'ethnic-madhubani'
+  | 'ethnic-warli'
+  | 'ethnic-kalamkari'
+  | 'ethnic-phulkari'
+  | 'ethnic-kasuti'
+  | 'ethnic-bandhani'
+  // 6. Sari Patterns
+  | 'sari-zari-brocade'
+  | 'sari-banarasi-silk'
+  | 'sari-kanchipuram'
+  // 7. Abstract Patterns (5 types)
+  | 'abstract-memphis'
+  | 'abstract-bauhaus'
+  | 'abstract-ripple'
+  | 'abstract-halftone'
+  | 'abstract-cyberglitch'
+  // 8. Indian Festival Patterns
+  | 'festival-diwali'
+  | 'festival-holi'
+  | 'festival-navratri'
+  | 'festival-durga-puja'
+  // 9. Indian Temple Aesthetics
+  | 'temple-nagara'
+  | 'temple-dravidian'
+  | 'temple-khajuraho'
+  | 'temple-konark'
+  // 10. Halloween
+  | 'halloween-pumpkin'
+  | 'halloween-gothic'
+  // 11. Chinese Patterns
+  | 'chinese-endless-knot'
+  | 'chinese-dragon-cloud'
+  // 12. Cartoon Patterns
+  | 'cartoon-comic-burst'
+  | 'cartoon-pop-doodle'
+  // 13. Street Market in India
+  | 'street-chandni-chowk'
+  | 'street-truck-art';
 
 export type FrameColorPalette =
   | 'monochrome'
@@ -420,7 +479,84 @@ export async function renderPhotoToDPICanvas(
   ctx.drawImage(offscreen, photoX, photoY, photoW, photoH);
 
   // 6. Draw Canvas Frame overlays (Heritage, Vintage, Polaroid, Industrial, etc.)
-  if (frameStyle === 'heritage') {
+  const frameDrawCtx: CanvasFrames.FrameDrawContext = {
+    ctx,
+    w: widthPx,
+    h: heightPx,
+    px: photoX,
+    py: photoY,
+    pw: photoW,
+    ph: photoH,
+    colors: bgPalette,
+    caption: frameCaption,
+    dpi: options.dpi,
+    lpi: options.lpi,
+    screenAngle: options.screenAngle,
+  };
+
+  const CUSTOM_FRAME_DRAWERS: Record<string, (c: CanvasFrames.FrameDrawContext) => void> = {
+    // 1. Flower Bloom
+    'flower-sunflower': CanvasFrames.drawSunflowerFrame,
+    'flower-marigold': CanvasFrames.drawMarigoldFrame,
+    'flower-devil-tree': CanvasFrames.drawDevilTreeFrame,
+    'flower-tulip': CanvasFrames.drawTulipFrame,
+    'flower-lily': CanvasFrames.drawLilyFrame,
+    // 2. Vector Seamless Borders
+    'border-elephant-odisha': CanvasFrames.drawElephantOdishaFrame,
+    'border-lotus-linear': CanvasFrames.drawLotusLinearFrame,
+    // 3. Mandala Patterns
+    'mandala-handdrawn': CanvasFrames.drawMandalaHanddrawnFrame,
+    'mandala-lines': CanvasFrames.drawMandalaLinesFrame,
+    'mandala-floral': CanvasFrames.drawMandalaFloralFrame,
+    // 4. Indian Vedic Patterns
+    'vedic-sri-yantra': CanvasFrames.drawVedicYantraFrame,
+    'vedic-kalash': CanvasFrames.drawVedicKalashFrame,
+    'vedic-swastika': CanvasFrames.drawVedicSwastikaFrame,
+    'vedic-agni-kund': CanvasFrames.drawVedicAgniFrame,
+    // 5. Ethnic Indian State Patterns
+    'ethnic-madhubani': CanvasFrames.drawMadhubaniFrame,
+    'ethnic-warli': CanvasFrames.drawWarliFrame,
+    'ethnic-kalamkari': CanvasFrames.drawKalamkariFrame,
+    'ethnic-phulkari': CanvasFrames.drawPhulkariFrame,
+    'ethnic-kasuti': CanvasFrames.drawKasutiFrame,
+    'ethnic-bandhani': CanvasFrames.drawBandhaniFrame,
+    // 6. Sari Patterns
+    'sari-zari-brocade': CanvasFrames.drawSariZariFrame,
+    'sari-banarasi-silk': CanvasFrames.drawSariBanarasiFrame,
+    'sari-kanchipuram': CanvasFrames.drawSariKanchipuramFrame,
+    // 7. Abstract Patterns (5 types)
+    'abstract-memphis': CanvasFrames.drawAbstractMemphisFrame,
+    'abstract-bauhaus': CanvasFrames.drawAbstractBauhausFrame,
+    'abstract-ripple': CanvasFrames.drawAbstractRippleFrame,
+    'abstract-halftone': CanvasFrames.drawAbstractHalftoneFrame,
+    'abstract-cyberglitch': CanvasFrames.drawAbstractCyberglitchFrame,
+    // 8. Indian Festival Patterns
+    'festival-diwali': CanvasFrames.drawFestDiwaliFrame,
+    'festival-holi': CanvasFrames.drawFestHoliFrame,
+    'festival-navratri': CanvasFrames.drawFestNavratriFrame,
+    'festival-durga-puja': CanvasFrames.drawFestDurgaPujaFrame,
+    // 9. Indian Temple Aesthetics
+    'temple-nagara': CanvasFrames.drawTempleNagaraFrame,
+    'temple-dravidian': CanvasFrames.drawTempleDravidianFrame,
+    'temple-khajuraho': CanvasFrames.drawTempleKhajurahoFrame,
+    'temple-konark': CanvasFrames.drawTempleKonarkFrame,
+    // 10. Halloween
+    'halloween-pumpkin': CanvasFrames.drawHalloweenPumpkinFrame,
+    'halloween-gothic': CanvasFrames.drawHalloweenGothicFrame,
+    // 11. Chinese Patterns
+    'chinese-endless-knot': CanvasFrames.drawChineseEndlessKnotFrame,
+    'chinese-dragon-cloud': CanvasFrames.drawChineseDragonCloudFrame,
+    // 12. Cartoon Patterns
+    'cartoon-comic-burst': CanvasFrames.drawCartoonComicBurstFrame,
+    'cartoon-pop-doodle': CanvasFrames.drawCartoonPopDoodleFrame,
+    // 13. Street Market in India
+    'street-chandni-chowk': CanvasFrames.drawStreetBazaarFrame,
+    'street-truck-art': CanvasFrames.drawStreetTruckArtFrame,
+  };
+
+  if (CUSTOM_FRAME_DRAWERS[frameStyle]) {
+    CUSTOM_FRAME_DRAWERS[frameStyle](frameDrawCtx);
+  } else if (frameStyle === 'heritage') {
     drawHeritageFrame(ctx, widthPx, heightPx, photoX, photoY, photoW, photoH, bgPalette, frameCaption, options);
   } else if (frameStyle === 'vintage') {
     drawVintageFrame(ctx, widthPx, heightPx, photoX, photoY, photoW, photoH, bgPalette, frameCaption, options);

@@ -5,11 +5,10 @@ import Link from 'next/link';
 import { GitBranch, Globe, Share2, Terminal, ArrowUp, MapPin, Phone } from 'lucide-react';
 
 interface TechnicalFooterProps {
-  onOpenQRArtifact?: () => void;
   onOpenSocialCards?: () => void;
 }
 
-export function TechnicalFooter({ onOpenQRArtifact, onOpenSocialCards }: TechnicalFooterProps) {
+export function TechnicalFooter({ onOpenSocialCards }: TechnicalFooterProps) {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };

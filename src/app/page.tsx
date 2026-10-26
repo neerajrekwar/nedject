@@ -10,11 +10,9 @@ import { OpenSourceRegistry } from '@/components/portfolio/OpenSourceRegistry';
 import { ToolsSuiteGrid } from '@/components/portfolio/ToolsSuiteGrid';
 import { DataTransparencySection } from '@/components/portfolio/DataTransparencySection';
 import { TechnicalFooter } from '@/components/portfolio/TechnicalFooter';
-import { LiveArtifactModal } from '@/components/portfolio/LiveArtifactModal';
 import { SocialCardsModal } from '@/components/portfolio/SocialCardsModal';
 
 export default function Home() {
-  const [isArtifactModalOpen, setIsArtifactModalOpen] = useState(false);
   const [isSocialModalOpen, setIsSocialModalOpen] = useState(false);
 
   const handleOpenContact = () => {
@@ -51,7 +49,6 @@ export default function Home() {
       {/* 1. TOP NAVIGATION BAR */}
       <Navbar
         onOpenContact={handleOpenContact}
-        onOpenQRArtifact={() => setIsArtifactModalOpen(true)}
         onOpenSocialCards={() => setIsSocialModalOpen(true)}
       />
 
@@ -61,7 +58,6 @@ export default function Home() {
         <UniversalHeroSection
           onExploreProjects={handleExploreProjects}
           onExploreRegistry={handleExploreRegistry}
-          onOpenQRArtifact={() => setIsArtifactModalOpen(true)}
           onScrollToQRStudio={handleScrollToQRStudio}
         />
 
@@ -69,35 +65,27 @@ export default function Home() {
         <HeroSection
           onExploreProjects={handleExploreProjects}
           onExploreRegistry={handleExploreRegistry}
-          onOpenQRArtifact={() => setIsArtifactModalOpen(true)}
         />
 
         {/* 3. HORIZONTAL TECH STACK MARQUEE */}
         <MarqueeBanner />
 
-        {/* 4. PROJECT SHOWCASE GRID 
-        <ProjectShowcase onOpenQRArtifact={() => setIsArtifactModalOpen(true)} /> */}
-
-        {/* 5. OPEN-SOURCE REGISTRY MODULES 
-        <OpenSourceRegistry /> */}
-
-        {/* 6. COMPLETE NEDJECT TOOLS SUITE CATALOG */}
+        {/* 4. COMPLETE NEDJECT TOOLS SUITE CATALOG */}
         <ToolsSuiteGrid />
 
-        {/* 7. MANDATORY GOOGLE OAUTH & DATA TRANSPARENCY DISCLOSURE */}
+        {/* 5. MANDATORY GOOGLE OAUTH & DATA TRANSPARENCY DISCLOSURE */}
         <DataTransparencySection />
       </main>
 
-      {/* 7. TECHNICAL FOOTER WITH ATTRIBUTION: DEVELOPED BY NEERAJREKWAR */}
+      {/* 6. TECHNICAL FOOTER WITH ATTRIBUTION: DEVELOPED BY NEERAJREKWAR */}
       <TechnicalFooter
-        onOpenQRArtifact={() => setIsArtifactModalOpen(true)}
         onOpenSocialCards={() => setIsSocialModalOpen(true)}
       />
 
-      {/* 8. INTERACTIVE LIVE ARTIFACT POPUP MODAL (300 DPI QR Studio & Pass Engine) */}
-      <LiveArtifactModal
-        isOpen={isArtifactModalOpen}
-        onClose={() => setIsArtifactModalOpen(false)}
+      {/* 7. INTERACTIVE SOCIAL CARDS & OPENGRAPH STUDIO (CANVAS 1200×630) */}
+      <SocialCardsModal
+        isOpen={isSocialModalOpen}
+        onClose={() => setIsSocialModalOpen(false)}
       />
 
       {/* 9. INTERACTIVE SOCIAL CARDS & OPENGRAPH STUDIO (CANVAS 1200×630) */}

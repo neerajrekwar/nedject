@@ -42,7 +42,6 @@ import { DPIGlideBar } from '@/components/DPIGlideBar';
 interface HeroSectionProps {
   onExploreProjects?: () => void;
   onExploreRegistry?: () => void;
-  onOpenQRArtifact?: () => void;
 }
 
 const MODULE_SHAPES: { id: DotShape; label: string; desc: string }[] = [
@@ -105,7 +104,6 @@ const QUICK_PRESETS = [
 export function HeroSection({
   onExploreProjects,
   onExploreRegistry,
-  onOpenQRArtifact,
 }: HeroSectionProps) {
   // Master QR State configured for whole-image 300 DPI high-contrast Photo B/W format
   const [options, setOptions] = useState<QROptions>({

@@ -18,7 +18,6 @@ import {
 interface UniversalHeroSectionProps {
   onExploreProjects?: () => void;
   onExploreRegistry?: () => void;
-  onOpenQRArtifact?: () => void;
   onScrollToQRStudio?: () => void;
 }
 
@@ -27,7 +26,6 @@ type UniversalTab = 'mockup' | 'photo-qr' | 'barcode' | 'tools';
 export function UniversalHeroSection({
   onExploreProjects,
   onExploreRegistry,
-  onOpenQRArtifact,
   onScrollToQRStudio,
 }: UniversalHeroSectionProps) {
   const [activeTab, setActiveTab] = useState<UniversalTab>('mockup');

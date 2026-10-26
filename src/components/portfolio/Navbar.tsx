@@ -10,7 +10,7 @@ interface NavbarProps {
   onOpenSocialCards?: () => void;
 }
 
-export function Navbar({ onOpenContact, onOpenQRArtifact, onOpenSocialCards }: NavbarProps) {
+export function Navbar({ onOpenContact, onOpenSocialCards }: NavbarProps) {
   return (
     <header className="relative z-10 w-full bg-[#f5f5f0] border-b-2 border-black">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between">
@@ -35,14 +35,6 @@ export function Navbar({ onOpenContact, onOpenQRArtifact, onOpenSocialCards }: N
 
         {/* Center: Unique Quick Action & Tool Utility Triggers */}
         <nav className="hidden lg:flex items-center gap-1 border-2 border-black bg-white p-1 shadow-[4px_4px_0px_#000000]">
-          {onOpenQRArtifact && (
-            <button
-              onClick={onOpenQRArtifact}
-              className="px-3 py-1.5 font-mono text-xs font-black tracking-wider text-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 cursor-pointer"
-            >
-              <span>⚡ LIVE ARTIFACT STUDIO</span>
-            </button>
-          )}
           {onOpenSocialCards && (
             <button
               onClick={onOpenSocialCards}
@@ -90,14 +82,6 @@ export function Navbar({ onOpenContact, onOpenQRArtifact, onOpenSocialCards }: N
 
         {/* Mobile Quick Action Buttons (No duplicate nav list) */}
         <div className="flex lg:hidden items-center gap-2">
-          {onOpenQRArtifact && (
-            <button
-              onClick={onOpenQRArtifact}
-              className="px-2.5 py-1.5 border-2 border-black bg-[#ccff00] font-mono text-xs font-black text-black shadow-[2px_2px_0px_#000000] cursor-pointer"
-            >
-              ARTIFACT
-            </button>
-          )}
           {onOpenSocialCards && (
             <button
               onClick={onOpenSocialCards}

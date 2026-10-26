@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { GitBranch, ArrowUpRight, Activity, QrCode } from 'lucide-react';
 
 interface Project {
@@ -94,11 +95,7 @@ const PROJECTS: Project[] = [
   },
 ];
 
-interface ProjectShowcaseProps {
-  onOpenQRArtifact?: () => void;
-}
-
-export function ProjectShowcase({ onOpenQRArtifact }: ProjectShowcaseProps) {
+export function ProjectShowcase() {
   const [filter, setFilter] = useState<'All' | 'App' | 'System' | 'Infra'>('All');
 
   const filteredProjects =
@@ -277,14 +274,14 @@ export function ProjectShowcase({ onOpenQRArtifact }: ProjectShowcaseProps) {
                     </div>
 
                     <div className="flex items-center gap-1.5 shrink-0">
-                      {project.isFeatured && onOpenQRArtifact && (
-                        <button
-                          onClick={onOpenQRArtifact}
-                          title="Open Interactive 300 DPI QR Studio"
+                      {project.isFeatured && (
+                        <Link
+                          href="/normal-dpi-photo"
+                          title="Open Interactive 300 DPI Photo Studio"
                           className="border-2 border-black bg-[#ccff00] p-2 hover:bg-black hover:text-[#ccff00] transition-colors cursor-pointer shadow-[2px_2px_0px_#000000]"
                         >
                           <QrCode className="w-4 h-4" />
-                        </button>
+                        </Link>
                       )}
                       <a
                         href={project.repo}
@@ -337,18 +334,18 @@ export function ProjectShowcase({ onOpenQRArtifact }: ProjectShowcaseProps) {
               </div>
 
               {/* Card Footer Strip with Interactive Trigger */}
-              {project.isFeatured && onOpenQRArtifact && (
+              {project.isFeatured && (
                 <div className="border-t-2 border-black bg-zinc-100 p-3 flex items-center justify-between">
                   <span className="font-mono text-xs font-bold text-black">
-                    INTERACTIVE ARTIFACT ATTACHED
+                    INTERACTIVE STUDIO READY
                   </span>
-                  <button
-                    onClick={onOpenQRArtifact}
+                  <Link
+                    href="/normal-dpi-photo"
                     className="border-2 border-black bg-[#ccff00] px-3 py-1 font-mono text-xs font-black text-black shadow-[2px_2px_0px_#000000] hover:bg-black hover:text-white transition-all cursor-pointer flex items-center gap-1"
                   >
                     <span>LAUNCH STUDIO</span>
                     <ArrowUpRight className="w-3.5 h-3.5" />
-                  </button>
+                  </Link>
                 </div>
               )}
             </div>

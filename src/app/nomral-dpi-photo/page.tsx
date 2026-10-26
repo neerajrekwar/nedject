@@ -21,6 +21,7 @@ import {
   CheckCircle2,
   MapPin,
   Phone,
+  Search,
 } from 'lucide-react';
 import {
   PhotoDPIOptions,
@@ -106,48 +107,431 @@ const TONE_MODES: { id: BWToneMode; label: string; desc: string; badge: string }
   },
 ];
 
-const FRAME_STYLES: { id: CanvasFrameStyle; label: string; desc: string; badge: string }[] = [
+export type FrameCategory =
+  | 'all'
+  | 'flower'
+  | 'border'
+  | 'mandala'
+  | 'vedic'
+  | 'ethnic'
+  | 'sari'
+  | 'abstract'
+  | 'festival'
+  | 'temple'
+  | 'cultural'
+  | 'cartoon'
+  | 'street'
+  | 'classic';
+
+export interface FrameStyleItem {
+  id: CanvasFrameStyle;
+  label: string;
+  desc: string;
+  badge: string;
+  category: FrameCategory;
+}
+
+export const FRAME_CATEGORIES: { id: FrameCategory; label: string; count: number }[] = [
+  { id: 'all', label: 'All Frames', count: 51 },
+  { id: 'flower', label: 'Flower Bloom', count: 5 },
+  { id: 'border', label: 'Seamless Borders', count: 2 },
+  { id: 'mandala', label: 'Mandala Patterns', count: 3 },
+  { id: 'vedic', label: 'Vedic Patterns', count: 4 },
+  { id: 'ethnic', label: 'Indian States', count: 6 },
+  { id: 'sari', label: 'Sari Patterns', count: 3 },
+  { id: 'abstract', label: 'Abstract (5 Types)', count: 5 },
+  { id: 'festival', label: 'Indian Festivals', count: 4 },
+  { id: 'temple', label: 'Temple Aesthetics', count: 4 },
+  { id: 'cultural', label: 'Halloween & Chinese', count: 4 },
+  { id: 'cartoon', label: 'Cartoon Patterns', count: 2 },
+  { id: 'street', label: 'Street Market', count: 2 },
+  { id: 'classic', label: 'Classic Frames', count: 6 },
+];
+
+export const FRAME_STYLES: FrameStyleItem[] = [
   {
     id: 'none',
     label: 'No Frame (Borderless Full-Bleed)',
     desc: 'Clean edge-to-edge photo with zero margins, decorative borders, or overlays',
     badge: 'OFF / CLEAN',
+    category: 'all',
+  },
+  // 1. FLOWER BLOOM (SEPARATELY)
+  {
+    id: 'flower-sunflower',
+    label: 'Sunflower Bloom',
+    desc: 'Radiant golden sunflower petals in 4 corners with radiating seed matrix & floral vines',
+    badge: 'SUNFLOWER',
+    category: 'flower',
   },
   {
+    id: 'flower-marigold',
+    label: 'Marigold (Genda Phool)',
+    desc: 'Sacred Indian marigold blossom garland with layered ruffled petals & auspicious border',
+    badge: 'MARIGOLD',
+    category: 'flower',
+  },
+  {
+    id: 'flower-devil-tree',
+    label: 'Devil Tree Flower (Saptaparni)',
+    desc: 'Fragrant star-shaped 7-leaf whorls & delicate Alstonia scholaris autumn blossom sprigs',
+    badge: 'DEVIL TREE',
+    category: 'flower',
+  },
+  {
+    id: 'flower-tulip',
+    label: 'Spring Tulip Garden',
+    desc: 'Elegant Persian tulip cups with sweeping arched leaves and scalloped decorative frieze',
+    badge: 'TULIP',
+    category: 'flower',
+  },
+  {
+    id: 'flower-lily',
+    label: 'Royal Water Lily (Kumuda)',
+    desc: 'Graceful multi-tier pointed lotus lily petals with floating pads and delicate stamen accents',
+    badge: 'LILY',
+    category: 'flower',
+  },
+
+  // 2. VECTOR SEAMLESS BORDERS
+  {
+    id: 'border-elephant-odisha',
+    label: 'Odisha Ornate Elephant (Hathi)',
+    desc: 'Odia temple chariot procession with caparisoned royal elephants, lotus bells & howdahs',
+    badge: 'ODISHA ELEPHANT',
+    category: 'border',
+  },
+  {
+    id: 'border-lotus-linear',
+    label: 'Stylized Linear Lotus (Kamal)',
+    desc: 'Geometric continuous art deco & traditional stylized linear lotus blossom band',
+    badge: 'LINEAR LOTUS',
+    category: 'border',
+  },
+
+  // 3. MANDALA PATTERNS
+  {
+    id: 'mandala-handdrawn',
+    label: 'Hand-Drawn Mandala',
+    desc: 'Organic freehand textured concentric rings, organic droplet petals & sacred geometry',
+    badge: 'HAND DRAWN',
+    category: 'mandala',
+  },
+  {
+    id: 'mandala-lines',
+    label: 'Linear Radial Star Mandala',
+    desc: 'Precision architectural radial rays, geometric star polygons & fine hairline weaves',
+    badge: 'LINEAR RAYS',
+    category: 'mandala',
+  },
+  {
+    id: 'mandala-floral',
+    label: 'Floral Rosette Mandala',
+    desc: 'Multi-tiered blooming circular rosette mandala with layered teardrop stamen rings',
+    badge: 'FLORAL ROSETTE',
+    category: 'mandala',
+  },
+
+  // 4. INDIAN VEDIC PATTERNS
+  {
+    id: 'vedic-sri-yantra',
+    label: 'Sri Yantra Sacred Geometry',
+    desc: 'Nine interlocking triangles radiating from central Bindu surrounded by 16-petal lotus',
+    badge: 'SRI YANTRA',
+    category: 'vedic',
+  },
+  {
+    id: 'vedic-kalash',
+    label: 'Auspicious Kalash & Coconut',
+    desc: 'Sacred brass pot urn with mango leaves, coconut (shrifal) and auspicious red mauli thread',
+    badge: 'KALASH',
+    category: 'vedic',
+  },
+  {
+    id: 'vedic-swastika',
+    label: 'Vedic Swastika & Shubh Labh',
+    desc: 'Ancient solar four-armed blessing symbol with sacred four quadrant bindi dots & motifs',
+    badge: 'SHUBH LABH',
+    category: 'vedic',
+  },
+  {
+    id: 'vedic-agni-kund',
+    label: 'Agni Havan Kund Altar',
+    desc: 'Step-tiered sacred Vedic fire sacrificial altar with rising stylized flame tongues',
+    badge: 'HAVAN KUND',
+    category: 'vedic',
+  },
+
+  // 5. ETHNIC INDIAN STATE PATTERNS
+  {
+    id: 'ethnic-madhubani',
+    label: 'Madhubani / Mithila (Bihar)',
+    desc: 'Double-line hatching, fish of fertility, peacock feathers and sacred natural motifs',
+    badge: 'BIHAR',
+    category: 'ethnic',
+  },
+  {
+    id: 'ethnic-warli',
+    label: 'Warli Folk Tribe (Maharashtra)',
+    desc: 'Circle-triangle human figures celebrating Tarpa dance, harvest spiral & rhythm',
+    badge: 'MAHARASHTRA',
+    category: 'ethnic',
+  },
+  {
+    id: 'ethnic-kalamkari',
+    label: 'Kalamkari Tree of Life (Andhra)',
+    desc: 'Flowing hand-painted botanical creepers, paisley ambi teardrops and blooming vines',
+    badge: 'ANDHRA',
+    category: 'ethnic',
+  },
+  {
+    id: 'ethnic-phulkari',
+    label: 'Phulkari Floral Darning (Punjab)',
+    desc: 'Geometric diamond chevron silk stitch embroidery inspired by Punjabi wedding shawls',
+    badge: 'PUNJAB',
+    category: 'ethnic',
+  },
+  {
+    id: 'ethnic-kasuti',
+    label: 'Kasuti Ilkal Chariot (Karnataka)',
+    desc: 'Counted thread geometric needlework depicting Gopuram temple towers & sacred conch',
+    badge: 'KARNATAKA',
+    category: 'ethnic',
+  },
+  {
+    id: 'ethnic-bandhani',
+    label: 'Bandhani & Leheriya (Gujarat & Raj)',
+    desc: 'Tie-dye circular ring droplets with diagonal wave stripes and vibrant border rhythm',
+    badge: 'GUJ / RAJ',
+    category: 'ethnic',
+  },
+
+  // 6. SARI PATTERNS
+  {
+    id: 'sari-zari-brocade',
+    label: 'Zari Metallic Brocade Pallu',
+    desc: 'Dense gold metallic thread weave with interlocked diamond lozenges and woven fringe',
+    badge: 'ZARI PALLU',
+    category: 'sari',
+  },
+  {
+    id: 'sari-banarasi-silk',
+    label: 'Banarasi Silk Floral Jaal',
+    desc: 'Opulent Mughal lattice trellis with gold leaf creepers and Persian flora motifs',
+    badge: 'BANARASI',
+    category: 'sari',
+  },
+  {
+    id: 'sari-kanchipuram',
+    label: 'Kanchipuram Temple Korvai',
+    desc: 'Traditional interlocking temple saw-tooth triangle spires and heavy pure silk borders',
+    badge: 'KANCHIPURAM',
+    category: 'sari',
+  },
+
+  // 7. ABSTRACT PATTERNS (5 TYPES)
+  {
+    id: 'abstract-memphis',
+    label: 'Memphis Milano 80s',
+    desc: 'Squiggle zigzags, floating confetti triangles, bright pill shapes and energetic geometry',
+    badge: 'MEMPHIS',
+    category: 'abstract',
+  },
+  {
+    id: 'abstract-bauhaus',
+    label: 'Bauhaus Constructivism',
+    desc: 'Clean Weimar functionalist squares, 45-degree angle diagonal crossbars and bold typography',
+    badge: 'BAUHAUS',
+    category: 'abstract',
+  },
+  {
+    id: 'abstract-ripple',
+    label: 'Kinetic Ripple Waves',
+    desc: 'Fluid organic contour lines resembling topographic fluid waves and sonic vibrations',
+    badge: 'RIPPLE',
+    category: 'abstract',
+  },
+  {
+    id: 'abstract-halftone',
+    label: 'Halftone Dot Matrix',
+    desc: 'Clustered dot array that seamlessly transitions and echoes the print engine screen',
+    badge: 'DOT MATRIX',
+    category: 'abstract',
+  },
+  {
+    id: 'abstract-cyberglitch',
+    label: 'Cyberpunk Glitch Scanlines',
+    desc: 'Horizontal slice offset glitch artifacts, digital noise barcode and terminal brackets',
+    badge: 'CYBER GLITCH',
+    category: 'abstract',
+  },
+
+  // 8. INDIAN FESTIVAL PATTERNS
+  {
+    id: 'festival-diwali',
+    label: 'Diwali Clay Diyas & Rangoli',
+    desc: 'Festival of lights with glowing terracotta oil lamps, wick flames and festive sparkle',
+    badge: 'DIWALI',
+    category: 'festival',
+  },
+  {
+    id: 'festival-holi',
+    label: 'Holi Gulal Powder Splash',
+    desc: 'Explosive radial dry powder clouds, playful pichkari color droplets and joyous bursts',
+    badge: 'HOLI GULAL',
+    category: 'festival',
+  },
+  {
+    id: 'festival-navratri',
+    label: 'Navratri Dandiya Raas',
+    desc: 'Crossed ceremonial dance sticks with festive dangling ghungroo bells and ribbon tassels',
+    badge: 'NAVRATRI',
+    category: 'festival',
+  },
+  {
+    id: 'festival-durga-puja',
+    label: 'Durga Puja Shankha Alpana',
+    desc: 'Sacred white rice paste floor painting (Alpana) with holy Shankh conch shells and lotus',
+    badge: 'DURGA PUJA',
+    category: 'festival',
+  },
+
+  // 9. INDIAN TEMPLE AESTHETICS
+  {
+    id: 'temple-nagara',
+    label: 'Nagara Shikhara Spires (North)',
+    desc: 'Towering beehive mountain spires with kalasha finial and layered sandstone tiers',
+    badge: 'NAGARA',
+    category: 'temple',
+  },
+  {
+    id: 'temple-dravidian',
+    label: 'Dravidian Gopuram Gateway (South)',
+    desc: 'Grand pyramid stepped temple entrance with kalasam pot finials and ornamental pillars',
+    badge: 'GOPURAM',
+    category: 'temple',
+  },
+  {
+    id: 'temple-khajuraho',
+    label: 'Khajuraho Stone Lattice Jali',
+    desc: 'Intricate sandstone carved openwork lattice screens with interlocking star geometry',
+    badge: 'KHAJURAHO',
+    category: 'temple',
+  },
+  {
+    id: 'temple-konark',
+    label: 'Konark Sun Chariot Wheel',
+    desc: 'Monumental 24-spoke stone sundial chariot wheel carved with celestial motifs & axle',
+    badge: 'KONARK WHEEL',
+    category: 'temple',
+  },
+
+  // 10. HALLOWEEN
+  {
+    id: 'halloween-pumpkin',
+    label: 'Halloween Jack-o\'-Lantern',
+    desc: 'Carved grinning pumpkin faces in corners with spooky creeping autumn vine tendrils',
+    badge: 'PUMPKIN',
+    category: 'cultural',
+  },
+  {
+    id: 'halloween-gothic',
+    label: 'Gothic Spiderweb & Bats',
+    desc: 'Delicate corner spiderweb lace with hanging spiders and silhouetted flying bats',
+    badge: 'GOTHIC WEB',
+    category: 'cultural',
+  },
+
+  // 11. CHINESE PATTERNS
+  {
+    id: 'chinese-endless-knot',
+    label: 'Chinese Mystic Knot (Pan Chang)',
+    desc: 'Auspicious Buddhist eternal knot of longevity, endless harmony and woven red tassels',
+    badge: 'MYSTIC KNOT',
+    category: 'cultural',
+  },
+  {
+    id: 'chinese-dragon-cloud',
+    label: 'Imperial Dragon Clouds & Waves',
+    desc: 'Ming dynasty billowing auspicious ruyi clouds and cresting sea wave borders',
+    badge: 'DRAGON CLOUD',
+    category: 'cultural',
+  },
+
+  // 12. CARTOON PATTERNS
+  {
+    id: 'cartoon-comic-burst',
+    label: 'Comic Action Boom Burst',
+    desc: 'Vintage pop-art comic action starburst with dynamic radiating speed rays and dots',
+    badge: 'COMIC BOOM',
+    category: 'cartoon',
+  },
+  {
+    id: 'cartoon-pop-doodle',
+    label: 'Pop-Art Doodle Stars & Swirls',
+    desc: 'Playful hand-drawn four-pointed sparkle stars, floating donut swirls and confetti',
+    badge: 'POP DOODLE',
+    category: 'cartoon',
+  },
+
+  // 13. STREET MARKET IN INDIA
+  {
+    id: 'street-chandni-chowk',
+    label: 'Chandni Chowk Bazaar Canopy',
+    desc: 'Old Delhi marketplace striped awnings, dangling triangular buntings and bazaar lanterns',
+    badge: 'DELHI BAZAAR',
+    category: 'street',
+  },
+  {
+    id: 'street-truck-art',
+    label: 'Indian Truck Art Pop',
+    desc: 'Horn OK Please ornamental winged flourishes, vibrant chevron borders and folk eagles',
+    badge: 'TRUCK ART',
+    category: 'street',
+  },
+
+  // CLASSIC FRAMES
+  {
     id: 'heritage',
-    label: 'Heritage Ornate',
+    label: 'Heritage Ornate Filigree',
     desc: 'Baroque corner filigree, museum gold double pinstripe, and bottom engraved brass plaque',
     badge: 'HERITAGE',
+    category: 'classic',
   },
   {
     id: 'vintage',
-    label: 'Vintage Stamp',
+    label: 'Vintage Stamp & Seal',
     desc: 'Perforated postage stamp scalloped edges and circular postal cancellation seal',
     badge: 'VINTAGE',
+    category: 'classic',
   },
   {
     id: 'polaroid',
-    label: 'Polaroid Instant',
+    label: 'Polaroid Instant Print',
     desc: 'Authentic classic instant film card with bottom signature border and emulsion shadow',
     badge: 'INSTANT',
+    category: 'classic',
   },
   {
     id: 'industrial',
-    label: 'Industrial Proof',
+    label: 'Industrial Darkroom Proof',
     desc: 'Millimeter calibration rulers, 4-corner crop marks, and CMYK registration crosshairs',
     badge: 'NEO-BRUTALIST',
+    category: 'classic',
   },
   {
     id: 'passepartout',
-    label: 'Passe-Partout Mat',
+    label: 'Passe-Partout Gallery Mat',
     desc: 'Modern gallery bevel-cut mat with floating hairline and subtle embossing',
     badge: 'GALLERY',
+    category: 'classic',
   },
   {
     id: 'cyber-hud',
-    label: 'Cyber-HUD Optic',
+    label: 'Cyber-HUD Optic Telemetry',
     desc: 'Tactical sci-fi HUD frame with corner brackets, target reticle crosshairs, and telemetry',
     badge: 'CYBERPUNK',
+    category: 'classic',
   },
 ];
 
@@ -190,6 +574,27 @@ export default function NormalDPIPhotoPage() {
   const [activeTab, setActiveTab] = useState<'ratio' | 'halftone-am' | 'frames' | 'tonal' | 'export'>('ratio');
   const [showOriginal, setShowOriginal] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [frameCategoryFilter, setFrameCategoryFilter] = useState<FrameCategory>('all');
+  const [quickFrameCategory, setQuickFrameCategory] = useState<FrameCategory>('classic');
+  const [frameSearch, setFrameSearch] = useState<string>('');
+
+  const quickCategoryFrames = FRAME_STYLES.filter((frame) => {
+    if (frame.id === 'none') return true;
+    if (quickFrameCategory === 'all') return true;
+    return frame.category === quickFrameCategory;
+  });
+
+  const filteredFrames = FRAME_STYLES.filter((frame) => {
+    if (frame.id === 'none') return true;
+    const matchesCategory = frameCategoryFilter === 'all' || frame.category === frameCategoryFilter;
+    const query = frameSearch.toLowerCase().trim();
+    const matchesSearch =
+      !query ||
+      frame.label.toLowerCase().includes(query) ||
+      frame.desc.toLowerCase().includes(query) ||
+      frame.badge.toLowerCase().includes(query);
+    return matchesCategory && matchesSearch;
+  });
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -441,40 +846,203 @@ export default function NormalDPIPhotoPage() {
           </div>
 
           {/* Row 2: Optional Frame Quick Switcher */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pt-0.5">
-            <div className="flex items-center gap-2">
-              <Frame className="w-3.5 h-3.5 text-black" />
-              <span className="font-mono text-xs font-black uppercase text-black tracking-wider whitespace-nowrap">
-                CANVAS FRAME (OPTIONAL):
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
-              {FRAME_STYLES.map((f) => {
-                const isSelected = options.frameStyle === f.id;
-                return (
+          <div className="flex flex-col gap-2 pt-2 border-t border-zinc-200">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Frame className="w-3.5 h-3.5 text-black" />
+                <span className="font-mono text-xs font-black uppercase text-black tracking-wider whitespace-nowrap">
+                  CANVAS FRAME (OPTIONAL):
+                </span>
+                <span
+                  className={`font-mono text-[10px] px-2 py-0.5 font-bold border border-black ${
+                    hasFrame ? 'bg-[#ccff00] text-black' : 'bg-zinc-200 text-zinc-700'
+                  }`}
+                >
+                  {hasFrame ? `ACTIVE: ${options.frameStyle.toUpperCase()}` : 'OFF / BORDERLESS'}
+                </span>
+                {hasFrame && (
                   <button
-                    key={f.id}
-                    onClick={() => {
-                      handleUpdate({ frameStyle: f.id });
-                      showToast(f.id === 'none' ? 'Canvas Frame: OFF (Clean Full-Bleed)' : `Canvas Frame: ${f.label}`);
-                    }}
-                    className={`px-2.5 py-1 font-mono text-xs font-black transition-all cursor-pointer whitespace-nowrap border border-black flex items-center gap-1 ${
-                      isSelected
-                        ? f.id === 'none'
-                          ? 'bg-zinc-900 text-white shadow-[2px_2px_0px_#000000]'
-                          : 'bg-[#ccff00] text-black shadow-[2px_2px_0px_#000000]'
-                        : 'bg-[#fafaf8] text-black hover:bg-zinc-200'
-                    }`}
+                    onClick={() => setActiveTab('frames')}
+                    className="font-mono text-[10px] underline hover:text-black font-bold text-zinc-600 cursor-pointer"
                   >
-                    {f.id === 'none' ? (
-                      <XCircle className="w-3 h-3 text-red-500" />
-                    ) : isSelected ? (
-                      <CheckCircle2 className="w-3 h-3 text-black" />
-                    ) : null}
-                    <span>{f.id === 'none' ? 'OFF (NO FRAME)' : f.label.replace(' (Borderless Full-Bleed)', '')}</span>
+                    Customize Frame →
                   </button>
-                );
-              })}
+                )}
+              </div>
+
+              {/* Master Dropdown for all 51 Frames */}
+              <div className="flex items-center gap-2">
+                <label className="font-mono text-[10px] font-bold text-zinc-500 uppercase whitespace-nowrap">
+                  PICK ANY FRAME:
+                </label>
+                <select
+                  value={options.frameStyle}
+                  onChange={(e) => {
+                    const chosenId = e.target.value as CanvasFrameStyle;
+                    handleUpdate({ frameStyle: chosenId });
+                    const match = FRAME_STYLES.find((f) => f.id === chosenId);
+                    if (match && match.category !== 'all') {
+                      setQuickFrameCategory(match.category);
+                    }
+                    showToast(chosenId === 'none' ? 'Canvas Frame: OFF (Clean Full-Bleed)' : `Canvas Frame: ${match?.label || chosenId}`);
+                  }}
+                  className="font-mono text-xs font-bold border-2 border-black bg-white px-2 py-1 shadow-[2px_2px_0px_#000000] cursor-pointer focus:outline-none"
+                >
+                  <option value="none">✕ None (100% Borderless Full-Bleed)</option>
+                  <optgroup label="── 1. FLOWER BLOOM (5 STYLES) ──">
+                    <option value="flower-sunflower">🌻 Sunflower Bloom (Corners &amp; Radiating Matrix)</option>
+                    <option value="flower-marigold">🏵️ Marigold / Genda Phool Garland</option>
+                    <option value="flower-devil-tree">🌿 Devil Tree Flower (Saptaparni Whorls)</option>
+                    <option value="flower-tulip">🌷 Spring Tulip Persian Garden</option>
+                    <option value="flower-lily">🪷 Royal Water Lily (Kumuda Tiered)</option>
+                  </optgroup>
+                  <optgroup label="── 2. SEAMLESS BORDERS ──">
+                    <option value="border-elephant-odisha">🐘 Odisha Ornate Elephant (Hathi Chariot)</option>
+                    <option value="border-lotus-linear">🪷 Stylized Linear Lotus (Kamal)</option>
+                  </optgroup>
+                  <optgroup label="── 3. MANDALA PATTERNS ──">
+                    <option value="mandala-handdrawn">✏️ Hand-Drawn Textured Mandala</option>
+                    <option value="mandala-lines">📐 Linear Radial Star Rays Mandala</option>
+                    <option value="mandala-floral">💮 Floral Rosette Layered Mandala</option>
+                  </optgroup>
+                  <optgroup label="── 4. VEDIC SACRED PATTERNS ──">
+                    <option value="vedic-sri-yantra">🔯 Sri Yantra Sacred Geometry</option>
+                    <option value="vedic-kalash">🏺 Auspicious Kalash &amp; Coconut</option>
+                    <option value="vedic-swastika">卐 Vedic Swastika &amp; Shubh Labh</option>
+                    <option value="vedic-agni-kund">🔥 Agni Havan Kund Sacrificial Altar</option>
+                  </optgroup>
+                  <optgroup label="── 5. ETHNIC INDIAN STATE PATTERNS ──">
+                    <option value="ethnic-madhubani">🎨 Madhubani / Mithila (Bihar)</option>
+                    <option value="ethnic-warli">🌾 Warli Tribal Dance (Maharashtra)</option>
+                    <option value="ethnic-kalamkari">🌿 Kalamkari Tree of Life (Andhra Pradesh)</option>
+                    <option value="ethnic-phulkari">🧵 Phulkari Silk Darning (Punjab)</option>
+                    <option value="ethnic-kasuti">🛕 Kasuti Gopuram Needlework (Karnataka)</option>
+                    <option value="ethnic-bandhani">✨ Bandhani &amp; Leheriya (Gujarat &amp; Rajasthan)</option>
+                  </optgroup>
+                  <optgroup label="── 6. SARI WEAVE PATTERNS ──">
+                    <option value="sari-zari-brocade">🪙 Zari Metallic Brocade Pallu</option>
+                    <option value="sari-banarasi-silk">🥻 Banarasi Silk Floral Jaal Trellis</option>
+                    <option value="sari-kanchipuram">🏛️ Kanchipuram Temple Korvai Spires</option>
+                  </optgroup>
+                  <optgroup label="── 7. ABSTRACT ART (5 TYPES) ──">
+                    <option value="abstract-memphis">⚡ Memphis Milano 80s Geometric</option>
+                    <option value="abstract-bauhaus">⬛ Bauhaus Constructivism Diagonal</option>
+                    <option value="abstract-ripple">〰️ Kinetic Organic Ripple Waves</option>
+                    <option value="abstract-halftone">🔲 Halftone Clustered Dot Matrix</option>
+                    <option value="abstract-cyberglitch">📟 Cyberpunk Glitch Scanlines</option>
+                  </optgroup>
+                  <optgroup label="── 8. INDIAN FESTIVAL PATTERNS ──">
+                    <option value="festival-diwali">🪔 Diwali Terracotta Diyas &amp; Rangoli</option>
+                    <option value="festival-holi">🎨 Holi Gulal Powder Splash</option>
+                    <option value="festival-navratri">🎋 Navratri Dandiya Raas Sticks</option>
+                    <option value="festival-durga-puja">🐚 Durga Puja Shankha Alpana</option>
+                  </optgroup>
+                  <optgroup label="── 9. INDIAN TEMPLE AESTHETICS ──">
+                    <option value="temple-nagara">🛕 Nagara Shikhara Mountain Spires</option>
+                    <option value="temple-dravidian">🏛️ Dravidian Gopuram Stepped Gateway</option>
+                    <option value="temple-khajuraho">🪟 Khajuraho Stone Lattice Jali</option>
+                    <option value="temple-konark">☸️ Konark Sun Temple Chariot Wheel</option>
+                  </optgroup>
+                  <optgroup label="── 10. HALLOWEEN &amp; CHINESE ──">
+                    <option value="halloween-pumpkin">🎃 Halloween Carved Jack-o&apos;-Lantern</option>
+                    <option value="halloween-gothic">🕸️ Gothic Spiderweb Lace &amp; Bats</option>
+                    <option value="chinese-endless-knot">🪢 Chinese Mystic Knot (Pan Chang)</option>
+                    <option value="chinese-dragon-cloud">🐉 Imperial Ming Dragon Clouds &amp; Waves</option>
+                  </optgroup>
+                  <optgroup label="── 11. CARTOON PATTERNS ──">
+                    <option value="cartoon-comic-burst">💥 Comic Action Boom Starburst</option>
+                    <option value="cartoon-pop-doodle">⭐ Pop-Art Doodle Stars &amp; Swirls</option>
+                  </optgroup>
+                  <optgroup label="── 12. STREET MARKET IN INDIA ──">
+                    <option value="street-chandni-chowk">🎪 Chandni Chowk Bazaar Canopies</option>
+                    <option value="street-truck-art">🚚 Indian Truck Art Pop (Horn OK Please)</option>
+                  </optgroup>
+                  <optgroup label="── 13. CLASSIC FRAMES ──">
+                    <option value="heritage">⚜️ Heritage Ornate Baroque Filigree</option>
+                    <option value="vintage">✉️ Vintage Postage Stamp &amp; Seal</option>
+                    <option value="polaroid">📷 Polaroid Instant Film Print</option>
+                    <option value="industrial">📐 Industrial Darkroom Proof Rulers</option>
+                    <option value="passepartout">🖼️ Passe-Partout Gallery Bevel Mat</option>
+                    <option value="cyber-hud">🎯 Cyber-HUD Optic Telemetry</option>
+                  </optgroup>
+                </select>
+              </div>
+            </div>
+
+            {/* Category Filter Chips Bar */}
+            <div className="flex items-center gap-1 overflow-x-auto pb-1 scrollbar-thin">
+              <span className="font-mono text-[9px] font-black uppercase text-zinc-500 whitespace-nowrap mr-1">
+                CATEGORY:
+              </span>
+              {[
+                { id: 'classic', label: 'Classic (6)' },
+                { id: 'flower', label: 'Flowers (5)' },
+                { id: 'vedic', label: 'Vedic (4)' },
+                { id: 'mandala', label: 'Mandala (3)' },
+                { id: 'ethnic', label: 'Indian States (6)' },
+                { id: 'sari', label: 'Sari (3)' },
+                { id: 'festival', label: 'Festivals (4)' },
+                { id: 'temple', label: 'Temples (4)' },
+                { id: 'border', label: 'Borders (2)' },
+                { id: 'abstract', label: 'Abstract (5)' },
+                { id: 'cultural', label: 'Halloween/Chinese (4)' },
+                { id: 'cartoon', label: 'Cartoon (2)' },
+                { id: 'street', label: 'Street Market (2)' },
+                { id: 'all', label: 'All (51)' },
+              ].map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setQuickFrameCategory(c.id as FrameCategory)}
+                  className={`px-2 py-0.5 font-mono text-[10px] font-bold border whitespace-nowrap transition-all cursor-pointer ${
+                    quickFrameCategory === c.id
+                      ? 'bg-black text-[#ccff00] border-black shadow-[1px_1px_0px_#000000]'
+                      : 'bg-white text-zinc-700 border-zinc-300 hover:border-black hover:text-black'
+                  }`}
+                >
+                  {c.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Quick Frame Buttons for Active Category */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
+              <button
+                onClick={() => {
+                  handleUpdate({ frameStyle: 'none' });
+                  showToast('Canvas Frame: OFF (Clean Full-Bleed)');
+                }}
+                className={`px-2.5 py-1 font-mono text-xs font-black transition-all cursor-pointer whitespace-nowrap border border-black flex items-center gap-1 ${
+                  options.frameStyle === 'none'
+                    ? 'bg-zinc-900 text-white shadow-[2px_2px_0px_#000000]'
+                    : 'bg-[#fafaf8] text-black hover:bg-zinc-200'
+                }`}
+              >
+                <XCircle className="w-3 h-3 text-red-500" />
+                <span>OFF (NO FRAME)</span>
+              </button>
+
+              {quickCategoryFrames
+                .filter((f) => f.id !== 'none')
+                .map((f) => {
+                  const isSelected = options.frameStyle === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      onClick={() => {
+                        handleUpdate({ frameStyle: f.id });
+                        showToast(`Canvas Frame: ${f.label}`);
+                      }}
+                      className={`px-2.5 py-1 font-mono text-xs font-black transition-all cursor-pointer whitespace-nowrap border border-black flex items-center gap-1 ${
+                        isSelected
+                          ? 'bg-[#ccff00] text-black shadow-[2px_2px_0px_#000000]'
+                          : 'bg-[#fafaf8] text-black hover:bg-zinc-200'
+                      }`}
+                    >
+                      {isSelected ? <CheckCircle2 className="w-3 h-3 text-black" /> : null}
+                      <span>{f.label.replace(' (Borderless Full-Bleed)', '')}</span>
+                    </button>
+                  );
+                })}
             </div>
           </div>
         </div>
@@ -932,48 +1500,114 @@ export default function NormalDPIPhotoPage() {
                     </div>
                   </div>
 
-                  {/* Frame Style Selection Grid */}
+                  {/* Frame Style Selection Grid with Search & Categories */}
                   <div className="border-2 border-black bg-[#fafaf8] p-4 space-y-4 shadow-[3px_3px_0px_#000000]">
-                    <div className="flex items-center justify-between border-b border-zinc-300 pb-2">
-                      <span className="font-mono text-xs font-black uppercase text-black flex items-center gap-1.5">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-300 pb-2">
+                      <div className="flex items-center gap-2">
                         <Frame className="w-4 h-4 text-black" />
-                        <span>SELECT FRAME ARCHITECTURE</span>
-                      </span>
-                      <span className="font-mono text-[10px] bg-black text-[#ccff00] px-2 py-0.5 font-bold">
-                        {options.frameStyle.toUpperCase()}
-                      </span>
+                        <span className="font-mono text-xs font-black uppercase text-black">
+                          SELECT FRAME ARCHITECTURE ({FRAME_STYLES.length} STYLES)
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] bg-black text-[#ccff00] px-2 py-0.5 font-bold">
+                          ACTIVE: {options.frameStyle.toUpperCase()}
+                        </span>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {FRAME_STYLES.map((frame) => {
-                        const isSelected = options.frameStyle === frame.id;
-                        return (
+                    {/* Search and Category Filter Bar */}
+                    <div className="space-y-2">
+                      <div className="relative">
+                        <Search className="w-4 h-4 text-zinc-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                        <input
+                          type="text"
+                          value={frameSearch}
+                          onChange={(e) => setFrameSearch(e.target.value)}
+                          placeholder="Search frames by name (e.g. Sunflower, Elephant, Warli, Sri Yantra, Diwali, Memphis)..."
+                          className="w-full pl-9 pr-8 py-2 border-2 border-black bg-white font-mono text-xs font-bold focus:outline-none focus:bg-[#fafaf8]"
+                        />
+                        {frameSearch && (
                           <button
-                            key={frame.id}
-                            onClick={() => {
-                              handleUpdate({ frameStyle: frame.id });
-                              showToast(`Frame set to: ${frame.label}`);
-                            }}
-                            className={`p-2.5 border-2 border-black text-left font-mono transition-all cursor-pointer ${
-                              isSelected
-                                ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
-                                : 'bg-white text-black hover:bg-zinc-100'
-                            }`}
+                            onClick={() => setFrameSearch('')}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-black font-mono text-xs font-bold"
                           >
-                            <div className="font-black text-xs uppercase flex items-center justify-between">
-                              <span className="flex items-center gap-1.5">
-                                {frame.id === 'none' ? <XCircle className="w-3.5 h-3.5 text-zinc-400" /> : null}
-                                <span>{frame.label}</span>
-                              </span>
-                              <span className="text-[9px] px-1 font-black bg-zinc-200 text-black">
-                                {frame.badge}
-                              </span>
-                            </div>
-                            <div className="text-[10px] opacity-75 mt-0.5 leading-snug">{frame.desc}</div>
+                            ×
                           </button>
-                        );
-                      })}
+                        )}
+                      </div>
+
+                      {/* Category Pills */}
+                      <div className="flex items-center gap-1.5 overflow-x-auto pb-1.5 scrollbar-thin">
+                        {FRAME_CATEGORIES.map((cat) => {
+                          const isCatActive = frameCategoryFilter === cat.id;
+                          return (
+                            <button
+                              key={cat.id}
+                              onClick={() => setFrameCategoryFilter(cat.id)}
+                              className={`px-2.5 py-1 border font-mono text-[10px] font-bold whitespace-nowrap transition-all cursor-pointer ${
+                                isCatActive
+                                  ? 'bg-black text-[#ccff00] border-black shadow-[2px_2px_0px_#000000]'
+                                  : 'bg-white text-zinc-700 border-zinc-300 hover:border-black hover:text-black'
+                              }`}
+                            >
+                              {cat.label} ({cat.count})
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
+
+                    {/* Frame Cards Grid */}
+                    {filteredFrames.length === 0 ? (
+                      <div className="border border-dashed border-zinc-400 bg-white p-6 text-center space-y-2 font-mono">
+                        <p className="text-xs font-bold text-zinc-600">No frames match &quot;{frameSearch}&quot;</p>
+                        <button
+                          onClick={() => {
+                            setFrameSearch('');
+                            setFrameCategoryFilter('all');
+                          }}
+                          className="px-3 py-1 bg-black text-[#ccff00] text-xs font-bold cursor-pointer"
+                        >
+                          Reset Filters
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[460px] overflow-y-auto pr-1">
+                        {filteredFrames.map((frame) => {
+                          const isSelected = options.frameStyle === frame.id;
+                          return (
+                            <button
+                              key={frame.id}
+                              onClick={() => {
+                                handleUpdate({ frameStyle: frame.id });
+                                showToast(`Frame set to: ${frame.label}`);
+                              }}
+                              className={`p-2.5 border-2 border-black text-left font-mono transition-all cursor-pointer relative ${
+                                isSelected
+                                  ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
+                                  : 'bg-white text-black hover:bg-zinc-100'
+                              }`}
+                            >
+                              <div className="font-black text-xs uppercase flex items-center justify-between gap-1">
+                                <span className="flex items-center gap-1.5 truncate">
+                                  {frame.id === 'none' ? <XCircle className="w-3.5 h-3.5 text-zinc-400 shrink-0" /> : null}
+                                  <span className="truncate">{frame.label}</span>
+                                </span>
+                                <span
+                                  className={`text-[8px] px-1 py-0.5 font-black shrink-0 ${
+                                    isSelected ? 'bg-[#ccff00] text-black' : 'bg-zinc-200 text-black'
+                                  }`}
+                                >
+                                  {frame.badge}
+                                </span>
+                              </div>
+                              <div className="text-[10px] opacity-75 mt-1 leading-snug line-clamp-2">{frame.desc}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
 
                     {/* Frame Customization Controls (Shown only when a frame is active) */}
                     {hasFrame && (
@@ -1156,7 +1790,7 @@ export default function NormalDPIPhotoPage() {
                   
                   <div className="border-2 border-black bg-[#fafaf8] p-4 space-y-3 shadow-[3px_3px_0px_#000000]">
                     <span className="font-mono text-xs font-black uppercase text-black block">
-                      EXPORT PRESS-READY ARTIFACT
+                      EXPORT PRESS-READY PHOTO PRINT
                     </span>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
