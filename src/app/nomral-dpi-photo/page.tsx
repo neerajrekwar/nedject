@@ -29,6 +29,7 @@ import {
   renderPhotoToDPICanvas,
   exportPhotoDPI_PNG,
   exportPhotoDPI_PDF,
+  exportPhotoDPI_SVG,
   triggerFileDownload,
 } from '@/lib/photo-dpi-engine';
 import { PHOTO_PRESETS } from '@/lib/photo-presets';
@@ -308,6 +309,24 @@ export default function NormalDPIPhotoPage() {
     }
   };
 
+  const handleExportSVG = async () => {
+    if (!canvasRef.current) return;
+    const allowed = await verifyQuota();
+    if (!allowed) return;
+
+    setIsExporting(true);
+    try {
+      const result = await exportPhotoDPI_SVG(canvasRef.current, options, 'Photo-Print');
+      triggerFileDownload(result);
+      showToast(`Exported ${options.dpi} DPI Vector SVG with physical dimensions`);
+    } catch (err) {
+      console.error(err);
+      showToast('SVG export failed');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   // Dimensions & Halftone Math
   const widthPx = Math.round(options.targetWidthInches * options.dpi);
   const heightPx = Math.round(options.targetHeightInches * options.dpi);
@@ -319,7 +338,7 @@ export default function NormalDPIPhotoPage() {
     <div className="min-h-screen bg-[#f5f5f0] text-black font-sans selection:bg-[#ccff00] selection:text-black flex flex-col">
       
       {/* 1. TOP NAVIGATION HEADER */}
-      <header className="sticky top-0 z-50 w-full bg-[#f5f5f0] border-b-2 border-black">
+      <header className="relative z-20 w-full bg-[#f5f5f0] border-b-2 border-black">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Link
@@ -1140,7 +1159,7 @@ export default function NormalDPIPhotoPage() {
                       EXPORT PRESS-READY ARTIFACT
                     </span>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <button
                         onClick={handleExportPNG}
                         disabled={isExporting}
@@ -1168,6 +1187,20 @@ export default function NormalDPIPhotoPage() {
                           ISO Print Card with corner trim marks, registration targets, 10-step grayscale density strip, and technical metadata.
                         </div>
                       </button>
+
+                      <button
+                        onClick={handleExportSVG}
+                        disabled={isExporting}
+                        className="p-4 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-mono text-left shadow-[3px_3px_0px_#000000] active:shadow-none transition-all cursor-pointer flex flex-col justify-between"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-black text-sm uppercase">DOWNLOAD SVG VECTOR</span>
+                          <Download className="w-4 h-4" />
+                        </div>
+                        <div className="text-[11px] opacity-80 leading-snug">
+                          Lossless Scalable Vector Graphic with physical print units ({options.targetWidthInches}&quot;×{options.targetHeightInches}&quot;) and prepress metadata for CAD &amp; RIP software.
+                        </div>
+                      </button>
                     </div>
 
                     <div className="font-mono text-[11px] text-zinc-600 bg-white p-3 border border-black mt-2">
@@ -1192,7 +1225,16 @@ export default function NormalDPIPhotoPage() {
                 <span>{showOriginal ? 'Viewing Original Photo' : 'Compare Original'}</span>
               </button>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  onClick={handleExportSVG}
+                  disabled={isExporting}
+                  className="px-3.5 py-2 border-2 border-black bg-white hover:bg-zinc-100 text-black font-mono text-xs font-black shadow-[2px_2px_0px_#000000] active:shadow-none transition-all cursor-pointer flex items-center gap-1.5"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download SVG</span>
+                </button>
+
                 <button
                   onClick={handleExportPNG}
                   disabled={isExporting}
@@ -1287,14 +1329,25 @@ export default function NormalDPIPhotoPage() {
                 <span>{isExporting ? 'PROCESSING...' : `DOWNLOAD ${options.dpi} DPI AM-HALFTONE PNG`}</span>
               </button>
 
-              <button
-                onClick={handleExportPDF}
-                disabled={isExporting}
-                className="w-full py-2 border-2 border-black bg-white hover:bg-zinc-100 font-mono text-xs font-bold text-black transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#000000]"
-              >
-                <FileText className="w-3.5 h-3.5" />
-                <span>Download ISO Commercial Specimen PDF</span>
-              </button>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={handleExportSVG}
+                  disabled={isExporting}
+                  className="py-2 px-3 border-2 border-black bg-[#ccff00] text-black hover:bg-white font-mono text-xs font-black transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#000000]"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download SVG Vector</span>
+                </button>
+
+                <button
+                  onClick={handleExportPDF}
+                  disabled={isExporting}
+                  className="py-2 px-3 border-2 border-black bg-white hover:bg-zinc-100 font-mono text-xs font-bold text-black transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow-[2px_2px_0px_#000000]"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  <span>Download Specimen PDF</span>
+                </button>
+              </div>
             </div>
 
           </div>

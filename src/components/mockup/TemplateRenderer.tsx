@@ -92,36 +92,36 @@ function IndustrialStudioTemplate({ isMobile, isTablet }: { isMobile: boolean; i
       </nav>
 
       {/* Hero Section */}
-      <header className="p-4 sm:p-8 max-w-5xl mx-auto">
-        <div className="border-4 border-black bg-white p-6 sm:p-10 shadow-[6px_6px_0px_#000000]">
-          <div className="text-[11px] font-mono font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center gap-1.5">
+      <header className={isMobile ? 'p-3 max-w-full' : 'p-4 sm:p-8 max-w-5xl mx-auto'}>
+        <div className={isMobile ? 'border-2 border-black bg-white p-3.5 shadow-[3px_3px_0px_#000000]' : 'border-4 border-black bg-white p-6 sm:p-10 shadow-[6px_6px_0px_#000000]'}>
+          <div className="text-[10px] sm:text-[11px] font-mono font-bold text-zinc-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
             <Flame className="w-3.5 h-3.5 text-black" />
             COMMERCIAL PRINT CALIBRATION ENGINE
           </div>
 
-          <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black text-black tracking-tight leading-tight font-sans">
+          <h1 className={`${isMobile ? 'text-base sm:text-lg font-black leading-snug' : isTablet ? 'text-2xl font-black' : 'text-3xl lg:text-4xl font-black'} text-black tracking-tight font-sans`}>
             High-Resolution Photo QR Codes Engineered for Flexo &amp; Offset Presses
           </h1>
 
-          <p className="mt-4 text-xs sm:text-sm text-zinc-700 font-mono leading-relaxed max-w-2xl">
+          <p className={`mt-2 ${isMobile ? 'text-[11px] leading-snug' : 'text-xs sm:text-sm leading-relaxed'} text-zinc-700 font-mono max-w-2xl`}>
             Never print blurry 72 DPI codes again. Output razor-sharp, sub-pixel aligned vector SVGs and 300 DPI raster matrices with Reed-Solomon Level H (30%) parity protection.
           </p>
 
           {/* Interactive Calibration Box */}
-          <div className="mt-6 p-4 border-2 border-black bg-zinc-50 flex flex-col sm:flex-row items-center justify-between gap-4 font-mono">
-            <div className="flex items-center gap-3">
+          <div className={`mt-4 ${isMobile ? 'p-2.5 flex-col gap-2.5' : 'p-4 flex-col sm:flex-row gap-4'} border-2 border-black bg-zinc-50 flex items-center justify-between font-mono`}>
+            <div className="flex items-center gap-2.5 w-full">
               <div
-                className={`w-14 h-14 border-2 border-black flex items-center justify-center font-black ${
+                className={`${isMobile ? 'w-10 h-10' : 'w-14 h-14'} border-2 border-black flex items-center justify-center font-black shrink-0 ${
                   dpiSetting === '300' ? 'bg-black text-[#ccff00]' : 'bg-zinc-300 text-zinc-700'
                 }`}
               >
-                <QrCode className="w-8 h-8" />
+                <QrCode className={isMobile ? 'w-5 h-5' : 'w-8 h-8'} />
               </div>
               <div className="text-xs">
-                <div className="font-bold text-black">
+                <div className="font-bold text-black text-[11px] sm:text-xs">
                   {dpiSetting === '300' ? '300 DPI Studio Grade' : '72 DPI Low Resolution'}
                 </div>
-                <div className="text-zinc-500 text-[11px]">
+                <div className="text-zinc-500 text-[10px] sm:text-[11px]">
                   {dpiSetting === '300'
                     ? '100% optical readability • Grade A ANSI scan'
                     : 'Interpolation blur • High risk of scan failure'}
@@ -134,7 +134,7 @@ function IndustrialStudioTemplate({ isMobile, isTablet }: { isMobile: boolean; i
                 setCopied(true);
                 setTimeout(() => setCopied(false), 2000);
               }}
-              className="w-full sm:w-auto px-4 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs font-mono transition-all shadow-[2px_2px_0px_#000000]"
+              className="w-full sm:w-auto px-3.5 py-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs font-mono transition-all shadow-[2px_2px_0px_#000000] shrink-0 cursor-pointer"
             >
               {copied ? 'CALIBRATION COPIED!' : 'GENERATE SAMPLE'}
             </button>
@@ -143,25 +143,25 @@ function IndustrialStudioTemplate({ isMobile, isTablet }: { isMobile: boolean; i
       </header>
 
       {/* Feature Specs Grid */}
-      <section className="px-4 pb-12 max-w-5xl mx-auto">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 font-mono">
-          <div className="border-2 border-black bg-white p-4 shadow-[4px_4px_0px_#000000]">
-            <div className="font-black text-sm text-black mb-1">01. DOT GAIN CONTROL</div>
-            <p className="text-xs text-zinc-600 leading-relaxed">
+      <section className={isMobile ? 'px-3 pb-6 max-w-full' : 'px-4 pb-12 max-w-5xl mx-auto'}>
+        <div className={`grid ${isMobile ? 'grid-cols-1 gap-2.5' : 'grid-cols-1 sm:grid-cols-3 gap-4'} font-mono`}>
+          <div className="border-2 border-black bg-white p-3 sm:p-4 shadow-[3px_3px_0px_#000000]">
+            <div className="font-black text-xs sm:text-sm text-black mb-1">01. DOT GAIN CONTROL</div>
+            <p className="text-[11px] sm:text-xs text-zinc-600 leading-relaxed">
               Automatic sub-pixel erosion compensates for liquid ink spread on porous kraft substrates.
             </p>
           </div>
 
-          <div className="border-2 border-black bg-white p-4 shadow-[4px_4px_0px_#000000]">
-            <div className="font-black text-sm text-black mb-1">02. LEVEL H RECOVERY</div>
-            <p className="text-xs text-zinc-600 leading-relaxed">
+          <div className="border-2 border-black bg-white p-3 sm:p-4 shadow-[3px_3px_0px_#000000]">
+            <div className="font-black text-xs sm:text-sm text-black mb-1">02. LEVEL H RECOVERY</div>
+            <p className="text-[11px] sm:text-xs text-zinc-600 leading-relaxed">
               30% mathematical redundancy allows high-contrast portrait center embeds without data loss.
             </p>
           </div>
 
-          <div className="border-2 border-black bg-white p-4 shadow-[4px_4px_0px_#000000]">
-            <div className="font-black text-sm text-black mb-1">03. QUIET ZONE LOCK</div>
-            <p className="text-xs text-zinc-600 leading-relaxed">
+          <div className="border-2 border-black bg-white p-3 sm:p-4 shadow-[3px_3px_0px_#000000]">
+            <div className="font-black text-xs sm:text-sm text-black mb-1">03. QUIET ZONE LOCK</div>
+            <p className="text-[11px] sm:text-xs text-zinc-600 leading-relaxed">
               Mandatory 4-module boundary isolation prevents bleed from surrounding packaging artwork.
             </p>
           </div>

@@ -721,6 +721,7 @@ export default function MochupPage() {
     setIsGenerating(false);
     setPreviewReady(true);
     setGenerationStep('');
+    setShowExportModal(true);
   };
 
   // Handle Custom Screenshot Upload
@@ -1700,6 +1701,33 @@ export default function MochupPage() {
           transition: 'transform 0.2s ease',
         }}
       >
+        {/* Purpose Aspect Ratio Framing Stage (Ensures preview and download ratios match 1:1) */}
+        <div
+          className="w-full flex flex-col items-center justify-center transition-all duration-300 relative"
+          style={{
+            maxWidth:
+              activePurpose.width < activePurpose.height
+                ? '540px'
+                : activePurpose.width === activePurpose.height
+                ? '780px'
+                : '1180px',
+          }}
+        >
+          {/* Ratio Synchronization Header Bar */}
+          <div className="w-full flex items-center justify-between mb-3 px-2 text-[11px] font-mono text-zinc-400">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="w-2 h-2 rounded-full bg-[#ccff00]" />
+              <span className="text-zinc-300 font-bold uppercase">CANVAS RATIO:</span>
+              <span className="text-[#ccff00] font-black">{activePurpose.ratio}</span>
+              <span className="text-zinc-500">({activePurpose.width} × {activePurpose.height} px)</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-400 hidden sm:inline">Framing: <strong className="text-white">{framingMode.toUpperCase()}</strong></span>
+              <span className="text-[10px] bg-black text-[#ccff00] border border-[#ccff00]/40 px-1.5 py-0.5 rounded font-bold">
+                PREVIEW &amp; DOWNLOAD 1:1 SYNC
+              </span>
+            </div>
+          </div>
         
         {/* SCENE: MOBILE STUDIO SCREEN (VALID 9:16 / 19.5:9 MOBILE LAYOUT) */}
         {activeScene === 'mobile' && (
@@ -1846,6 +1874,7 @@ export default function MochupPage() {
           </div>
         )}
 
+        </div>
       </main>
 
       {/* =================================================================== */}
@@ -1890,7 +1919,7 @@ export default function MochupPage() {
       {/* PURPOSE RESOLUTION FOR DOWNLOAD MODAL (Presets, Customs & Saved)    */}
       {/* =================================================================== */}
       {showExportModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 font-mono select-none overflow-y-auto">
+        <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 font-mono select-none overflow-y-auto">
           <div className="bg-[#121316] border-2 border-black rounded-xl max-w-4xl w-full p-5 sm:p-7 shadow-2xl relative my-auto max-h-[92vh] flex flex-col">
             
             {/* Modal Header */}

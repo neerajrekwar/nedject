@@ -117,7 +117,7 @@ export const PWAInstallButton: React.FC<PWAInstallButtonProps> = ({
 // Modal for iOS Safari Add to Home Screen Instructions
 function IOSModal({ onClose }: { onClose: () => void }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 font-mono animate-fade-in backdrop-blur-sm">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 font-mono animate-fade-in backdrop-blur-sm">
       <div className="relative w-full max-w-md border-4 border-black bg-white p-6 shadow-[8px_8px_0px_#000000] text-black space-y-5">
         <div className="flex items-center justify-between border-b-2 border-black pb-3">
           <div className="flex items-center gap-2">

@@ -637,7 +637,7 @@ export const WinterArcMeasurableGoalsAnalysis: React.FC<WinterArcMeasurableGoals
 
       {/* 4. Add Target Goal Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="w-full max-w-lg border-4 border-black bg-[#f5f5f0] shadow-[8px_8px_0px_#000000] p-6 space-y-4 font-mono">
             <div className="flex items-center justify-between border-b-2 border-black pb-2">
               <h3 className="text-sm font-black text-black uppercase">

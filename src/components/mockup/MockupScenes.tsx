@@ -587,18 +587,18 @@ export function MinimalInteriorTemplate({ viewport }: { viewport: 'desktop' | 't
       </header>
 
       {/* Hero Section (Adaptive for Mobile) */}
-      <div className="p-4 sm:p-8 max-w-4xl mx-auto flex-1 flex flex-col justify-center">
+      <div className={isMobile ? 'p-3 flex-1 flex flex-col justify-center' : 'p-4 sm:p-8 max-w-4xl mx-auto flex-1 flex flex-col justify-center'}>
         <div className="text-[10px] uppercase font-mono tracking-widest text-zinc-500 mb-1">
           {viewport.toUpperCase()} VIEWPORT MOCKUP
         </div>
-        <h1 className="text-xl sm:text-4xl font-serif font-black text-black leading-tight">
+        <h1 className={`${isMobile ? 'text-base sm:text-lg font-bold' : 'text-xl sm:text-4xl font-black'} font-serif text-black leading-tight`}>
           {viewport === 'desktop'
             ? 'Laptop Mockup'
             : viewport === 'tablet'
             ? 'Tablet Mockup'
             : 'Phone Screen Mockup'}
         </h1>
-        <p className="mt-1.5 text-xs sm:text-sm text-zinc-600 max-w-md leading-relaxed font-sans">
+        <p className={`mt-1 ${isMobile ? 'text-[11px] leading-snug' : 'text-xs sm:text-sm leading-relaxed'} text-zinc-600 max-w-md font-sans`}>
           Curated minimalist design systems crafted for high-end digital agency portfolios and architectural spatial showrooms.
         </p>
 

@@ -95,7 +95,7 @@ export function GlobalNavbar() {
 
   return (
     <>
-      <header className="border-b-4 border-black bg-white sticky top-0 z-40 print:hidden select-none font-mono">
+      <header className="border-b-4 border-black bg-white sticky top-0 z-30 print:hidden select-none font-mono">
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
           
           {/* Brand & Nav links */}

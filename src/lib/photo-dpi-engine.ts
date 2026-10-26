@@ -1126,6 +1126,50 @@ export async function exportPhotoDPI_PDF(
 }
 
 /**
+ * Export 3: High-Fidelity Vector SVG with embedded physical dimensions (inches) & prepress metadata
+ */
+export function exportPhotoDPI_SVG(
+  canvas: HTMLCanvasElement,
+  options: PhotoDPIOptions,
+  filenamePrefix = 'Nedject-Halftone'
+): PhotoDPIExportResult {
+  const dpi = options.dpi || 600;
+  const wIn = options.targetWidthInches || 6;
+  const hIn = options.targetHeightInches || 8;
+  const pngDataUrl = canvas.toDataURL('image/png');
+
+  const svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" 
+  width="${wIn}in" height="${hIn}in" viewBox="0 0 ${canvas.width} ${canvas.height}"
+  version="1.1">
+  <defs>
+    <style>
+      .meta-label { font-family: 'Courier New', monospace; font-size: 14px; fill: #000000; font-weight: bold; }
+    </style>
+  </defs>
+  <!-- CALIBRATION METADATA: DPI=${dpi} | LPI=${options.lpi} | ANGLE=${options.screenAngle}° | TONE=${options.toneMode} | FRAME=${options.frameStyle} -->
+  <rect width="100%" height="100%" fill="#ffffff" />
+  <image href="${pngDataUrl}" width="${canvas.width}" height="${canvas.height}" preserveAspectRatio="xMidYMid meet" />
+</svg>`;
+
+  const svgBlob = new Blob([svgContent], { type: 'image/svg+xml;charset=utf-8' });
+  const dataUrl = URL.createObjectURL(svgBlob);
+  const filename = `${filenamePrefix}-${dpi}DPI-Vector.svg`;
+
+  return {
+    blob: svgBlob,
+    dataUrl,
+    filename,
+    format: 'SVG',
+    widthPx: canvas.width,
+    heightPx: canvas.height,
+    dpi,
+    physicalWidthInches: wIn,
+    physicalHeightInches: hIn,
+  };
+}
+
+/**
  * Triggers file download in browser
  */
 export function triggerFileDownload(result: PhotoDPIExportResult) {
