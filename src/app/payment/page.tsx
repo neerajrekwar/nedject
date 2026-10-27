@@ -251,7 +251,7 @@ function PaymentContent() {
     const couponCode = appliedCoupon?.coupon?.code;
 
     try {
-      // 1. Create order on server with coupon validation
+      // 1. Create order on server with authoritative pricing and cryptographic token
       const orderRes = await fetch('/api/razorpay/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -275,24 +275,22 @@ function PaymentContent() {
         ? '₹0 (100% FREE PROMO PASS)'
         : priceInfo.finalDisplay;
 
-      // 2. Check if this is a 100% Free Upgrade (Promotional Voucher)
+      // 2. Case: 100% Free Upgrade (Promotional Voucher with amount === 0)
       if (orderData.isFreeUpgrade || orderData.amount === 0) {
-        setTimeout(async () => {
-          await verifyPayment({
-            razorpay_order_id: orderData.orderId,
-            razorpay_payment_id: `pay_promo_free_${Date.now()}`,
-            razorpay_signature: 'promo_free_voucher_approved',
-            planId,
-            isMock: true,
-            displayAmount,
-            couponCode,
-          });
-        }, 800);
+        await verifyPayment({
+          signedOrderToken: orderData.signedOrderToken,
+          razorpay_order_id: orderData.orderId,
+          razorpay_payment_id: `pay_promo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          planId,
+          paymentMethod: 'coupon_free',
+          displayAmount,
+          couponCode,
+        });
         return;
       }
 
-      // 3. Real Razorpay SDK check
-      if (window.Razorpay && !orderData.isMock && razorpayStatus.isConfigured) {
+      // 3. Case: Live Razorpay Gateway Configured & Available
+      if (window.Razorpay && razorpayStatus.isConfigured && currency === 'INR') {
         const options = {
           key: orderData.keyId,
           amount: orderData.amount,
@@ -305,11 +303,12 @@ function PaymentContent() {
           order_id: orderData.orderId,
           handler: async function (response: any) {
             await verifyPayment({
+              signedOrderToken: orderData.signedOrderToken,
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               planId,
-              isMock: false,
+              paymentMethod: 'razorpay',
               displayAmount,
               couponCode,
             });
@@ -334,20 +333,23 @@ function PaymentContent() {
           setIsProcessing(false);
         });
         rzpInstance.open();
-      } else {
-        // 4. Sandbox / Instant Activation Mode
-        setTimeout(async () => {
-          await verifyPayment({
-            razorpay_order_id: orderData.orderId,
-            razorpay_payment_id: `pay_sandbox_${Date.now()}`,
-            razorpay_signature: 'sandbox_verified_signature',
-            planId,
-            isMock: true,
-            displayAmount,
-            couponCode,
-          });
-        }, 1200);
+        return;
       }
+
+      // 4. Default High-Security Direct Card Terminal with Anti-Fraud Shield
+      setActiveOrderData({
+        orderId: orderData.orderId,
+        signedOrderToken: orderData.signedOrderToken,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        planName: NEDJECT_PLANS[planId].name,
+        planId,
+        billingCycle,
+        displayAmount,
+        couponCode,
+      });
+      setSecureModalOpen(true);
+      setIsProcessing(false);
     } catch (err: any) {
       console.error('Payment launch error:', err);
       setErrorMessage(err.message || 'Payment initiation failed. Please try again.');
@@ -355,21 +357,23 @@ function PaymentContent() {
     }
   };
 
-  // Verify payment on backend and activate Pro
+  // Verify payment on backend with cryptographic token
   const verifyPayment = async ({
+    signedOrderToken,
     razorpay_order_id,
     razorpay_payment_id,
     razorpay_signature,
     planId,
-    isMock,
+    paymentMethod,
     displayAmount,
     couponCode,
   }: {
+    signedOrderToken: string;
     razorpay_order_id: string;
     razorpay_payment_id: string;
-    razorpay_signature: string;
+    razorpay_signature?: string;
     planId: 'pro' | 'enterprise';
-    isMock: boolean;
+    paymentMethod: 'coupon_free' | 'razorpay' | 'card';
     displayAmount: string;
     couponCode?: string;
   }) => {
@@ -378,11 +382,12 @@ function PaymentContent() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          signedOrderToken,
           razorpay_order_id,
           razorpay_payment_id,
           razorpay_signature,
           planId,
-          isMock,
+          paymentMethod,
           couponCode,
           email: session?.user?.email,
         }),
@@ -390,7 +395,7 @@ function PaymentContent() {
 
       const verifyData = await verifyRes.json();
       if (!verifyRes.ok) {
-        throw new Error(verifyData.error || 'Payment signature verification failed');
+        throw new Error(verifyData.error || 'Payment security verification failed');
       }
 
       // Success! Reset usage counter to 0 and trigger reactive listeners
@@ -808,6 +813,19 @@ function PaymentContent() {
                 <Lock className="w-3 h-3 text-zinc-500" />
                 <span>Instant provisioning via UPI, Cards, NetBanking or 100% Free Promo Pass</span>
               </div>
+
+              {/* ANTI-FRAUD & TEST CARD DEFENSE NOTIFICATION */}
+              <div className="mt-2 p-3 border-2 border-black bg-[#fffbe6] text-black text-xs font-mono space-y-1">
+                <div className="flex items-center gap-2 font-black uppercase text-[11px] text-amber-950">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>ANTI-FRAUD PROTECTION &amp; TEST CARD DEFENSE ACTIVE</span>
+                </div>
+                <p className="text-[10px] text-zinc-700 leading-snug">
+                  • Test cards (e.g. 4242..., 4000..., dummy sets) and sandbox bypass tricks are strictly prohibited and automatically rejected by server anti-fraud heuristics.
+                  <br />
+                  • Transactions are secured via Luhn Mod-10 checksum validation, cryptographic HMAC order tokens, and real-time 3D-Secure 2-factor authentication.
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -1198,6 +1216,30 @@ function PaymentContent() {
       <footer className="border-t-2 border-black bg-white py-4 px-4 font-mono text-xs text-center text-zinc-600">
         Nedject // Developed by neerajrekwar • Industrial Optical Matrix &amp; Pro Subscription Engine
       </footer>
+
+      {/* 7. SECURE CARD CHECKOUT MODAL (PCI-DSS & ANTI-FRAUD PROTECTED) */}
+      {activeOrderData && (
+        <SecureCardCheckoutModal
+          isOpen={secureModalOpen}
+          onClose={() => setSecureModalOpen(false)}
+          orderData={activeOrderData}
+          onSuccess={(result) => {
+            setLocalUsageCount(0);
+            window.dispatchEvent(new Event('Nedject_usage_updated'));
+            if (updateSession) {
+              updateSession().catch(() => {});
+            }
+            setPaymentSuccess({
+              planName: result.planName,
+              paymentId: result.paymentId,
+              orderId: result.orderId,
+              amount: result.amount,
+              couponCode: result.couponCode,
+            });
+            setUsageStats(getUsageStats(true, activeOrderData.planId));
+          }}
+        />
+      )}
     </div>
   );
 }

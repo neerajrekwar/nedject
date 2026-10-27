@@ -33,11 +33,11 @@
       "all"
     ],
     "maxRedemptions": 100,
-    "timesRedeemed": 14,
+    "timesRedeemed": 15,
     "expiresAt": "2027-01-01T00:00:00.000Z",
     "isActive": true,
     "createdAt": "2026-10-27T15:23:07.763Z",
-    "updatedAt": "2026-10-27T15:23:07.763Z",
+    "updatedAt": "2026-10-27T18:52:23.782Z",
     "createdBy": "Super Admin",
     "notes": "Full complimentary 100% off discount voucher for testers and VIP partners"
   },
