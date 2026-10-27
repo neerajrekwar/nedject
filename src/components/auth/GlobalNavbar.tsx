@@ -17,7 +17,6 @@ import {
   Image as ImageIcon,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
-import { UserProfileModal } from './UserProfileModal';
 import { getUsageStats, UsageStats } from '@/lib/usage-limits';
 import { PWAInstallButton } from '@/components/pwa/PWAInstallButton';
 import { StoryShareButton } from '@/components/story/StoryShareButton';
@@ -27,7 +26,6 @@ export function GlobalNavbar() {
   const { data: session } = useSession();
 
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
-  const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [monetizationMode, setMonetizationMode] = useState<1 | 0>(1);
   const [usageStats, setUsageStats] = useState<UsageStats>({
     used: 0,
@@ -133,34 +131,40 @@ export function GlobalNavbar() {
           <div className="flex items-center gap-2 flex-wrap">
             
             {/* 1. Quota Limit Counter */}
-            <div
-              onClick={() => (!session?.user ? setShowAuthModal(true) : setShowProfileModal(true))}
-              className="flex items-center gap-1.5 border-2 border-black bg-zinc-50 px-2 py-1 text-xs cursor-pointer hover:bg-zinc-100 shadow-[1px_1px_0px_#000000]"
-              title={
-                session?.user
-                  ? `Authenticated Plan: ${usageStats.used}/${usageStats.limit} used`
-                  : `Guest Limit: ${usageStats.used}/2 used. Click to Sign In for 10!`
-              }
-            >
-              <span className="font-bold text-zinc-600 text-[11px]">QUOTA:</span>
-              <span
-                className={`font-black text-xs ${
-                  usageStats.remaining === 0
-                    ? 'text-rose-600'
-                    : usageStats.remaining <= 1
-                    ? 'text-amber-600'
-                    : 'text-black'
-                }`}
+            {session?.user ? (
+              <Link
+                href={`/${encodeURIComponent((session.user as any)?.id || session.user.email?.split('@')[0] || 'profile')}`}
+                className="flex items-center gap-1.5 border-2 border-black bg-zinc-50 px-2 py-1 text-xs cursor-pointer hover:bg-[#ccff00] shadow-[1px_1px_0px_#000000] transition-colors"
+                title={`Authenticated Plan: ${usageStats.used}/${usageStats.limit} used. Click to view profile.`}
               >
-                {usageStats.used}/{usageStats.limit}
-              </span>
-
-              {!session?.user && (
+                <span className="font-bold text-zinc-600 text-[11px]">QUOTA:</span>
+                <span
+                  className={`font-black text-xs ${
+                    usageStats.remaining === 0
+                      ? 'text-rose-600'
+                      : usageStats.remaining <= 1
+                      ? 'text-amber-600'
+                      : 'text-black'
+                  }`}
+                >
+                  {usageStats.used}/{usageStats.limit}
+                </span>
+              </Link>
+            ) : (
+              <div
+                onClick={() => setShowAuthModal(true)}
+                className="flex items-center gap-1.5 border-2 border-black bg-zinc-50 px-2 py-1 text-xs cursor-pointer hover:bg-zinc-100 shadow-[1px_1px_0px_#000000]"
+                title="Guest Limit: 2 used. Click to Sign In for 10!"
+              >
+                <span className="font-bold text-zinc-600 text-[11px]">QUOTA:</span>
+                <span className="font-black text-xs text-black">
+                  {usageStats.used}/{usageStats.limit}
+                </span>
                 <span className="text-[9px] bg-black text-[#ccff00] px-1 font-bold">
                   UNLOCK 10
                 </span>
-              )}
-            </div>
+              </div>
+            )}
 
             {/* PWA Install Button */}
             <PWAInstallButton />
@@ -180,18 +184,18 @@ export function GlobalNavbar() {
               <span className="text-[11px]">UPGRADE TO PRO</span>
             </Link>
 
-            {/* 3. User Authentication Button / Profile Pill */}
+            {/* 3. User Authentication Button / Direct Link to /[userid] */}
             {session?.user ? (
-              <button
-                type="button"
-                onClick={() => setShowProfileModal(true)}
+              <Link
+                href={`/${encodeURIComponent((session.user as any)?.id || session.user.email?.split('@')[0] || 'profile')}`}
                 className="border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-2.5 py-1 text-xs font-black flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#000000] cursor-pointer"
+                title="Open User Profile & Entitlements"
               >
                 <User className="w-3.5 h-3.5" />
                 <span className="truncate max-w-[110px]">
                   {session.user.name?.split(' ')[0] || 'Profile'}
                 </span>
-              </button>
+              </Link>
             ) : (
               <button
                 type="button"
@@ -236,20 +240,6 @@ export function GlobalNavbar() {
           refreshUsage();
         }}
         onSuccess={() => {
-          refreshUsage();
-        }}
-      />
-
-      {/* User Profile Modal */}
-      <UserProfileModal
-        isOpen={showProfileModal}
-        onClose={() => {
-          setShowProfileModal(false);
-          refreshUsage();
-        }}
-        monetizationMode={monetizationMode}
-        onToggleMonetizationMode={handleToggleMonetizationMode}
-        onProfileUpdated={() => {
           refreshUsage();
         }}
       />

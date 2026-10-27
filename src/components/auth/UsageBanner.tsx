@@ -119,16 +119,6 @@ export const UsageBanner: React.FC<UsageBannerProps> = ({
         )}
       </div>
 
-      {/* 2. Single Exclusive Monetization UI (Only 1 active based on env feature flag mode) */}
-      {showMonetization && (
-        <MonetizationBanner
-          monetizationMode={monetizationMode}
-          onOpenUpgrade={() => {
-            window.location.href = '/tip';
-          }}
-        />
-      )}
-
       {/* Auth Modal */}
       <AuthModal
         isOpen={showAuthModal}

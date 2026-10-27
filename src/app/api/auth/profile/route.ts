@@ -1,18 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
-import { findUserByEmail, updateUserProfile } from '@/lib/db-users';
+import { findUserByEmail, findUserById, updateUserProfile } from '@/lib/db-users';
 
 export async function GET(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const email = session?.user?.email || req.nextUrl.searchParams.get('email');
+    const userId = req.nextUrl.searchParams.get('userId');
+    const email = req.nextUrl.searchParams.get('email') || session?.user?.email;
 
-    if (!email) {
+    if (!session?.user && !userId && !email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const user = await findUserByEmail(email);
+    let user = null;
+    if (userId) {
+      user = await findUserById(userId);
+    }
+    if (!user && email) {
+      user = await findUserByEmail(email);
+    }
+    if (!user && session?.user?.email) {
+      user = await findUserByEmail(session.user.email);
+    }
+
     if (!user) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }

@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import {
   ArrowLeft,
@@ -21,12 +22,13 @@ import {
   Lock,
   ArrowRight,
   RefreshCw,
-  ExternalLink,
   Ticket,
   Tag,
   Percent,
+  Sliders,
+  CheckSquare,
 } from 'lucide-react';
-import { NEDJECT_PLANS, PlanConfig } from '@/lib/razorpay';
+import { NEDJECT_PLANS } from '@/lib/razorpay';
 import { getUsageStats, UsageStats, setLocalUsageCount } from '@/lib/usage-limits';
 
 declare global {
@@ -35,25 +37,51 @@ declare global {
   }
 }
 
-export default function PlansAndPaymentPage() {
+interface AppliedCouponInfo {
+  coupon: {
+    code: string;
+    description: string;
+    discountType: 'percentage' | 'fixed';
+    discountValue: number;
+    planRestriction?: string;
+  };
+  discountAmount: number;
+  finalAmount: number;
+  currency: 'INR' | 'USD';
+  isFree: boolean;
+}
+
+function PaymentContent() {
+  const searchParams = useSearchParams();
   const { data: session, update: updateSession } = useSession();
+
+  const initialPlan = searchParams?.get('plan') === 'enterprise' ? 'enterprise' : 'pro';
+  const initialCoupon = searchParams?.get('coupon') || '';
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
   const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
-  const [selectedPlanId, setSelectedPlanId] = useState<'pro' | 'enterprise'>('pro');
+  const [selectedPlanId, setSelectedPlanId] = useState<'pro' | 'enterprise'>(initialPlan);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Coupon state
+  const [couponInput, setCouponInput] = useState(initialCoupon);
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<AppliedCouponInfo | null>(null);
+
   const [paymentSuccess, setPaymentSuccess] = useState<{
     planName: string;
     paymentId: string;
     orderId: string;
     amount: string;
+    couponCode?: string;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [razorpayStatus, setRazorpayStatus] = useState<{
     isConfigured: boolean;
     keyId: string;
   }>({ isConfigured: false, keyId: 'rzp_test_mock_mode' });
-
   const [usageStats, setUsageStats] = useState<UsageStats>({
     used: 0,
     limit: 2,
@@ -90,23 +118,134 @@ export default function PlansAndPaymentPage() {
     }
   }, [session]);
 
+  // If initial coupon in URL, apply it automatically
+  useEffect(() => {
+    if (initialCoupon) {
+      handleApplyCoupon(initialCoupon);
+    }
+  }, [initialCoupon]);
+
   const activePlan = ((session?.user as any)?.plan || 'free') as 'free' | 'pro' | 'enterprise';
 
-  // Handle Razorpay checkout trigger
-  const handleInitiateRazorpay = async (planId: 'pro' | 'enterprise') => {
+  // Apply Coupon code
+  const handleApplyCoupon = async (codeOverride?: string) => {
+    const code = (codeOverride || couponInput).trim().toUpperCase();
+    if (!code) {
+      setCouponError('Please enter a coupon or promo voucher code.');
+      return;
+    }
+
+    setCouponLoading(true);
+    setCouponError(null);
+    setCouponSuccess(null);
+
+    try {
+      const res = await fetch('/api/coupons/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code,
+          planId: selectedPlanId,
+          billingCycle,
+          currency,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.valid) {
+        setCouponError(data.error || 'Invalid or expired coupon code.');
+        setAppliedCoupon(null);
+      } else {
+        setAppliedCoupon(data);
+        setCouponInput(data.coupon.code);
+        setCouponSuccess(
+          data.isFreeUpgrade
+            ? `PROMO CODE ${data.coupon.code} VERIFIED: 100% FREE UPGRADE UNLOCKED!`
+            : `COUPON ${data.coupon.code} APPLIED: Saved ${currency === 'INR' ? '₹' : '$'}${data.discountAmount} (${data.coupon.description})`
+        );
+      }
+    } catch (err: any) {
+      setCouponError(err.message || 'Failed to validate coupon code.');
+      setAppliedCoupon(null);
+    } finally {
+      setCouponLoading(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponError(null);
+    setCouponSuccess(null);
+    setCouponInput('');
+  };
+
+  // Calculate pricing breakdown for plan
+  const getPlanPrice = (planId: 'pro' | 'enterprise') => {
+    const planConfig = NEDJECT_PLANS[planId];
+    const orig =
+      currency === 'INR'
+        ? billingCycle === 'yearly'
+          ? planConfig.yearlyInr
+          : planConfig.monthlyInr
+        : billingCycle === 'yearly'
+        ? planConfig.yearlyUsd
+        : planConfig.monthlyUsd;
+
+    if (
+      appliedCoupon &&
+      (!appliedCoupon.coupon.planRestriction ||
+        appliedCoupon.coupon.planRestriction === 'all' ||
+        appliedCoupon.coupon.planRestriction === planId)
+    ) {
+      let discount = 0;
+      if (appliedCoupon.coupon.discountType === 'percentage') {
+        discount = Math.round((orig * appliedCoupon.coupon.discountValue) / 100);
+      } else {
+        discount = appliedCoupon.coupon.discountValue;
+      }
+      const final = Math.max(0, orig - discount);
+      return {
+        origAmount: orig,
+        finalAmount: final,
+        discountAmount: discount,
+        origDisplay: `${currency === 'INR' ? '₹' : '$'}${orig.toLocaleString()}`,
+        finalDisplay: `${currency === 'INR' ? '₹' : '$'}${final.toLocaleString()}`,
+        isFree: final === 0,
+        hasDiscount: discount > 0,
+      };
+    }
+
+    return {
+      origAmount: orig,
+      finalAmount: orig,
+      discountAmount: 0,
+      origDisplay: `${currency === 'INR' ? '₹' : '$'}${orig.toLocaleString()}`,
+      finalDisplay: `${currency === 'INR' ? '₹' : '$'}${orig.toLocaleString()}`,
+      isFree: false,
+      hasDiscount: false,
+    };
+  };
+
+  // Handle Pay / Upgrade trigger for chosen plan
+  const handlePayToPlan = async (planId: 'pro' | 'enterprise') => {
     setIsProcessing(true);
     setErrorMessage(null);
     setPaymentSuccess(null);
     setSelectedPlanId(planId);
 
+    const priceInfo = getPlanPrice(planId);
+    const couponCode = appliedCoupon?.coupon?.code;
+
     try {
-      // 1. Create order on server
+      // 1. Create order on server with coupon validation
       const orderRes = await fetch('/api/razorpay/order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           planId,
           billingCycle,
+          currency,
+          couponCode,
           email: session?.user?.email,
           name: session?.user?.name,
         }),
@@ -114,24 +253,40 @@ export default function PlansAndPaymentPage() {
 
       if (!orderRes.ok) {
         const errData = await orderRes.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to create Razorpay payment order');
+        throw new Error(errData.error || 'Failed to create payment order');
       }
 
       const orderData = await orderRes.json();
-      const planConfig = NEDJECT_PLANS[planId];
-      const displayAmount =
-        currency === 'INR'
-          ? `₹${billingCycle === 'yearly' ? planConfig.yearlyInr : planConfig.monthlyInr}`
-          : `$${billingCycle === 'yearly' ? planConfig.yearlyUsd : planConfig.monthlyUsd}`;
+      const displayAmount = priceInfo.isFree
+        ? '₹0 (100% FREE PROMO PASS)'
+        : priceInfo.finalDisplay;
 
-      // 2. Check if real Razorpay SDK is loaded and credentials exist
+      // 2. Check if this is a 100% Free Upgrade (Promotional Voucher)
+      if (orderData.isFreeUpgrade || orderData.amount === 0) {
+        setTimeout(async () => {
+          await verifyPayment({
+            razorpay_order_id: orderData.orderId,
+            razorpay_payment_id: `pay_promo_free_${Date.now()}`,
+            razorpay_signature: 'promo_free_voucher_approved',
+            planId,
+            isMock: true,
+            displayAmount,
+            couponCode,
+          });
+        }, 800);
+        return;
+      }
+
+      // 3. Real Razorpay SDK check
       if (window.Razorpay && !orderData.isMock && razorpayStatus.isConfigured) {
         const options = {
           key: orderData.keyId,
           amount: orderData.amount,
           currency: orderData.currency || 'INR',
-          name: 'Nedject',
-          description: `${orderData.planName} (${billingCycle.toUpperCase()} BILLING)`,
+          name: 'Nedject genQRstudio',
+          description: `${orderData.planName} (${billingCycle.toUpperCase()} BILLING)${
+            couponCode ? ` • CODE ${couponCode}` : ''
+          }`,
           image: '/public/file.svg',
           order_id: orderData.orderId,
           handler: async function (response: any) {
@@ -142,6 +297,7 @@ export default function PlansAndPaymentPage() {
               planId,
               isMock: false,
               displayAmount,
+              couponCode,
             });
           },
           prefill: {
@@ -160,13 +316,12 @@ export default function PlansAndPaymentPage() {
 
         const rzpInstance = new window.Razorpay(options);
         rzpInstance.on('payment.failed', function (resp: any) {
-          setErrorMessage(resp.error?.description || 'Razorpay payment was rejected or failed.');
+          setErrorMessage(resp.error?.description || 'Payment was rejected or failed.');
           setIsProcessing(false);
         });
         rzpInstance.open();
       } else {
-        // 3. Sandbox / Instant Activation Mode (Works out-of-the-box!)
-        // Simulate real payment confirmation for sandbox testing
+        // 4. Sandbox / Instant Activation Mode
         setTimeout(async () => {
           await verifyPayment({
             razorpay_order_id: orderData.orderId,
@@ -175,6 +330,7 @@ export default function PlansAndPaymentPage() {
             planId,
             isMock: true,
             displayAmount,
+            couponCode,
           });
         }, 1200);
       }
@@ -193,6 +349,7 @@ export default function PlansAndPaymentPage() {
     planId,
     isMock,
     displayAmount,
+    couponCode,
   }: {
     razorpay_order_id: string;
     razorpay_payment_id: string;
@@ -200,6 +357,7 @@ export default function PlansAndPaymentPage() {
     planId: 'pro' | 'enterprise';
     isMock: boolean;
     displayAmount: string;
+    couponCode?: string;
   }) => {
     try {
       const verifyRes = await fetch('/api/razorpay/verify', {
@@ -211,12 +369,12 @@ export default function PlansAndPaymentPage() {
           razorpay_signature,
           planId,
           isMock,
+          couponCode,
           email: session?.user?.email,
         }),
       });
 
       const verifyData = await verifyRes.json();
-
       if (!verifyRes.ok) {
         throw new Error(verifyData.error || 'Payment signature verification failed');
       }
@@ -237,6 +395,7 @@ export default function PlansAndPaymentPage() {
         paymentId: verifyData.paymentId || razorpay_payment_id,
         orderId: razorpay_order_id,
         amount: displayAmount,
+        couponCode,
       });
 
       // Update local usage stats
@@ -249,23 +408,44 @@ export default function PlansAndPaymentPage() {
     }
   };
 
+  const selectedPriceInfo = getPlanPrice(selectedPlanId);
+  const userSlug = (session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile';
+
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-mono selection:bg-[#ccff00] selection:text-black flex flex-col">
       {/* 1. TOP HEADER / BREADCRUMBS */}
-      <header className="border-b-4 border-black bg-white">
-        <div className="max-w-6xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-4">
-          <Link
-            href="/"
-            className="flex items-center gap-2 font-black text-xs uppercase hover:bg-black hover:text-[#ccff00] px-3.5 py-2 border-2 border-black transition-colors shadow-[2px_2px_0px_#000000]"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>BACK TO GENERATOR</span>
-          </Link>
+      <header className="border-b-4 border-black bg-white sticky top-0 z-20">
+        <div className="max-w-6xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="flex items-center gap-2 font-black text-xs uppercase hover:bg-black hover:text-[#ccff00] px-3.5 py-2 border-2 border-black transition-colors shadow-[2px_2px_0px_#000000]"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>BACK TO STUDIO</span>
+            </Link>
+
+            {session?.user && (
+              <Link
+                href={`/${encodeURIComponent(userSlug)}`}
+                className="flex items-center gap-1.5 font-black text-xs uppercase bg-white hover:bg-[#ccff00] px-3 py-2 border-2 border-black transition-colors shadow-[2px_2px_0px_#000000]"
+              >
+                <span>MY PROFILE</span>
+              </Link>
+            )}
+          </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/admin/coupons"
+              className="border-2 border-black bg-white hover:bg-[#ccff00] text-black px-3 py-1.5 text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] transition-colors"
+            >
+              <Ticket className="w-3.5 h-3.5" />
+              <span>COUPON MATRIX</span>
+            </Link>
             <div className="border-2 border-black bg-[#fafaf5] px-3 py-1.5 text-xs font-black flex items-center gap-2 shadow-[2px_2px_0px_#000000]">
               <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black inline-block" />
-              <span>CURRENT STATUS: {activePlan.toUpperCase()}</span>
+              <span>STATUS: {activePlan.toUpperCase()}</span>
               <span className="text-zinc-400">|</span>
               <span className="text-zinc-600">
                 {activePlan === 'pro' || activePlan === 'enterprise'
@@ -278,8 +458,7 @@ export default function PlansAndPaymentPage() {
       </header>
 
       {/* 2. MAIN CONTENT AREA */}
-      <main className="max-w-6xl mx-auto w-full px-4 py-10 flex-1 space-y-10">
-        
+      <main className="max-w-6xl mx-auto w-full px-4 py-8 flex-1 space-y-8">
         {/* HERO TITLE BLOCK */}
         <div className="border-4 border-black bg-white p-6 sm:p-8 shadow-[8px_8px_0px_#000000] space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-black pb-4">
@@ -296,7 +475,6 @@ export default function PlansAndPaymentPage() {
                 </p>
               </div>
             </div>
-
             <div className="flex items-center gap-2 text-xs font-black bg-zinc-100 border-2 border-black px-3 py-1.5 shadow-[2px_2px_0px_#000000]">
               <ShieldCheck className="w-4 h-4 text-emerald-600" />
               <span>256-BIT ENCRYPTED SECURE CHECKOUT</span>
@@ -361,6 +539,265 @@ export default function PlansAndPaymentPage() {
           </div>
         </div>
 
+        {/* ========================================================================= */}
+        {/* INTERACTIVE ORDER PREVIEW & PAY TO PLAN (REQUESTED BY USER)              */}
+        {/* ========================================================================= */}
+        <div className="border-4 border-black bg-[#f4fde8] p-6 sm:p-7 shadow-[10px_10px_0px_#000000] space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-black pb-4">
+            <div className="space-y-1">
+              <div className="text-[11px] font-black uppercase tracking-wider text-emerald-900 bg-[#ccff00] px-2.5 py-0.5 border border-black inline-block shadow-[1px_1px_0px_#000000]">
+                SELECTED PLAN CHECKOUT PREVIEW
+              </div>
+              <h2 className="text-lg sm:text-xl font-black uppercase text-black tracking-tight flex items-center gap-2">
+                <span>CHOSEN PLAN:</span>
+                <span className="bg-black text-[#ccff00] px-3 py-0.5 border border-black">
+                  {selectedPlanId === 'pro' ? 'PRO STUDIO' : 'ENTERPRISE MATRIX'}
+                </span>
+                <span className="text-zinc-500 text-xs font-bold">
+                  ({billingCycle.toUpperCase()} BILLING)
+                </span>
+              </h2>
+            </div>
+
+            {/* Plan switcher tabs */}
+            <div className="flex items-center border-2 border-black bg-white shadow-[3px_3px_0px_#000000]">
+              <button
+                type="button"
+                onClick={() => setSelectedPlanId('pro')}
+                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors cursor-pointer ${
+                  selectedPlanId === 'pro'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                PRO STUDIO
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPlanId('enterprise')}
+                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors border-l-2 border-black cursor-pointer ${
+                  selectedPlanId === 'enterprise'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                ENTERPRISE MATRIX
+              </button>
+            </div>
+          </div>
+
+          {/* EXACT TEXT REQUESTED: "admin subscription provisioner set all plan bases have set" */}
+          <div className="border-2 border-black bg-white p-3.5 shadow-[3px_3px_0px_#000000] flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-6 h-6 border border-black bg-[#ccff00] flex items-center justify-center shrink-0">
+                <Check className="w-4 h-4 text-black font-black" />
+              </div>
+              <div>
+                <span className="font-mono text-xs font-black uppercase tracking-tight text-black block">
+                  admin subscription provisioner set all plan bases have set
+                </span>
+                <span className="text-[11px] text-zinc-600 font-bold block">
+                  All optical calibration channels, pHYs chunks, and unlimited generations unlocked upon payment.
+                </span>
+              </div>
+            </div>
+            <span className="bg-emerald-100 text-emerald-900 border border-black text-[10px] font-black px-2 py-0.5 uppercase">
+              PROVISIONER VERIFIED
+            </span>
+          </div>
+
+          {/* ALL SETTINGS FOR COUPON */}
+          <div className="border-2 border-black bg-white p-5 space-y-4 shadow-[3px_3px_0px_#000000]">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/20 pb-3">
+              <div className="flex items-center gap-2">
+                <Ticket className="w-4 h-4 text-black" />
+                <h4 className="text-xs font-black uppercase text-black">
+                  ALL SETTINGS FOR COUPON &amp; DISCOUNT VOUCHER
+                </h4>
+              </div>
+              <span className="text-[10px] text-zinc-500 font-bold uppercase">
+                ADMIN DISCOUNT ENGINE ACTIVE
+              </span>
+            </div>
+
+            {/* Coupon input */}
+            <div className="flex flex-col sm:flex-row items-stretch gap-2">
+              <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
+                  <Tag className="w-3.5 h-3.5" />
+                </div>
+                <input
+                  type="text"
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleApplyCoupon();
+                    }
+                  }}
+                  placeholder="ENTER PROMO CODE (e.g. WINTER2026, PRO100FREE)"
+                  className="w-full pl-9 pr-3 py-2 border-2 border-black bg-zinc-50 font-mono font-black text-xs uppercase tracking-wider focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#ccff00]"
+                />
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={couponLoading || !couponInput.trim()}
+                  onClick={() => handleApplyCoupon()}
+                  className="px-4 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase tracking-wider transition-all shadow-[2px_2px_0px_#000000] disabled:opacity-50 cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  {couponLoading ? (
+                    <>
+                      <RefreshCw className="w-3 h-3 animate-spin" />
+                      <span>CHECKING...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>APPLY COUPON</span>
+                    </>
+                  )}
+                </button>
+
+                {appliedCoupon && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveCoupon}
+                    className="px-3 py-2 border-2 border-black bg-rose-50 text-rose-700 hover:bg-rose-100 font-black text-xs uppercase transition-colors shadow-[2px_2px_0px_#000000] cursor-pointer"
+                  >
+                    REMOVE
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Available Admin Coupon Settings Chips */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[10px] font-black uppercase text-zinc-500 flex items-center gap-1">
+                <Percent className="w-3 h-3" />
+                AVAILABLE ADMIN COUPON SETTINGS (CLICK TO APPLY):
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { code: 'WINTER2026', label: '50% OFF ANY PLAN', tag: 'OFFICIAL' },
+                  { code: 'PRO100FREE', label: '100% FREE UPGRADE', tag: 'PROMO PASS' },
+                  { code: 'FESTIVAL30', label: '30% OFF', tag: 'SAVINGS' },
+                  { code: 'SAVE200', label: 'FLAT ₹200 OFF', tag: 'INSTANT' },
+                ].map((c) => (
+                  <button
+                    key={c.code}
+                    type="button"
+                    onClick={() => handleApplyCoupon(c.code)}
+                    className={`px-2.5 py-1 border border-black font-mono text-[11px] font-black tracking-tight transition-all shadow-[1px_1px_0px_#000000] cursor-pointer flex items-center gap-1.5 ${
+                      appliedCoupon?.coupon?.code === c.code
+                        ? 'bg-black text-[#ccff00]'
+                        : 'bg-[#fafaf5] hover:bg-[#ccff00] text-black'
+                    }`}
+                  >
+                    <span>{c.code}</span>
+                    <span className="text-[10px] font-bold text-emerald-800 bg-white/80 px-1 border border-black/40">
+                      {c.label}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Live Coupon Feedback */}
+            {couponSuccess && (
+              <div className="border border-black bg-emerald-50 text-emerald-950 p-2 text-xs font-bold flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>{couponSuccess}</span>
+              </div>
+            )}
+
+            {couponError && (
+              <div className="border border-black bg-rose-50 text-rose-950 p-2 text-xs font-bold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                <span>{couponError}</span>
+              </div>
+            )}
+          </div>
+
+          {/* PREVIEW BREAKDOWN & PAY TO PLAN BUTTON */}
+          <div className="border-2 border-black bg-white p-5 shadow-[4px_4px_0px_#000000] space-y-4">
+            <h4 className="text-xs font-black uppercase text-black border-b border-black/20 pb-2 flex items-center justify-between">
+              <span>ORDER BILLING BREAKDOWN // {selectedPlanId.toUpperCase()}</span>
+              <span className="text-zinc-500 font-bold">{billingCycle.toUpperCase()} INTERVAL</span>
+            </h4>
+
+            <div className="space-y-2 text-xs font-mono">
+              <div className="flex justify-between items-center text-zinc-700">
+                <span>Base Plan Price ({selectedPlanId === 'pro' ? 'Pro Studio' : 'Enterprise'}):</span>
+                <span className="font-bold">{selectedPriceInfo.origDisplay}</span>
+              </div>
+
+              {selectedPriceInfo.hasDiscount && (
+                <div className="flex justify-between items-center text-emerald-700 font-bold bg-[#ccff00]/30 px-2 py-1 border border-black/30">
+                  <span>Coupon Voucher Discount ({appliedCoupon?.coupon.code}):</span>
+                  <span>
+                    {selectedPriceInfo.isFree
+                      ? '-100% (FREE PROMO)'
+                      : `-${currency === 'INR' ? '₹' : '$'}${selectedPriceInfo.discountAmount}`}
+                  </span>
+                </div>
+              )}
+
+              <div className="border-t-2 border-black pt-2 flex justify-between items-baseline">
+                <span className="font-black text-sm uppercase text-black">TOTAL PAYABLE NOW:</span>
+                <div className="text-right">
+                  {selectedPriceInfo.hasDiscount && (
+                    <span className="text-xs text-zinc-400 line-through font-bold block">
+                      {selectedPriceInfo.origDisplay}
+                    </span>
+                  )}
+                  <span className="text-2xl sm:text-3xl font-black text-black">
+                    {selectedPriceInfo.isFree ? '₹0' : selectedPriceInfo.finalDisplay}
+                  </span>
+                  {selectedPriceInfo.isFree && (
+                    <span className="text-[10px] text-emerald-700 font-black block uppercase">
+                      100% FREE PROMOTIONAL ACCESS
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* ACTION: PAY TO PLAN */}
+            <div className="pt-2 space-y-2">
+              <button
+                type="button"
+                disabled={isProcessing}
+                onClick={() => handlePayToPlan(selectedPlanId)}
+                className="w-full py-4 border-4 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-sm sm:text-base uppercase transition-all shadow-[6px_6px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center justify-center gap-3"
+              >
+                {isProcessing ? (
+                  <>
+                    <RefreshCw className="w-5 h-5 animate-spin text-[#ccff00]" />
+                    <span>PROCESSING ORDER &amp; PROVISIONING...</span>
+                  </>
+                ) : (
+                  <>
+                    <CreditCard className="w-5 h-5" />
+                    <span>
+                      {selectedPriceInfo.isFree
+                        ? 'CLAIM 100% FREE PROMO UPGRADE'
+                        : `PAY TO PLAN (${selectedPriceInfo.finalDisplay})`}
+                    </span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+              <div className="text-[10px] text-zinc-600 font-bold text-center flex items-center justify-center gap-1.5">
+                <Lock className="w-3 h-3 text-zinc-500" />
+                <span>Instant provisioning via UPI, Cards, NetBanking or 100% Free Promo Pass</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* SUCCESS NOTIFICATION CARD */}
         {paymentSuccess && (
           <div className="border-4 border-black bg-[#f0fde8] p-6 shadow-[8px_8px_0px_#000000] space-y-3 animate-in fade-in duration-200">
@@ -375,6 +812,11 @@ export default function PlansAndPaymentPage() {
                   </h3>
                   <p className="text-xs font-bold text-emerald-800 mt-0.5">
                     Your account has been upgraded to UNLIMITED 300/600 DPI exports and full tool access.
+                    {paymentSuccess.couponCode && (
+                      <span className="block mt-1 font-mono text-[11px] text-emerald-900">
+                        Redeemed with coupon voucher: <strong>{paymentSuccess.couponCode}</strong>
+                      </span>
+                    )}
                   </p>
                 </div>
               </div>
@@ -400,17 +842,17 @@ export default function PlansAndPaymentPage() {
 
             <div className="pt-2 flex flex-wrap gap-3">
               <Link
+                href={`/${encodeURIComponent(userSlug)}`}
+                className="px-4 py-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000]"
+              >
+                VIEW MY UPDATED PROFILE
+              </Link>
+              <Link
                 href="/"
                 className="px-4 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-2"
               >
                 <span>OPEN 300 DPI QR STUDIO</span>
                 <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-              <Link
-                href="/barcode-pick"
-                className="px-4 py-2 border-2 border-black bg-white hover:bg-zinc-100 text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000]"
-              >
-                OPEN BARCODE PICK
               </Link>
             </div>
           </div>
@@ -437,10 +879,7 @@ export default function PlansAndPaymentPage() {
 
         {/* 3. 3-TIER PRICING MATRIX CARDS */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-          
-          {/* ========================================================= */}
-          {/* TIER 1: FREE FOREVER                                      */}
-          {/* ========================================================= */}
+          {/* TIER 1: FREE FOREVER */}
           <div className="border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6">
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b-2 border-black pb-3">
@@ -482,13 +921,14 @@ export default function PlansAndPaymentPage() {
             </div>
           </div>
 
-          {/* ========================================================= */}
-          {/* TIER 2: PRO STUDIO (FEATURED)                             */}
-          {/* ========================================================= */}
-          <div className="border-4 border-black bg-[#f4fde8] p-6 sm:p-7 shadow-[10px_10px_0px_#000000] flex flex-col justify-between space-y-6 relative">
-            {/* Top Ribbon */}
+          {/* TIER 2: PRO STUDIO (FEATURED) */}
+          <div
+            className={`border-4 border-black bg-[#f4fde8] p-6 sm:p-7 shadow-[10px_10px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all ${
+              selectedPlanId === 'pro' ? 'ring-4 ring-[#ccff00]' : ''
+            }`}
+          >
             <div className="absolute -top-3.5 right-6 bg-black text-[#ccff00] text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
-              MOST POPULAR // CREATORS
+              {selectedPlanId === 'pro' ? 'CHOSEN PLAN // ACTIVE' : 'MOST POPULAR // CREATORS'}
             </div>
 
             <div className="space-y-4">
@@ -499,7 +939,7 @@ export default function PlansAndPaymentPage() {
                     PRO STUDIO
                   </span>
                 </div>
-                <div>
+                <div className="text-right">
                   <span className="text-3xl font-black text-black">
                     {currency === 'INR'
                       ? billingCycle === 'yearly'
@@ -539,33 +979,21 @@ export default function PlansAndPaymentPage() {
             <div className="space-y-2 pt-2">
               <button
                 type="button"
-                disabled={isProcessing}
-                onClick={() => handleInitiateRazorpay('pro')}
-                className="w-full py-3.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs sm:text-sm uppercase transition-all shadow-[4px_4px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
+                onClick={() => {
+                  setSelectedPlanId('pro');
+                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                }}
+                className={`w-full py-3.5 border-2 border-black font-black text-xs sm:text-sm uppercase transition-all shadow-[4px_4px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
+                  selectedPlanId === 'pro'
+                    ? 'bg-[#ccff00] text-black'
+                    : 'bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black'
+                }`}
               >
-                {isProcessing && selectedPlanId === 'pro' ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin text-[#ccff00]" />
-                    <span>INITIALIZING SECURE CHECKOUT...</span>
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="w-4 h-4" />
-                    <span>
-                      UPGRADE TO PRO STUDIO (
-                      {currency === 'INR'
-                        ? billingCycle === 'yearly'
-                          ? '₹3,999'
-                          : '₹499'
-                        : billingCycle === 'yearly'
-                        ? '$79'
-                        : '$9'}
-                      )
-                    </span>
-                  </>
-                )}
+                <CheckSquare className="w-4 h-4" />
+                <span>
+                  {selectedPlanId === 'pro' ? 'CHOSEN PLAN (CHECKOUT ABOVE)' : 'SELECT PRO STUDIO'}
+                </span>
               </button>
-
               <div className="text-[10px] text-zinc-600 font-bold text-center flex items-center justify-center gap-1">
                 <Lock className="w-3 h-3 text-zinc-500" />
                 <span>Instant activation via UPI, Cards, NetBanking</span>
@@ -573,14 +1001,22 @@ export default function PlansAndPaymentPage() {
             </div>
           </div>
 
-          {/* ========================================================= */}
-          {/* TIER 3: ENTERPRISE MATRIX                                 */}
-          {/* ========================================================= */}
-          <div className="border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6">
+          {/* TIER 3: ENTERPRISE MATRIX */}
+          <div
+            className={`border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all ${
+              selectedPlanId === 'enterprise' ? 'ring-4 ring-black bg-zinc-50' : ''
+            }`}
+          >
+            {selectedPlanId === 'enterprise' && (
+              <div className="absolute -top-3.5 right-6 bg-black text-[#ccff00] text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
+                CHOSEN PLAN // ACTIVE
+              </div>
+            )}
+
             <div className="space-y-4">
               <div className="flex items-baseline justify-between border-b-2 border-black pb-3">
                 <span className="font-black text-sm uppercase text-black">ENTERPRISE MATRIX</span>
-                <div>
+                <div className="text-right">
                   <span className="text-2xl font-black text-black">
                     {currency === 'INR'
                       ? billingCycle === 'yearly'
@@ -618,29 +1054,28 @@ export default function PlansAndPaymentPage() {
             <div className="space-y-2 pt-2">
               <button
                 type="button"
-                disabled={isProcessing}
-                onClick={() => handleInitiateRazorpay('enterprise')}
-                className="w-full py-3 border-2 border-black bg-white hover:bg-black hover:text-[#ccff00] text-black font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
+                onClick={() => {
+                  setSelectedPlanId('enterprise');
+                  window.scrollTo({ top: 300, behavior: 'smooth' });
+                }}
+                className={`w-full py-3 border-2 border-black font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
+                  selectedPlanId === 'enterprise'
+                    ? 'bg-[#ccff00] text-black'
+                    : 'bg-white hover:bg-black hover:text-[#ccff00] text-black'
+                }`}
               >
-                {isProcessing && selectedPlanId === 'enterprise' ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    <span>INITIALIZING CHECKOUT...</span>
-                  </>
-                ) : (
-                  <>
-                    <Zap className="w-4 h-4" />
-                    <span>ACTIVATE ENTERPRISE</span>
-                  </>
-                )}
+                <Zap className="w-4 h-4" />
+                <span>
+                  {selectedPlanId === 'enterprise'
+                    ? 'CHOSEN PLAN (CHECKOUT ABOVE)'
+                    : 'SELECT ENTERPRISE'}
+                </span>
               </button>
-
               <div className="text-[10px] text-zinc-500 font-bold text-center">
                 Includes REST API key &amp; direct support by neerajrekwar
               </div>
             </div>
           </div>
-
         </div>
 
         {/* 4. PAYMENT METHODS & TRUST BADGES */}
@@ -743,53 +1178,29 @@ export default function PlansAndPaymentPage() {
             </tbody>
           </table>
         </div>
-
-        {/* 6. FAQ & DEVELOPER CONTACT */}
-        <div className="border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] space-y-4">
-          <div className="flex items-center gap-2 border-b-2 border-black pb-3">
-            <HelpCircle className="w-4 h-4 text-black" />
-            <h3 className="text-sm font-black uppercase text-black">
-              FREQUENTLY ASKED QUESTIONS &amp; GUARANTEE
-            </h3>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-sans">
-            <div className="space-y-1">
-              <h4 className="font-mono font-black text-black uppercase">How does checkout &amp; instant activation work?</h4>
-              <p className="text-zinc-600 leading-relaxed font-medium">
-                You can pay securely using UPI (Google Pay, PhonePe, Paytm), Credit or Debit cards, NetBanking, and Wallets. Once payment is authorized, your account is immediately upgraded to Pro without waiting.
-              </p>
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-mono font-black text-black uppercase">Can I cancel anytime?</h4>
-              <p className="text-zinc-600 leading-relaxed font-medium">
-                Yes. There are zero lock-in contracts. You can switch between Monthly and Annual billing or cancel anytime with one click in your profile settings.
-              </p>
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-mono font-black text-black uppercase">What is the 300/600 DPI calibration?</h4>
-              <p className="text-zinc-600 leading-relaxed font-medium">
-                Standard web generators output low-resolution 72 or 96 DPI images that become fuzzy when printed. Nedject injects standard pHYs PNG chunks calibrated at 11,811 pixels per meter (300 DPI) for crisp commercial press printing.
-              </p>
-            </div>
-            <div className="space-y-1">
-              <h4 className="font-mono font-black text-black uppercase">Need custom invoice or business support?</h4>
-              <p className="text-zinc-600 leading-relaxed font-medium">
-                Nedject is developed by neerajrekwar. If your company requires a GST invoice, bulk license, or custom barcode integrations, email directly at{' '}
-                <a href="mailto:dev.neerajrekwar@gmail.com" className="font-mono font-black text-black underline">
-                  dev.neerajrekwar@gmail.com
-                </a>.
-              </p>
-            </div>
-          </div>
-        </div>
-
       </main>
 
-      {/* 7. FOOTER */}
+      {/* 6. FOOTER */}
       <footer className="border-t-2 border-black bg-white py-4 px-4 font-mono text-xs text-center text-zinc-600">
         Nedject // Developed by neerajrekwar • Industrial Optical Matrix &amp; Pro Subscription Engine
       </footer>
     </div>
+  );
+}
+
+export default function PlansAndPaymentPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-[#f5f5f0] text-black font-mono flex items-center justify-center">
+          <div className="border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] text-center space-y-2">
+            <RefreshCw className="w-6 h-6 animate-spin mx-auto text-black" />
+            <p className="text-xs font-black uppercase">INITIALIZING CHECKOUT MATRIX...</p>
+          </div>
+        </div>
+      }
+    >
+      <PaymentContent />
+    </Suspense>
   );
 }

@@ -54,6 +54,32 @@ export async function findUserByEmail(email: string): Promise<UserProfile | null
   return memoryUsers.get(normalizedEmail) || null;
 }
 
+export async function findUserById(idOrEmail: string): Promise<UserProfile | null> {
+  if (!idOrEmail) return null;
+  const decoded = decodeURIComponent(idOrEmail).trim();
+  const db = await getDb();
+  if (db) {
+    try {
+      if (/^[0-9a-fA-F]{24}$/.test(decoded)) {
+        const { ObjectId } = await import('mongodb');
+        const user = await db.collection<UserProfile>('users').findOne({ _id: new ObjectId(decoded) as any });
+        if (user) return { ...user, _id: user._id?.toString() };
+      }
+      const user = await db.collection<UserProfile>('users').findOne({
+        $or: [
+          { email: decoded.toLowerCase() },
+          { providerAccountId: decoded },
+        ],
+      });
+      if (user) return { ...user, _id: user._id?.toString() };
+    } catch (e) {
+      console.warn('Failed to find user by ID in MongoDB, checking fallback:', e);
+    }
+  }
+  return memoryUsers.get(decoded.toLowerCase()) || null;
+}
+
+
 export async function createUser(data: {
   name: string;
   email: string;
