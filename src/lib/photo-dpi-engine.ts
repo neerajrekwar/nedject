@@ -686,10 +686,10 @@ function drawHeritageFrame(
     ctx.bezierCurveTo(18 * scale, 40 * scale, 10 * scale, 24 * scale, 8 * scale, 8 * scale);
     ctx.stroke();
 
-    // Corner rosette dot
+    // Corner rosette dot (pure line ring, NO FILL)
     ctx.beginPath();
     ctx.arc(14 * scale, 14 * scale, 4 * scale, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.stroke();
 
     // Delicate feather line
     ctx.beginPath();
@@ -705,14 +705,11 @@ function drawHeritageFrame(
   drawCornerFlourish(pInset, h - pInset, 1, -1);
   drawCornerFlourish(w - pInset, h - pInset, -1, -1);
 
-  // Bottom Museum Plaque
+  // Bottom Museum Plaque (pure double line stroke, NO FILL)
   const plaqueW = Math.min(w * 0.75, Math.max(260, scale * 340));
   const plaqueH = Math.max(30, scale * 46);
   const plaqueX = (w - plaqueW) / 2;
   const plaqueY = h - inset - plaqueH - Math.max(4, scale * 8);
-
-  ctx.fillStyle = colors.background;
-  ctx.fillRect(plaqueX, plaqueY, plaqueW, plaqueH);
 
   ctx.strokeStyle = colors.accent;
   ctx.lineWidth = line2;
@@ -757,24 +754,25 @@ function drawVintageFrame(
   const perfRadius = Math.max(4, Math.round(scale * 7));
   const perfSpacing = perfRadius * 3;
 
-  ctx.fillStyle = '#ffffff';
-  // Top & bottom perforations
+  ctx.strokeStyle = colors.primary;
+  ctx.lineWidth = Math.max(1, scale * 1.5);
+  // Top & bottom perforations (pure line arcs, NO FILL)
   for (let x = perfSpacing; x < w - perfRadius; x += perfSpacing) {
     ctx.beginPath();
     ctx.arc(x, 0, perfRadius, 0, Math.PI);
-    ctx.fill();
+    ctx.stroke();
     ctx.beginPath();
     ctx.arc(x, h, perfRadius, Math.PI, Math.PI * 2);
-    ctx.fill();
+    ctx.stroke();
   }
-  // Left & right perforations
+  // Left & right perforations (pure line arcs, NO FILL)
   for (let y = perfSpacing; y < h - perfRadius; y += perfSpacing) {
     ctx.beginPath();
     ctx.arc(0, y, perfRadius, -Math.PI / 2, Math.PI / 2);
-    ctx.fill();
+    ctx.stroke();
     ctx.beginPath();
     ctx.arc(w, y, perfRadius, Math.PI / 2, (3 * Math.PI) / 2);
-    ctx.fill();
+    ctx.stroke();
   }
 
   // Double antique inner frame
@@ -1017,25 +1015,23 @@ function drawPassepartoutFrame(
   ctx.lineWidth = Math.max(1, scale * 1.5);
   ctx.strokeRect(10, 10, w - 20, h - 20);
 
-  // Bevel cut 45° shadow around inner photo edge
+  // Bevel cut 45° line strokes around inner photo edge (NO FILL)
   const bevel = Math.max(2, Math.round(scale * 4));
-  ctx.fillStyle = '#d4d4d8';
-  // Top bevel
+  ctx.strokeStyle = colors.pinstripe;
+  ctx.lineWidth = Math.max(1, scale);
+  // Bevel diagonal corner lines
   ctx.beginPath();
   ctx.moveTo(px, py);
-  ctx.lineTo(px + pw, py);
+  ctx.lineTo(px + bevel, py + bevel);
+  ctx.moveTo(px + pw, py);
   ctx.lineTo(px + pw - bevel, py + bevel);
-  ctx.lineTo(px + bevel, py + bevel);
-  ctx.fill();
-
-  // Left bevel
-  ctx.fillStyle = '#a1a1aa';
-  ctx.beginPath();
-  ctx.moveTo(px, py);
-  ctx.lineTo(px, py + ph);
+  ctx.moveTo(px, py + ph);
   ctx.lineTo(px + bevel, py + ph - bevel);
-  ctx.lineTo(px + bevel, py + bevel);
-  ctx.fill();
+  ctx.moveTo(px + pw, py + ph);
+  ctx.lineTo(px + pw - bevel, py + ph - bevel);
+  ctx.stroke();
+  // Inner bevel rectangle
+  ctx.strokeRect(px + bevel, py + bevel, pw - bevel * 2, ph - bevel * 2);
 
   // Fine floating hairline offset by 8px
   const fOffset = Math.max(6, Math.round(scale * 8));

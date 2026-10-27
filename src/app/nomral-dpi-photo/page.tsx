@@ -847,8 +847,8 @@ export default function NormalDPIPhotoPage() {
 
           {/* Row 2: Optional Frame Quick Switcher */}
           <div className="flex flex-col gap-2 pt-2 border-t border-zinc-200">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 w-full min-w-0">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
                 <Frame className="w-3.5 h-3.5 text-black" />
                 <span className="font-mono text-xs font-black uppercase text-black tracking-wider whitespace-nowrap">
                   CANVAS FRAME (OPTIONAL):
@@ -871,8 +871,8 @@ export default function NormalDPIPhotoPage() {
               </div>
 
               {/* Master Dropdown for all 51 Frames */}
-              <div className="flex items-center gap-2">
-                <label className="font-mono text-[10px] font-bold text-zinc-500 uppercase whitespace-nowrap">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2 w-full sm:w-auto min-w-0">
+                <label className="font-mono text-[10px] font-bold text-zinc-500 uppercase whitespace-nowrap shrink-0">
                   PICK ANY FRAME:
                 </label>
                 <select
@@ -886,7 +886,7 @@ export default function NormalDPIPhotoPage() {
                     }
                     showToast(chosenId === 'none' ? 'Canvas Frame: OFF (Clean Full-Bleed)' : `Canvas Frame: ${match?.label || chosenId}`);
                   }}
-                  className="font-mono text-xs font-bold border-2 border-black bg-white px-2 py-1 shadow-[2px_2px_0px_#000000] cursor-pointer focus:outline-none"
+                  className="w-full sm:w-auto max-w-full sm:max-w-xs md:max-w-sm min-w-0 font-mono text-xs font-bold border-2 border-black bg-white px-2 py-1.5 shadow-[2px_2px_0px_#000000] cursor-pointer focus:outline-none truncate"
                 >
                   <option value="none">✕ None (100% Borderless Full-Bleed)</option>
                   <optgroup label="── 1. FLOWER BLOOM (5 STYLES) ──">
