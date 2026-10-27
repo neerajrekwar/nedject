@@ -22,6 +22,9 @@ import {
   ArrowRight,
   RefreshCw,
   ExternalLink,
+  Ticket,
+  Tag,
+  Percent,
 } from 'lucide-react';
 import { NEDJECT_PLANS, PlanConfig } from '@/lib/razorpay';
 import { getUsageStats, UsageStats, setLocalUsageCount } from '@/lib/usage-limits';

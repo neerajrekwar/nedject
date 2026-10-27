@@ -20,6 +20,7 @@ import {
   Sliders,
   Terminal,
   Activity,
+  Ticket,
 } from 'lucide-react';
 import { clearAdminSession, AdminUser } from '@/lib/admin-auth';
 
@@ -55,6 +56,13 @@ export function AdminSidebar({ user, isOpen = true, onClose }: AdminSidebarProps
           icon: Users,
           badge: 'TIERS',
           activeMatch: (p: string) => p === '/admin/users',
+        },
+        {
+          title: 'Coupon Codes',
+          href: '/admin/coupons',
+          icon: Ticket,
+          badge: 'PROMO',
+          activeMatch: (p: string) => p.startsWith('/admin/coupons'),
         },
         {
           title: 'Studio Audit Log',
