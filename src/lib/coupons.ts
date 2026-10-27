@@ -14,6 +14,8 @@ export interface Coupon {
   timesRedeemed: number;
   expiresAt: string | null; // ISO string or null
   isActive: boolean;
+  isPinned?: boolean; // Only coupons with isPinned === true are displayed on public /payment checkout
+  pinnedTag?: string; // Optional chip tag (e.g. "OFFICIAL", "LIMITED TIME")
   createdAt: string;
   updatedAt: string;
   createdBy?: string;
@@ -36,6 +38,8 @@ const DEFAULT_COUPONS: Coupon[] = [
     timesRedeemed: 28,
     expiresAt: '2026-12-31T23:59:59.000Z',
     isActive: true,
+    isPinned: true,
+    pinnedTag: 'OFFICIAL',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     createdBy: 'Admin Console',
@@ -53,6 +57,7 @@ const DEFAULT_COUPONS: Coupon[] = [
     timesRedeemed: 14,
     expiresAt: '2027-01-01T00:00:00.000Z',
     isActive: true,
+    isPinned: false, // VIP/Free test coupons must NOT be pinned publicly by default
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     createdBy: 'Super Admin',
@@ -462,3 +467,45 @@ export async function validateCouponForPlan({
     currency,
   };
 }
+
+/**
+ * Returns only coupons that have been explicitly pinned by an admin in /admin/coupons
+ * Filters out expired, deactivated, or exhausted coupons.
+ */
+export async function getPinnedPublicCoupons(): Promise<
+  Array<{
+    code: string;
+    label: string;
+    tag: string;
+    description: string;
+    discountType: string;
+    discountValue: number;
+    applicablePlans: string[];
+  }>
+> {
+  const all = await getAllCoupons();
+  const now = new Date();
+
+  return all
+    .filter((c) => {
+      if (!c.isActive || !c.isPinned) return false;
+      if (c.expiresAt && new Date(c.expiresAt) < now) return false;
+      if (c.maxRedemptions > 0 && c.timesRedeemed >= c.maxRedemptions) return false;
+      return true;
+    })
+    .map((c) => ({
+      code: c.code,
+      label:
+        c.discountType === 'percentage'
+          ? `${c.discountValue}% OFF`
+          : c.discountType === 'fixed_inr'
+          ? `FLAT ₹${c.discountValue} OFF`
+          : `FLAT $${c.discountValue} OFF`,
+      tag: c.pinnedTag || (c.discountValue === 100 ? 'PROMO' : 'OFFER'),
+      description: c.description,
+      discountType: c.discountType,
+      discountValue: c.discountValue,
+      applicablePlans: c.applicablePlans,
+    }));
+}
+

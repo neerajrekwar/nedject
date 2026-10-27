@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { SocialStoryModal } from './SocialStoryModal';
 import { Share2, Sparkles, Camera } from 'lucide-react';
 
@@ -23,7 +24,13 @@ export const StoryShareButton: React.FC<StoryShareButtonProps> = ({
   pageDescription,
   category,
 }) => {
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+
+  // STRICT REQUIREMENT: Do NOT show the floating/pill story button inside any /admin route
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
 
   return (
     <>

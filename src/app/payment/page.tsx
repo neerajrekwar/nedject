@@ -71,6 +71,14 @@ function PaymentContent() {
   const [couponError, setCouponError] = useState<string | null>(null);
   const [couponSuccess, setCouponSuccess] = useState<string | null>(null);
   const [appliedCoupon, setAppliedCoupon] = useState<AppliedCouponInfo | null>(null);
+  const [pinnedCoupons, setPinnedCoupons] = useState<
+    Array<{
+      code: string;
+      label: string;
+      tag: string;
+      description?: string;
+    }>
+  >([]);
 
   const [paymentSuccess, setPaymentSuccess] = useState<{
     planName: string;
@@ -119,6 +127,16 @@ function PaymentContent() {
             isConfigured: Boolean(data.isConfigured),
             keyId: data.keyId || 'rzp_test_mock_mode',
           });
+        }
+      })
+      .catch(() => {});
+
+    // Fetch only admin-pinned public coupons
+    fetch('/api/coupons/pinned')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.success && Array.isArray(data.coupons)) {
+          setPinnedCoupons(data.coupons);
         }
       })
       .catch(() => {});
@@ -455,13 +473,6 @@ function PaymentContent() {
           </div>
 
           <div className="flex items-center gap-3">
-            <Link
-              href="/admin/coupons"
-              className="border-2 border-black bg-white hover:bg-[#ccff00] text-black px-3 py-1.5 text-xs font-black flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] transition-colors"
-            >
-              <Ticket className="w-3.5 h-3.5" />
-              <span>COUPON MATRIX</span>
-            </Link>
             <div className="border-2 border-black bg-[#fafaf5] px-3 py-1.5 text-xs font-black flex items-center gap-2 shadow-[2px_2px_0px_#000000]">
               <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black inline-block" />
               <span>STATUS: {activePlan.toUpperCase()}</span>
@@ -625,17 +636,17 @@ function PaymentContent() {
             </span>
           </div>
 
-          {/* ALL SETTINGS FOR COUPON */}
+          {/* PROMO VOUCHERS & DISCOUNTS */}
           <div className="border-2 border-black bg-white p-5 space-y-4 shadow-[3px_3px_0px_#000000]">
             <div className="flex flex-wrap items-center justify-between gap-2 border-b border-black/20 pb-3">
               <div className="flex items-center gap-2">
                 <Ticket className="w-4 h-4 text-black" />
                 <h4 className="text-xs font-black uppercase text-black">
-                  ALL SETTINGS FOR COUPON &amp; DISCOUNT VOUCHER
+                  HAVE A PROMO VOUCHER OR DISCOUNT CODE?
                 </h4>
               </div>
               <span className="text-[10px] text-zinc-500 font-bold uppercase">
-                ADMIN DISCOUNT ENGINE ACTIVE
+                PROMO CODE ENGINE ACTIVE
               </span>
             </div>
 
@@ -655,7 +666,7 @@ function PaymentContent() {
                       handleApplyCoupon();
                     }
                   }}
-                  placeholder="ENTER PROMO CODE (e.g. WINTER2026, PRO100FREE)"
+                  placeholder="ENTER PROMO CODE (e.g. WINTER2026)"
                   className="w-full pl-9 pr-3 py-2 border-2 border-black bg-zinc-50 font-mono font-black text-xs uppercase tracking-wider focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#ccff00]"
                 />
               </div>
@@ -692,37 +703,39 @@ function PaymentContent() {
               </div>
             </div>
 
-            {/* Available Admin Coupon Settings Chips */}
-            <div className="space-y-1.5 pt-1">
-              <span className="text-[10px] font-black uppercase text-zinc-500 flex items-center gap-1">
-                <Percent className="w-3 h-3" />
-                AVAILABLE ADMIN COUPON SETTINGS (CLICK TO APPLY):
-              </span>
-              <div className="flex flex-wrap items-center gap-2">
-                {[
-                  { code: 'WINTER2026', label: '50% OFF ANY PLAN', tag: 'OFFICIAL' },
-                  { code: 'PRO100FREE', label: '100% FREE UPGRADE', tag: 'PROMO PASS' },
-                  { code: 'FESTIVAL30', label: '30% OFF', tag: 'SAVINGS' },
-                  { code: 'SAVE200', label: 'FLAT ₹200 OFF', tag: 'INSTANT' },
-                ].map((c) => (
-                  <button
-                    key={c.code}
-                    type="button"
-                    onClick={() => handleApplyCoupon(c.code)}
-                    className={`px-2.5 py-1 border border-black font-mono text-[11px] font-black tracking-tight transition-all shadow-[1px_1px_0px_#000000] cursor-pointer flex items-center gap-1.5 ${
-                      appliedCoupon?.coupon?.code === c.code
-                        ? 'bg-black text-[#ccff00]'
-                        : 'bg-[#fafaf5] hover:bg-[#ccff00] text-black'
-                    }`}
-                  >
-                    <span>{c.code}</span>
-                    <span className="text-[10px] font-bold text-emerald-800 bg-white/80 px-1 border border-black/40">
-                      {c.label}
-                    </span>
-                  </button>
-                ))}
+            {/* Available Coupon Settings Chips - ONLY rendered if admin has pinned coupons in /admin/coupons */}
+            {pinnedCoupons.length > 0 && (
+              <div className="space-y-1.5 pt-1">
+                <span className="text-[10px] font-black uppercase text-zinc-500 flex items-center gap-1">
+                  <Percent className="w-3 h-3" />
+                  FEATURED OFFERS &amp; PROMOTIONS (CLICK TO APPLY):
+                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  {pinnedCoupons.map((c) => (
+                    <button
+                      key={c.code}
+                      type="button"
+                      onClick={() => handleApplyCoupon(c.code)}
+                      className={`px-2.5 py-1 border border-black font-mono text-[11px] font-black tracking-tight transition-all shadow-[1px_1px_0px_#000000] cursor-pointer flex items-center gap-1.5 ${
+                        appliedCoupon?.coupon?.code === c.code
+                          ? 'bg-black text-[#ccff00]'
+                          : 'bg-[#fafaf5] hover:bg-[#ccff00] text-black'
+                      }`}
+                    >
+                      <span>{c.code}</span>
+                      <span className="text-[10px] font-bold text-emerald-800 bg-white/80 px-1 border border-black/40">
+                        {c.label}
+                      </span>
+                      {c.tag && (
+                        <span className="text-[9px] font-black bg-black text-[#ccff00] px-1 uppercase">
+                          {c.tag}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Live Coupon Feedback */}
             {couponSuccess && (

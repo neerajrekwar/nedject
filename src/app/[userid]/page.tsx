@@ -253,14 +253,6 @@ export default function UserProfilePage() {
               <Sparkles className="w-3.5 h-3.5" />
               <span>UPGRADE / PLANS</span>
             </Link>
-            {isAdmin && (
-              <Link
-                href="/admin"
-                className="hidden sm:flex items-center gap-1.5 font-black text-xs uppercase bg-black text-[#ccff00] px-3 py-1.5 border-2 border-black shadow-[2px_2px_0px_#000000]"
-              >
-                <span>ADMIN CONSOLE</span>
-              </Link>
-            )}
           </div>
 
           <div className="flex items-center gap-3">
@@ -295,7 +287,7 @@ export default function UserProfilePage() {
                     {name || 'USER PROFILE MATRIX'}
                   </h1>
                   <span className="bg-black text-[#ccff00] text-[10px] font-black px-2 py-0.5 border border-black uppercase">
-                    {isAdmin ? 'ADMINISTRATOR' : 'VERIFIED ACCOUNT'}
+                    VERIFIED ACCOUNT
                   </span>
                   <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 border border-black uppercase">
                     ACTIVE
@@ -410,7 +402,7 @@ export default function UserProfilePage() {
                 <span>PROMO &amp; COUPON ENGINE</span>
               </div>
               <p className="text-[11px] text-zinc-600 font-medium">
-                Admin coupon matrix with real-time discount calculation and free promos.
+                Automated promo code engine with real-time discount calculation and free upgrades.
               </p>
             </div>
             <div className="border-2 border-black bg-white p-3 space-y-1">

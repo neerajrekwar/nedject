@@ -51,6 +51,8 @@ export default function AdminCouponsPage() {
   const [formMaxRedemptions, setFormMaxRedemptions] = useState<number>(-1);
   const [formExpiresAt, setFormExpiresAt] = useState<string>('');
   const [formIsActive, setFormIsActive] = useState<boolean>(true);
+  const [formIsPinned, setFormIsPinned] = useState<boolean>(false);
+  const [formPinnedTag, setFormPinnedTag] = useState<string>('OFFICIAL');
   const [formNotes, setFormNotes] = useState<string>('');
 
   // Live test preview state
@@ -101,6 +103,8 @@ export default function AdminCouponsPage() {
     setFormMaxRedemptions(-1);
     setFormExpiresAt('');
     setFormIsActive(true);
+    setFormIsPinned(false);
+    setFormPinnedTag('OFFICIAL');
     setFormNotes('');
     setIsModalOpen(true);
   };
@@ -117,6 +121,8 @@ export default function AdminCouponsPage() {
     setFormMaxRedemptions(c.maxRedemptions ?? -1);
     setFormExpiresAt(c.expiresAt ? c.expiresAt.substring(0, 10) : '');
     setFormIsActive(c.isActive);
+    setFormIsPinned(Boolean(c.isPinned));
+    setFormPinnedTag(c.pinnedTag || 'OFFICIAL');
     setFormNotes(c.notes || '');
     setIsModalOpen(true);
   };
@@ -187,6 +193,8 @@ export default function AdminCouponsPage() {
         maxRedemptions: Number(formMaxRedemptions),
         expiresAt: formExpiresAt ? new Date(formExpiresAt).toISOString() : null,
         isActive: formIsActive,
+        isPinned: formIsPinned,
+        pinnedTag: formPinnedTag.trim().toUpperCase() || 'OFFICIAL',
         notes: formNotes.trim(),
       };
 
@@ -217,6 +225,39 @@ export default function AdminCouponsPage() {
       showNotify('error', err.message || 'Error occurred while saving coupon');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Toggle Pinned Status directly from table
+  const handleTogglePinned = async (c: Coupon) => {
+    try {
+      const newPinned = !c.isPinned;
+      setCoupons((prev) =>
+        prev.map((item) => (item.id === c.id ? { ...item, isPinned: newPinned } : item))
+      );
+
+      const res = await fetch(`/api/admin/coupons/${c.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPinned: newPinned }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setCoupons((prev) =>
+          prev.map((item) => (item.id === c.id ? { ...item, isPinned: c.isPinned } : item))
+        );
+        showNotify('error', data.error || 'Failed to toggle checkout pin status');
+      } else {
+        showNotify(
+          'success',
+          newPinned
+            ? `Coupon "${c.code}" PINNED: Now visible on public /payment page!`
+            : `Coupon "${c.code}" UNPINNED: Hidden from public /payment checkout chips.`
+        );
+      }
+    } catch (err: any) {
+      showNotify('error', 'Network error toggling pin status');
     }
   };
 
@@ -489,6 +530,7 @@ export default function AdminCouponsPage() {
                   <th className="p-3.5">ELIGIBILITY</th>
                   <th className="p-3.5">REDEMPTIONS</th>
                   <th className="p-3.5">VALID UNTIL</th>
+                  <th className="p-3.5 text-center">CHECKOUT PIN</th>
                   <th className="p-3.5 text-center">STATUS</th>
                   <th className="p-3.5 text-right">ACTIONS</th>
                 </tr>
@@ -605,6 +647,25 @@ export default function AdminCouponsPage() {
                         ) : (
                           <span className="text-[10px] font-bold text-zinc-400 uppercase">NO EXPIRATION</span>
                         )}
+                      </td>
+
+                      {/* CHECKOUT PIN TOGGLE */}
+                      <td className="p-3.5 text-center whitespace-nowrap">
+                        <button
+                          onClick={() => handleTogglePinned(c)}
+                          title={
+                            c.isPinned
+                              ? 'Currently pinned on public /payment page (Click to unpin)'
+                              : 'Hidden from public /payment chips (Click to pin)'
+                          }
+                          className={`border-2 border-black px-2 py-1 text-[10px] font-black uppercase shadow-[1px_1px_0px_#000000] transition-colors flex items-center gap-1 mx-auto cursor-pointer ${
+                            c.isPinned
+                              ? 'bg-amber-300 text-black hover:bg-black hover:text-[#ccff00]'
+                              : 'bg-zinc-100 text-zinc-500 hover:bg-zinc-200'
+                          }`}
+                        >
+                          <span>{c.isPinned ? '📌 PINNED' : 'PIN'}</span>
+                        </button>
                       </td>
 
                       {/* STATUS TOGGLE */}
@@ -839,6 +900,37 @@ export default function AdminCouponsPage() {
                   <label htmlFor="formIsActive" className="font-black uppercase cursor-pointer">
                     ENABLE COUPON IMMEDIATELY UPON CREATION
                   </label>
+                </div>
+
+                {/* PIN TO PUBLIC CHECKOUT */}
+                <div className="border-2 border-black bg-amber-50 p-3 space-y-2 shadow-[2px_2px_0px_#000000]">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="formIsPinned"
+                      checked={formIsPinned}
+                      onChange={(e) => setFormIsPinned(e.target.checked)}
+                      className="w-4 h-4 border-2 border-black accent-black"
+                    />
+                    <label htmlFor="formIsPinned" className="font-black uppercase cursor-pointer text-xs text-amber-950">
+                      PIN TO PUBLIC CHECKOUT PAGE (FEATURED CHIP ON /payment)
+                    </label>
+                  </div>
+                  {formIsPinned && (
+                    <div className="space-y-1 pl-7">
+                      <label className="text-[10px] font-black uppercase text-amber-900 block">
+                        CHIP DISPLAY TAG / BADGE
+                      </label>
+                      <input
+                        type="text"
+                        value={formPinnedTag}
+                        onChange={(e) => setFormPinnedTag(e.target.value.toUpperCase())}
+                        placeholder="e.g. OFFICIAL, 50% OFF, LIMITED"
+                        maxLength={16}
+                        className="w-full max-w-xs border border-black p-1.5 text-xs font-mono uppercase bg-white focus:outline-none"
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-1">
