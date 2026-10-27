@@ -51,20 +51,21 @@ export async function GET(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    const body = await req.json();
-    const email = session?.user?.email || body.email;
-
-    if (!email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: 'Unauthorized: Valid authenticated session required' }, { status: 401 });
     }
 
-    const { name, dob, occupation, plan } = body;
+    const email = session.user.email;
+    const body = await req.json();
+
+    // SECURITY: Users can only update their own display name, dob, and occupation.
+    // 'plan' and 'generationsLimit' cannot be modified from profile endpoint (must go through verified payment).
+    const { name, dob, occupation } = body;
 
     const updated = await updateUserProfile(email, {
-      name,
-      dob,
-      occupation,
-      plan,
+      name: typeof name === 'string' ? name.trim() : undefined,
+      dob: typeof dob === 'string' ? dob.trim() : undefined,
+      occupation: typeof occupation === 'string' ? occupation.trim() : undefined,
     });
 
     if (!updated) {

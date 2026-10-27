@@ -27,9 +27,11 @@ import {
   Percent,
   Sliders,
   CheckSquare,
+  ShieldAlert,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
 import { getUsageStats, UsageStats, setLocalUsageCount } from '@/lib/usage-limits';
+import { SecureCardCheckoutModal } from '@/components/payment/SecureCardCheckoutModal';
 
 declare global {
   interface Window {
@@ -78,6 +80,18 @@ function PaymentContent() {
     couponCode?: string;
   } | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [secureModalOpen, setSecureModalOpen] = useState(false);
+  const [activeOrderData, setActiveOrderData] = useState<{
+    orderId: string;
+    signedOrderToken: string;
+    amount: number;
+    currency: string;
+    planName: string;
+    planId: 'pro' | 'enterprise';
+    billingCycle: 'monthly' | 'yearly';
+    displayAmount: string;
+    couponCode?: string;
+  } | null>(null);
   const [razorpayStatus, setRazorpayStatus] = useState<{
     isConfigured: boolean;
     keyId: string;

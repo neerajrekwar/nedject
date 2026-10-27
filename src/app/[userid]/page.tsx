@@ -117,7 +117,6 @@ export default function UserProfilePage() {
           name,
           dob,
           occupation,
-          plan: userPlan,
         }),
       });
 
