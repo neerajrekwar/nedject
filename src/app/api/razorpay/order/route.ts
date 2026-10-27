@@ -131,11 +131,12 @@ export async function POST(req: NextRequest) {
         });
 
         // Re-sign with Razorpay's generated order ID
+        const finalOrderAmount = typeof order.amount === 'number' ? order.amount : Number(order.amount) || amountInSmallestUnit;
         const signedRzpOrderToken = generateSignedOrderToken({
           orderId: order.id,
           planId,
           billingCycle,
-          amount: order.amount,
+          amount: finalOrderAmount,
           currency: order.currency,
           userEmail,
           expiresAt,
@@ -145,7 +146,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
           orderId: order.id,
           signedOrderToken: signedRzpOrderToken,
-          amount: order.amount,
+          amount: finalOrderAmount,
           currency: order.currency,
           planName: plan.name,
           planId,
