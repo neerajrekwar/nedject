@@ -83,8 +83,9 @@ export function GlobalNavbar() {
     { href: '/normal-dpi-photo', label: 'Normal DPI' },
     { href: '/barcode-pick', label: 'Barcode Pick' },
     { href: '/mochup', label: 'Mockup Studio' },
-    { href: '/blog', label: 'Blog' },
+    { href: '/fitness-glass/winter-arc-2026', label: 'Winter Arc 2026' },
     { href: '/fitness-glass', label: 'Fitness Glass' },
+    { href: '/blog', label: 'Blog' },
     { href: '/payment', label: 'Plans & Pricing' },
   ];
 

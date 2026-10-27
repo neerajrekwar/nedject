@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Printer, Barcode as BarcodeIcon } from 'lucide-react';
+import { Printer, Barcode as BarcodeIcon, Flame } from 'lucide-react';
 
 interface NavbarProps {
   onOpenContact?: () => void;
@@ -65,6 +65,13 @@ export function Navbar({ onOpenContact, onOpenSocialCards }: NavbarProps) {
             <BarcodeIcon className="w-3.5 h-3.5" />
             <span>BARCODES</span>
           </Link>
+          <Link
+            href="/fitness-glass/winter-arc-2026"
+            className="px-3 py-1.5 font-mono text-xs font-black tracking-wider text-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black"
+          >
+            <Flame className="w-3.5 h-3.5" />
+            <span>WINTER ARC 2026</span>
+          </Link>
         </nav>
 
         {/* Right: System Status Capsule Widget */}
@@ -82,6 +89,13 @@ export function Navbar({ onOpenContact, onOpenSocialCards }: NavbarProps) {
 
         {/* Mobile Quick Action Buttons (No duplicate nav list) */}
         <div className="flex lg:hidden items-center gap-2">
+          <Link
+            href="/fitness-glass/winter-arc-2026"
+            className="px-2.5 py-1.5 border-2 border-black bg-[#ccff00] font-mono text-xs font-black text-black shadow-[2px_2px_0px_#000000] flex items-center gap-1"
+          >
+            <Flame className="w-3.5 h-3.5" />
+            <span>WINTER ARC</span>
+          </Link>
           {onOpenSocialCards && (
             <button
               onClick={onOpenSocialCards}
