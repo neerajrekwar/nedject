@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { SocialStoryModal } from './SocialStoryModal';
 import { Share2, Sparkles, Camera } from 'lucide-react';
@@ -26,9 +26,41 @@ export const StoryShareButton: React.FC<StoryShareButtonProps> = ({
 }) => {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const [isVisible, setIsVisible] = useState(true);
+  const lastScrollY = useRef(0);
+
+  const isAdminRoute = Boolean(pathname?.startsWith('/admin'));
+
+  // Scroll detection: hide on scroll down, show on scroll up with 200px intersection threshold
+  useEffect(() => {
+    if (variant !== 'floating' || isAdminRoute) return;
+
+    const SCROLL_THRESHOLD = 200; // 200px intersect boundary
+
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      const diff = currentScrollY - lastScrollY.current;
+
+      // Within 200px threshold of top, always keep button visible
+      if (currentScrollY <= SCROLL_THRESHOLD) {
+        setIsVisible(true);
+      } else if (diff > 5) {
+        // Scrolling DOWN -> hide the button
+        setIsVisible(false);
+      } else if (diff < -5) {
+        // Scrolling UP -> reveal the button
+        setIsVisible(true);
+      }
+
+      lastScrollY.current = Math.max(0, currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [variant, isAdminRoute]);
 
   // STRICT REQUIREMENT: Do NOT show the floating/pill story button inside any /admin route
-  if (pathname?.startsWith('/admin')) {
+  if (isAdminRoute) {
     return null;
   }
 
@@ -38,7 +70,11 @@ export const StoryShareButton: React.FC<StoryShareButtonProps> = ({
         <button
           onClick={() => setIsOpen(true)}
           aria-label="Share page to Instagram or Web Story"
-          className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 border-4 border-black bg-[#ccff00] text-black px-4 py-2.5 font-mono text-xs font-black shadow-[6px_6px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_#000000] transition-all cursor-pointer ${className}`}
+          className={`fixed bottom-6 right-6 z-40 flex items-center gap-2 border-4 border-black bg-[#ccff00] text-black px-4 py-2.5 font-mono text-xs font-black shadow-[6px_6px_0px_#000000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[4px_4px_0px_#000000] transition-all duration-300 ease-in-out cursor-pointer ${
+            isVisible
+              ? 'translate-y-0 opacity-100 pointer-events-auto'
+              : 'translate-y-24 opacity-0 pointer-events-none'
+          } ${className}`}
         >
           <Camera className="w-4 h-4 text-black" />
           <span>{label}</span>
