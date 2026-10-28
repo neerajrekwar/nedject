@@ -278,16 +278,13 @@ function PaymentContent() {
     setPaymentSuccess(null);
     setSelectedPlanId(planId);
 
-    // CRITICAL REQUIREMENT: Intercept unauthenticated users attempting to access paid features/payment.
-    // If user is NOT logged in: save destination cookie, prompt login modal, and prevent payment.
+    // REQUIREMENT: Redirect to /login page when unauthenticated user attempts to purchase
     if (!session?.user) {
+      const dest = `/payment?plan=${planId}${couponInput ? `&coupon=${encodeURIComponent(couponInput)}` : ''}`;
       if (typeof window !== 'undefined') {
-        const dest = window.location.pathname + window.location.search;
         setClientRedirectDestination(dest);
+        window.location.href = `/login?callbackUrl=${encodeURIComponent(dest)}`;
       }
-      setErrorMessage('Sign in required: Please log in or register so your upgraded plan is linked to your account.');
-      setShowAuthModal(true);
-      setIsProcessing(false);
       return;
     }
 

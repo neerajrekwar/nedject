@@ -116,39 +116,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
-  // 7. Payment and Paid Features Gate (/payment, /tip)
-  const isPaymentRoute =
-    pathname === '/payment' ||
-    pathname.startsWith('/payment/') ||
-    pathname === '/tip' ||
-    pathname.startsWith('/tip/');
-
-  if (isPaymentRoute) {
-    const isUserAuthenticated = Boolean(
-      nextAuthToken && (nextAuthToken.email || nextAuthToken.sub)
-    );
-
-    // If authenticated, allow directly to payment without friction
-    if (isUserAuthenticated) {
-      return NextResponse.next({ request: { headers: requestHeaders } });
-    }
-
-    // Unauthenticated: redirect to login modal and preserve intended destination
-    const intendedDestination = pathname + search;
-    const redirectUrl = new URL('/', request.url);
-    redirectUrl.searchParams.set('auth', 'signin');
-    redirectUrl.searchParams.set('destination', intendedDestination);
-
-    const response = NextResponse.redirect(redirectUrl);
-    response.cookies.set('auth_redirect_destination', intendedDestination, {
-      path: '/',
-      maxAge: 1800,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: false,
-    });
-    return response;
-  }
+  // 7. Allow payment and tip routes to be viewed freely by all users (authenticated & guest)
+  // Downstream purchase actions enforce login redirection directly on purchase attempt.
+  // Pass through all other requests with decorated headers
 
   // 8. Pass through all other requests with decorated headers
   return NextResponse.next({

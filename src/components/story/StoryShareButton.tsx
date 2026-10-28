@@ -29,11 +29,15 @@ export const StoryShareButton: React.FC<StoryShareButtonProps> = ({
   const [isVisible, setIsVisible] = useState(true);
   const lastScrollY = useRef(0);
 
-  const isAdminRoute = Boolean(pathname?.startsWith('/admin'));
+  const isExcludedRoute = Boolean(
+    pathname?.startsWith('/admin') ||
+    pathname === '/login' ||
+    pathname === '/auth/signin'
+  );
 
   // Scroll detection: hide on scroll down, show on scroll up with 200px intersection threshold
   useEffect(() => {
-    if (variant !== 'floating' || isAdminRoute) return;
+    if (variant !== 'floating' || isExcludedRoute) return;
 
     const SCROLL_THRESHOLD = 200; // 200px intersect boundary
 
@@ -57,10 +61,10 @@ export const StoryShareButton: React.FC<StoryShareButtonProps> = ({
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [variant, isAdminRoute]);
+  }, [variant, isExcludedRoute]);
 
-  // STRICT REQUIREMENT: Do NOT show the floating/pill story button inside any /admin route
-  if (isAdminRoute) {
+  // STRICT REQUIREMENT: Do NOT show the floating/pill story button inside admin or login pages
+  if (isExcludedRoute) {
     return null;
   }
 

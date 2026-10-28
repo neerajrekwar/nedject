@@ -96,8 +96,8 @@ export function GlobalNavbar() {
     { href: '/payment', label: 'Plans & Pricing' },
   ];
 
-  // Do not render global navbar inside the admin portal
-  if (pathname?.startsWith('/admin')) {
+  // Do not render global navbar inside the admin portal or on standalone login page (only form shown)
+  if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/auth/signin') {
     return null;
   }
 
