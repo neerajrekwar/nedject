@@ -204,7 +204,7 @@ export async function getPurchasesForUser(
 
         // Insert into MongoDB purchases collection
         try {
-          await db.collection('purchases').insertOne({ ...seedRecord });
+          await db.collection('purchases').insertOne({ ...seedRecord } as any);
         } catch (e) {
           console.warn('[Purchases] Auto-seed insert notice:', e);
         }
@@ -277,7 +277,7 @@ export async function createPurchaseRecord(
   try {
     const db = await getDb();
     if (db) {
-      await db.collection('purchases').insertOne({ ...record });
+      await db.collection('purchases').insertOne({ ...record } as any);
     }
   } catch (err) {
     console.warn('[Purchases] Failed to insert to MongoDB purchases:', err);

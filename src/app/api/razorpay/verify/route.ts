@@ -296,9 +296,9 @@ export async function POST(req: NextRequest) {
     // 9. INSERT ORDER & INVOICE INTO 'purchases' COLLECTION
     let recordedInvoiceId = '';
     try {
-      const finalAmount = orderPayload?.finalAmount !== undefined
-        ? Number(orderPayload.finalAmount)
-        : (planDetails.priceInr || 999) / 100;
+      const finalAmount = orderPayload?.amount !== undefined
+        ? Number(orderPayload.amount)
+        : (planDetails.monthlyUsd || 9.99);
 
       const purchaseRecord = await createPurchaseRecord({
         userId: (session?.user as any)?.id,

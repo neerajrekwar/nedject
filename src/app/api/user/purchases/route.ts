@@ -43,10 +43,10 @@ export async function GET(req: NextRequest) {
     }
 
     // If queryEmail is different from authenticated session email, verify permissions
-    if (session?.user?.email && queryEmail && queryEmail.toLowerCase() !== session.user.email.toLowerCase()) {
+    if (nextAuthToken?.email && queryEmail && queryEmail.toLowerCase() !== nextAuthToken.email.toLowerCase()) {
       const isAdmin =
-        session.user.email.toLowerCase().includes('neerajrekwar') ||
-        session.user.email.toLowerCase().includes('admin');
+        nextAuthToken.email.toLowerCase().includes('neerajrekwar') ||
+        nextAuthToken.email.toLowerCase().includes('admin');
       if (!isAdmin) {
         return NextResponse.json(
           { success: false, error: 'Unauthorized to view purchase history for another account.' },
@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
 
     // Fetch user profile to cross-reference active plan
     const profile = await findUserByEmail(userEmail);
-    const activePlan = profile?.plan || (session?.user as any)?.plan || 'free';
+    const activePlan = profile?.plan || (nextAuthToken?.plan as string) || 'free';
 
     // Query 'purchases' collection
     const purchases = await getPurchasesForUser(userEmail, userId);
