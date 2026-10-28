@@ -17,6 +17,7 @@
         "clsx": "^2.1.1",
         "googleapis": "^182.0.0",
         "html-to-image": "^1.11.13",
+        "ipapi.co": "^0.3.0",
         "jsbarcode": "^3.12.3",
         "jspdf": "^4.2.1",
         "jsqr": "^1.4.0",
@@ -797,6 +798,8 @@
     "internmap": ["internmap@2.0.3", "", {}, "sha512-5Hh7Y1wQbvY5ooGgPbDaL5iYLAPzMTUrjMulskHLH6wnv/A+1q5rgEaiuqEjB+oxGXIVZs1FF+R/KPN3ZSQYYg=="],
 
     "iobuffer": ["iobuffer@5.4.0", "", {}, "sha512-DRebOWuqDvxunfkNJAlc3IzWIPD5xVxwUNbHr7xKB8E6aLJxIPfNX3CoMJghcFjpv6RWQsrcJbghtEwSPoJqMA=="],
+
+    "ipapi.co": ["ipapi.co@0.3.0", "", {}, "sha512-a8XM1tmOKqUfMiI0inKznyxOXG5bVThHXL0gmBj/nvwiyh6b+FyGHBo+OWVJ2u+Xv5hsq+EhkwIBw4z85ZpU+A=="],
 
     "is-array-buffer": ["is-array-buffer@3.0.5", "", { "dependencies": { "call-bind": "^1.0.8", "call-bound": "^1.0.3", "get-intrinsic": "^1.2.6" } }, "sha512-DDfANUiiG2wC1qawP66qlTugJeL5HyzMpfr8lLK+jMQirGzNod0B12cFB/9q838Ru27sBwfw78/rdoU7RERz6A=="],
 

@@ -26,6 +26,7 @@
     "clsx": "^2.1.1",
     "googleapis": "^182.0.0",
     "html-to-image": "^1.11.13",
+    "ipapi.co": "^0.3.0",
     "jsbarcode": "^3.12.3",
     "jspdf": "^4.2.1",
     "jsqr": "^1.4.0",
