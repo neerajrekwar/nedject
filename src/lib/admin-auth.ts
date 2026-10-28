@@ -37,6 +37,8 @@ export function clearAdminSession(): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.removeItem(ADMIN_STORAGE_KEY);
+    // Call server to clear httpOnly admin cookie
+    fetch('/api/admin/auth/logout', { method: 'POST' }).catch(() => {});
     window.dispatchEvent(new Event('nedject_admin_auth_changed'));
   } catch (e) {
     console.error('Failed to clear admin session:', e);

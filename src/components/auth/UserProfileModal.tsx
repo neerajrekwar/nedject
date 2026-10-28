@@ -16,6 +16,7 @@ import {
   Save,
   RotateCcw,
   Zap,
+  Receipt,
   ExternalLink,
 } from 'lucide-react';
 import { getUsageStats, resetGuestUsageForTesting, UsageStats } from '@/lib/usage-limits';
@@ -227,6 +228,27 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
             <ExternalLink className="w-3 h-3" />
           </a>
         </div>
+
+        {/* Order History & Invoices Quick Link */}
+        {session?.user && (
+          <div className="border-2 border-black bg-white p-2.5 flex items-center justify-between gap-2 shadow-[2px_2px_0px_#000000]">
+            <div className="flex items-center gap-2">
+              <Receipt className="w-4 h-4 text-black shrink-0" />
+              <div>
+                <div className="text-[11px] font-black uppercase text-black">SUBSCRIPTION &amp; INVOICE HISTORY</div>
+                <div className="text-[10px] text-zinc-600">Access invoices from &apos;purchases&apos; collection</div>
+              </div>
+            </div>
+            <a
+              href={`/${encodeURIComponent(session.user.email || 'profile')}#order-history`}
+              onClick={onClose}
+              className="px-2.5 py-1 border border-black bg-[#ccff00] text-black font-black text-[10px] uppercase flex items-center gap-1 hover:bg-black hover:text-[#ccff00] transition-colors shrink-0 shadow-[1px_1px_0px_#000000]"
+            >
+              <span>INVOICES</span>
+              <ExternalLink className="w-3 h-3" />
+            </a>
+          </div>
+        )}
 
         {/* 3. User Profile Edit Form (strictly name, email, dob, occupation) */}
         {session?.user ? (

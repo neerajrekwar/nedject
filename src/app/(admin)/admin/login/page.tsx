@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import {
   Lock,
@@ -13,8 +13,11 @@ import {
 } from 'lucide-react';
 import { authenticateAdmin } from '@/lib/admin-auth';
 
-export default function AdminLoginPage() {
+function AdminLoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get('callbackUrl');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +30,8 @@ export default function AdminLoginPage() {
 
     const result = await authenticateAdmin(email, password);
     if (result.success) {
-      router.push('/admin/dashboard');
+      const destination = callbackUrl && callbackUrl.startsWith('/admin') ? callbackUrl : '/admin/dashboard';
+      router.push(destination);
     } else {
       setError(result.error || 'Authentication failed. Check credentials set in terminal.');
       setIsLoading(false);
@@ -125,3 +129,18 @@ export default function AdminLoginPage() {
     </div>
   );
 }
+
+export default function AdminLoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="p-8 border-2 border-black bg-white font-mono text-xs font-bold">
+          INITIALIZING SECURE ADMIN CONSOLE...
+        </div>
+      }
+    >
+      <AdminLoginForm />
+    </Suspense>
+  );
+}
+

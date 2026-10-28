@@ -8,6 +8,7 @@ import {
 } from '@/lib/razorpay';
 import { updateUserProfile } from '@/lib/db-users';
 import { recordCouponRedemption, validateCouponForPlan } from '@/lib/coupons';
+import { createPurchaseRecord } from '@/lib/purchases';
 import {
   verifySignedOrderToken,
   isKnownTestCard,
@@ -47,12 +48,16 @@ export async function POST(req: NextRequest) {
     } = body;
 
     const assignedPlan = planId === 'enterprise' ? 'enterprise' : 'pro';
-    const userEmail = (session?.user?.email || body.email || '').toLowerCase().trim();
+    const userEmail = (session?.user?.email || '').toLowerCase().trim();
 
     if (!userEmail) {
       return NextResponse.json(
-        { error: 'User email is required for account provisioning.' },
-        { status: 400 }
+        {
+          error: 'Authenticated session is required for account provisioning and upgrade.',
+          requiresLogin: true,
+          redirectUrl: '/?auth=signin',
+        },
+        { status: 401 }
       );
     }
 
@@ -288,6 +293,42 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // 9. INSERT ORDER & INVOICE INTO 'purchases' COLLECTION
+    let recordedInvoiceId = '';
+    try {
+      const finalAmount = orderPayload?.finalAmount !== undefined
+        ? Number(orderPayload.finalAmount)
+        : (planDetails.priceInr || 999) / 100;
+
+      const purchaseRecord = await createPurchaseRecord({
+        userId: (session?.user as any)?.id,
+        userEmail,
+        userName: session?.user?.name || 'Subscriber',
+        plan: assignedPlan,
+        planName: planDetails.name,
+        amount: finalAmount,
+        amountFormatted: finalAmount === 0 ? 'FREE ($0.00)' : `$${finalAmount.toFixed(2)}`,
+        currency: 'USD',
+        billingCycle: assignedPlan === 'enterprise' ? 'annual' : 'monthly',
+        gateway: paymentMethod === 'coupon_free' ? 'Coupon Promo' : paymentMethod === 'card' ? 'Credit Card' : 'Razorpay',
+        paymentId: razorpay_payment_id,
+        orderId: razorpay_order_id,
+        status: 'Paid',
+        couponCode: redeemedCode || undefined,
+        items: [
+          {
+            description: `${planDetails.name} — Full 300 & 600 DPI Calibrated Matrix Unlock`,
+            quantity: 1,
+            unitPrice: finalAmount,
+            total: finalAmount,
+          },
+        ],
+      });
+      recordedInvoiceId = purchaseRecord.invoiceId;
+    } catch (purErr) {
+      console.warn('[Payment Verify] Failed to record in purchases collection:', purErr);
+    }
+
     return NextResponse.json({
       success: true,
       verified: true,
@@ -295,6 +336,7 @@ export async function POST(req: NextRequest) {
       planName: planDetails.name,
       paymentId: razorpay_payment_id,
       orderId: razorpay_order_id,
+      invoiceId: recordedInvoiceId || undefined,
       couponCode: redeemedCode || null,
       verificationMethod,
       securityStatus: 'VERIFIED_FRAUD_FREE',

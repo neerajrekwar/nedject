@@ -28,10 +28,16 @@ import {
   Sliders,
   CheckSquare,
   ShieldAlert,
+  LogIn,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
 import { getUsageStats, UsageStats, setLocalUsageCount } from '@/lib/usage-limits';
 import { SecureCardCheckoutModal } from '@/components/payment/SecureCardCheckoutModal';
+import { AuthModal } from '@/components/auth/AuthModal';
+import {
+  setClientRedirectDestination,
+  clearClientRedirectDestination,
+} from '@/lib/auth-redirect';
 
 declare global {
   interface Window {
@@ -112,6 +118,14 @@ function PaymentContent() {
     isLoggedIn: false,
     plan: 'guest',
   });
+  const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Clear intended destination cookie once the user is confirmed authenticated
+  useEffect(() => {
+    if (session?.user) {
+      clearClientRedirectDestination();
+    }
+  }, [session]);
 
   // Load current user usage and razorpay config
   useEffect(() => {
@@ -260,10 +274,26 @@ function PaymentContent() {
 
   // Handle Pay / Upgrade trigger for chosen plan
   const handlePayToPlan = async (planId: 'pro' | 'enterprise') => {
-    setIsProcessing(true);
     setErrorMessage(null);
     setPaymentSuccess(null);
     setSelectedPlanId(planId);
+
+    // CRITICAL REQUIREMENT: Intercept unauthenticated users attempting to access paid features/payment.
+    // If user is NOT logged in: save destination cookie, prompt login modal, and prevent payment.
+    if (!session?.user) {
+      if (typeof window !== 'undefined') {
+        const dest = window.location.pathname + window.location.search;
+        setClientRedirectDestination(dest);
+      }
+      setErrorMessage('Sign in required: Please log in or register so your upgraded plan is linked to your account.');
+      setShowAuthModal(true);
+      setIsProcessing(false);
+      return;
+    }
+
+    // "Also prevent payment redirect login user then payment"
+    // Logged-in user proceeds directly to payment without any login redirect!
+    setIsProcessing(true);
 
     const priceInfo = getPlanPrice(planId);
     const couponCode = appliedCoupon?.coupon?.code;
@@ -285,6 +315,13 @@ function PaymentContent() {
 
       if (!orderRes.ok) {
         const errData = await orderRes.json().catch(() => ({}));
+        if (orderRes.status === 401 || errData.requiresLogin) {
+          if (typeof window !== 'undefined') {
+            setClientRedirectDestination(window.location.pathname + window.location.search);
+          }
+          setShowAuthModal(true);
+          throw new Error('Your session has expired. Please sign in to complete payment.');
+        }
         throw new Error(errData.error || 'Failed to create payment order');
       }
 
@@ -514,6 +551,57 @@ function PaymentContent() {
           <p className="text-xs sm:text-sm text-zinc-700 font-sans font-medium leading-relaxed max-w-3xl">
             Choose the right calibration tier for your engineering and printing requirements. Upgrade to Pro Studio to unlock unrestricted 300 and 600 DPI vector exports, batch ZIP event pass matrices, and zero watermarks.
           </p>
+
+          {/* AUTH STATUS & PREVENT REDIRECT INDICATOR */}
+          {session?.user ? (
+            <div className="border-2 border-black bg-emerald-50 p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-[2px_2px_0px_#000000]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 border border-black bg-emerald-500 text-black flex items-center justify-center font-black">
+                  <Check className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <span className="font-mono text-xs font-black uppercase text-emerald-950 block">
+                    AUTHENTICATED: {session.user.email} (ACTIVE SESSION)
+                  </span>
+                  <span className="text-[11px] text-emerald-800 font-bold block">
+                    Direct payment active • No login redirect • Upgrades apply immediately to this account
+                  </span>
+                </div>
+              </div>
+              <span className="text-[10px] bg-black text-[#ccff00] px-2.5 py-1 font-black uppercase border border-black shadow-[1px_1px_0px_#000000]">
+                AUTHENTICATED CHECKOUT
+              </span>
+            </div>
+          ) : (
+            <div className="border-2 border-black bg-[#fffde6] p-3.5 flex flex-wrap items-center justify-between gap-3 shadow-[2px_2px_0px_#000000]">
+              <div className="flex items-center gap-2.5">
+                <div className="w-6 h-6 border border-black bg-amber-400 text-black flex items-center justify-center font-black">
+                  <AlertCircle className="w-3.5 h-3.5" />
+                </div>
+                <div>
+                  <span className="font-mono text-xs font-black uppercase text-black block">
+                    AUTHENTICATION REQUIRED TO UPGRADE &amp; PAY
+                  </span>
+                  <span className="text-[11px] text-zinc-700 font-bold block">
+                    Please sign in or register so your upgraded plan is attached to your account. Your selected plan and coupon will be remembered automatically.
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    setClientRedirectDestination(window.location.pathname + window.location.search);
+                  }
+                  setShowAuthModal(true);
+                }}
+                className="px-3.5 py-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center gap-1.5 transition-all"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                <span>SIGN IN TO UPGRADE</span>
+              </button>
+            </div>
+          )}
 
           {/* CONTROLS STRIP: BILLING CYCLE & CURRENCY TOGGLE */}
           <div className="pt-2 flex flex-wrap items-center justify-between gap-4 border-t-2 border-black">
@@ -809,6 +897,14 @@ function PaymentContent() {
                   <>
                     <RefreshCw className="w-5 h-5 animate-spin text-[#ccff00]" />
                     <span>PROCESSING ORDER &amp; PROVISIONING...</span>
+                  </>
+                ) : !session?.user ? (
+                  <>
+                    <LogIn className="w-5 h-5 text-[#ccff00]" />
+                    <span>
+                      SIGN IN TO UPGRADE &amp; PAY ({selectedPriceInfo.finalDisplay})
+                    </span>
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 ) : (
                   <>
@@ -1253,6 +1349,18 @@ function PaymentContent() {
           }}
         />
       )}
+
+      {/* 8. AUTHENTICATION MODAL */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        onSuccess={() => {
+          setShowAuthModal(false);
+          if (updateSession) {
+            updateSession().catch(() => {});
+          }
+        }}
+      />
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   QrCode,
   Layers,
   Printer,
+  Receipt,
   Barcode as BarcodeIcon,
   CheckCircle2,
   AlertCircle,
@@ -32,6 +33,7 @@ import {
 import { NEDJECT_PLANS } from '@/lib/razorpay';
 import { getUsageStats, UsageStats } from '@/lib/usage-limits';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { OrderHistoryTable } from '@/components/profile/OrderHistoryTable';
 
 export default function UserProfilePage() {
   const params = useParams();
@@ -303,6 +305,13 @@ export default function UserProfilePage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <a
+                href="#order-history"
+                className="px-3.5 py-2 border-2 border-black bg-white hover:bg-[#ccff00] text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all"
+              >
+                <Receipt className="w-3.5 h-3.5" />
+                <span>ORDER HISTORY</span>
+              </a>
               <Link
                 href="/payment"
                 className="px-4 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all"
@@ -534,7 +543,16 @@ export default function UserProfilePage() {
           </form>
         </div>
 
-        {/* 5. QUICK ACTIONS & STUDIO TOOLS */}
+        {/* 5. ORDER HISTORY & INVOICES TABLE (FETCHING DATA FROM MONGODB PURCHASES COLLECTION) */}
+        <div id="order-history" className="scroll-mt-20">
+          <OrderHistoryTable
+            userEmail={email}
+            userId={userId}
+            activePlan={userPlan}
+          />
+        </div>
+
+        {/* 6. QUICK ACTIONS & STUDIO TOOLS */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Link
             href="/"

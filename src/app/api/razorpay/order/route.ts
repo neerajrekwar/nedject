@@ -17,12 +17,26 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
+    const userEmail = session?.user?.email?.toLowerCase().trim();
+
+    // Enforce authentication for payment and subscription activation
+    if (!userEmail) {
+      return NextResponse.json(
+        {
+          error: 'Authentication required. Please sign in to upgrade your account and complete payment.',
+          requiresLogin: true,
+          redirectUrl: '/?auth=signin',
+        },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json().catch(() => ({}));
     const { planId = 'pro', billingCycle = 'monthly', couponCode, currency = 'INR' } = body;
 
     // Rate limiting to prevent automated carding and order floods
     const ip = req.headers.get('x-forwarded-for') || 'local';
-    const rateLimitKey = `order_init_${session?.user?.email || ip}`;
+    const rateLimitKey = `order_init_${userEmail || ip}`;
     if (!checkPaymentRateLimit(rateLimitKey, 15, 60000)) {
       return NextResponse.json(
         { error: 'Too many order requests. Rate limit exceeded. Please wait 1 minute.' },
@@ -68,8 +82,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const userEmail = (session?.user?.email || body.email || 'guest@nedject.dev').toLowerCase().trim();
-    const userName = session?.user?.name || body.name || 'Nedject User';
+    const finalUserEmail = userEmail;
+    const userName = session?.user?.name || userEmail.split('@')[0] || 'Nedject User';
     const amountInSmallestUnit = Math.round(finalPrice * 100); // paise or cents
 
     // Generate unique order ID

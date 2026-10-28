@@ -63,6 +63,15 @@ export function GlobalNavbar() {
     return () => window.removeEventListener('Nedject_usage_updated', handleUsageUpdated);
   }, [session]);
 
+  // Open auth modal if user was intercepted and redirected with ?auth=signin or ?destination=
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if ((params.get('auth') === 'signin' || params.has('destination')) && !session?.user) {
+      setShowAuthModal(true);
+    }
+  }, [session]);
+
   const handleToggleMonetizationMode = async (newMode: 1 | 0) => {
     setMonetizationMode(newMode);
     try {

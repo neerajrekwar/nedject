@@ -117,6 +117,34 @@ export async function GET() {
       };
     });
 
+    // Also include explicit documents from 'purchases' collection
+    try {
+      const explicitPurchases = await db.collection('purchases').find({}).sort({ date: -1, createdAt: -1 }).toArray();
+      if (explicitPurchases && explicitPurchases.length > 0) {
+        for (const ep of explicitPurchases) {
+          // Avoid duplicate display if user already mapped
+          const alreadyExists = purchases.some(p => p.invoiceId === ep.invoiceId || (ep.paymentId && p.id === ep.paymentId));
+          if (!alreadyExists) {
+            purchases.unshift({
+              id: ep.id || `pur_${ep._id?.toString().slice(-6)}`,
+              name: ep.userName || ep.name || 'Subscriber',
+              email: ep.userEmail || ep.email || '',
+              plan: ep.planName || ep.plan,
+              amount: ep.amountFormatted || `$${(Number(ep.amount) || 0).toFixed(2)}`,
+              gateway: ep.gateway || 'Razorpay',
+              date: ep.date ? new Date(ep.date).toLocaleDateString() : 'Recent',
+              status: ep.status || 'Paid',
+              invoiceId: ep.invoiceId || `INV-${new Date().getFullYear()}-0000`,
+              avatar: '',
+              expiresAt: undefined,
+            });
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Admin Metrics] Error reading explicit purchases collection:', e);
+    }
+
     // 3. REAL QR GENERATIONS
     const qrCol = db.collection('qr_history');
     const totalGenerations = await qrCol.countDocuments();

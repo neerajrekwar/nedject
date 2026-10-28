@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { setLocalUsageCount } from '@/lib/usage-limits';
+import { setClientRedirectDestination } from '@/lib/auth-redirect';
 
 interface QuotaLimitModalProps {
   isOpen?: boolean;
@@ -137,8 +138,13 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
             </ul>
 
             <Link
-              href="/payment"
-              onClick={handleClose}
+              href="/payment?plan=pro"
+              onClick={() => {
+                if (isGuest) {
+                  setClientRedirectDestination('/payment?plan=pro');
+                }
+                handleClose();
+              }}
               className="w-full py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
             >
               <CreditCard className="w-3.5 h-3.5" />

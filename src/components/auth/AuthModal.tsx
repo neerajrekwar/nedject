@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import {
   Lock,
@@ -16,6 +16,10 @@ import {
   ArrowLeft,
   KeyRound,
 } from 'lucide-react';
+import {
+  getClientRedirectDestination,
+  clearClientRedirectDestination,
+} from '@/lib/auth-redirect';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -34,6 +38,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [intendedDestination, setIntendedDestination] = useState<string | null>(null);
 
   // Sign In form
   const [signInEmail, setSignInEmail] = useState('');
@@ -51,13 +56,33 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [dob, setDob] = useState('');
   const [occupation, setOccupation] = useState('');
 
+  // Detect any intended payment destination from cookie or URL on open
+  useEffect(() => {
+    if (!isOpen) return;
+    const fromCookie = getClientRedirectDestination();
+    let fromUrl: string | null = null;
+    if (typeof window !== 'undefined') {
+      fromUrl = new URLSearchParams(window.location.search).get('destination');
+    }
+    const target = fromCookie || fromUrl;
+    if (target) {
+      setIntendedDestination(target);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const handleOAuthSignIn = async (provider: 'google' | 'twitter' | 'instagram') => {
     setLoading(true);
     setError(null);
     try {
-      await signIn(provider, { callbackUrl: window.location.href });
+      const target = intendedDestination || getClientRedirectDestination();
+      const callbackUrl = target
+        ? target.startsWith('http')
+          ? target
+          : `${window.location.origin}${target}`
+        : window.location.href;
+      await signIn(provider, { callbackUrl });
     } catch (err: any) {
       setError(err?.message || `Failed to sign in with ${provider}`);
       setLoading(false);
@@ -80,12 +105,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setError(res.error || 'Invalid email or password');
         setLoading(false);
       } else {
-        setSuccessMessage('Signed in successfully!');
-        if (onSuccess) onSuccess();
-        setTimeout(() => {
-          onClose();
-          window.location.reload();
-        }, 600);
+        const target = intendedDestination || getClientRedirectDestination();
+        if (target) {
+          clearClientRedirectDestination();
+          setSuccessMessage('Signed in! Redirecting to your destination...');
+          if (onSuccess) onSuccess();
+          setTimeout(() => {
+            onClose();
+            window.location.href = target;
+          }, 350);
+        } else {
+          setSuccessMessage('Signed in successfully!');
+          if (onSuccess) onSuccess();
+          setTimeout(() => {
+            onClose();
+            window.location.reload();
+          }, 600);
+        }
       }
     } catch (err: any) {
       setError(err?.message || 'Failed to sign in');
@@ -129,12 +165,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         setSignInEmail(email);
         setSuccessMessage('Account registered in MongoDB! Please enter your password to sign in.');
       } else {
-        setSuccessMessage('Account created and logged in! 10 generations quota unlocked.');
-        if (onSuccess) onSuccess();
-        setTimeout(() => {
-          onClose();
-          window.location.reload();
-        }, 800);
+        const target = intendedDestination || getClientRedirectDestination();
+        if (target) {
+          clearClientRedirectDestination();
+          setSuccessMessage('Account created! Redirecting to your destination...');
+          if (onSuccess) onSuccess();
+          setTimeout(() => {
+            onClose();
+            window.location.href = target;
+          }, 450);
+        } else {
+          setSuccessMessage('Account created and logged in! 10 generations quota unlocked.');
+          if (onSuccess) onSuccess();
+          setTimeout(() => {
+            onClose();
+            window.location.reload();
+          }, 800);
+        }
       }
     } catch (err: any) {
       setError(err?.message || 'Registration failed');
@@ -202,6 +249,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             UNLOCK 10 GENERATIONS QUOTA · MONGODB USER PROFILE SYNC
           </p>
         </div>
+
+        {/* Intended Destination Notice (Payment / Protected Feature) */}
+        {intendedDestination && (
+          <div className="border-2 border-black bg-[#fffde6] p-2.5 flex items-start gap-2 text-xs">
+            <Sparkles className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <span className="font-black uppercase text-black block">INTENDED DESTINATION SAVED</span>
+              <p className="text-[11px] text-zinc-700 font-bold">
+                Sign in to proceed to <span className="underline text-black">{intendedDestination}</span>. You will be redirected instantly upon login.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Tab Switcher */}
         {tab === 'forgot' ? (
