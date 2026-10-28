@@ -13,12 +13,7 @@
     "verify": "node scripts/admin-auth.mjs verify",
     "seed": "node scripts/admin.mjs seed"
   },
-  "bin": {
-    "verify": "./scripts/admin-auth.mjs",
-    "admin-auth": "./scripts/admin-auth.mjs"
-  },
   "dependencies": {
-    "@napi-rs/canvas": "^1.0.13",
     "@tiptap/extension-image": "^3.32.0",
     "@tiptap/extension-link": "^3.32.0",
     "@tiptap/extension-placeholder": "^3.32.0",
@@ -28,7 +23,6 @@
     "@types/jsbarcode": "^3.11.4",
     "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
-    "canvas": "^3.2.3",
     "clsx": "^2.1.1",
     "googleapis": "^182.0.0",
     "html-to-image": "^1.11.13",
@@ -57,7 +51,6 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.6",
-    "node-loader": "^2.1.0",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
