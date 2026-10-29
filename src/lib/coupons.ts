@@ -310,7 +310,7 @@ export interface CouponValidationResult {
   finalPrice: number;
   savingsPercentage: number;
   isFreeUpgrade: boolean;
-  currency: 'INR' | 'USD';
+  currency: string;
 }
 
 /**
@@ -326,7 +326,7 @@ export async function validateCouponForPlan({
   rawCode: string;
   planId: 'pro' | 'enterprise';
   billingCycle: 'monthly' | 'yearly';
-  currency?: 'INR' | 'USD';
+  currency?: string;
   basePrice: number;
 }): Promise<CouponValidationResult> {
   const coupon = await getCouponByCode(rawCode);

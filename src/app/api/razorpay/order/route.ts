@@ -11,6 +11,7 @@ import {
   generateSignedOrderToken,
   checkPaymentRateLimit,
 } from '@/lib/payment-security';
+import { getAllPlans, SupportedCurrency, DEFAULT_PLANS } from '@/lib/plans-db';
 
 export const dynamic = 'force-dynamic';
 
@@ -44,20 +45,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const plan = RAZORPAY_PLANS[planId];
-    if (!plan) {
-      return NextResponse.json({ error: 'Invalid plan selected' }, { status: 400 });
-    }
+    const allPlans = await getAllPlans();
+    const managedPlan =
+      allPlans.find((p) => p.id === planId) ||
+      DEFAULT_PLANS.find((p) => p.id === planId) ||
+      DEFAULT_PLANS[1];
 
-    // SERVER-AUTHORITATIVE PRICE COMPUTATION - Client prices are ignored
-    const isUsd = currency === 'USD';
-    const price = isUsd
-      ? billingCycle === 'yearly'
-        ? plan.yearlyUsd
-        : plan.monthlyUsd
-      : billingCycle === 'yearly'
-      ? plan.yearlyInr
-      : plan.monthlyInr;
+    const targetCurrency: SupportedCurrency = ['USD', 'INR', 'EUR', 'GBP', 'RUB'].includes(currency)
+      ? (currency as SupportedCurrency)
+      : 'USD';
+
+    const planPrices = managedPlan.pricing?.[targetCurrency] || managedPlan.pricing?.USD || { monthly: 9, yearly: 79 };
+    const price = billingCycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
 
     let finalPrice = price;
     let appliedCoupon: any = null;
@@ -67,7 +66,7 @@ export async function POST(req: NextRequest) {
         rawCode: couponCode.trim().toUpperCase(),
         planId: planId as any,
         billingCycle: billingCycle as any,
-        currency: isUsd ? 'USD' : 'INR',
+        currency: targetCurrency,
         basePrice: price,
       });
 
@@ -84,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     const finalUserEmail = userEmail;
     const userName = session?.user?.name || userEmail.split('@')[0] || 'Nedject User';
-    const amountInSmallestUnit = Math.round(finalPrice * 100); // paise or cents
+    const amountInSmallestUnit = Math.round(finalPrice * 100); // in cents/paise/kopecks
 
     // Generate unique order ID
     const orderTimestamp = Date.now();
@@ -100,7 +99,7 @@ export async function POST(req: NextRequest) {
       planId,
       billingCycle,
       amount: amountInSmallestUnit,
-      currency: isUsd ? 'USD' : 'INR',
+      currency: targetCurrency,
       userEmail,
       expiresAt,
       couponCode: appliedCoupon?.code,
@@ -112,8 +111,8 @@ export async function POST(req: NextRequest) {
         orderId: uniqueOrderId,
         signedOrderToken,
         amount: 0,
-        currency: isUsd ? 'USD' : 'INR',
-        planName: plan.name,
+        currency: targetCurrency,
+        planName: managedPlan.name,
         planId,
         billingCycle,
         keyId: 'free_promotional_upgrade',
@@ -127,7 +126,7 @@ export async function POST(req: NextRequest) {
     const razorpay = getRazorpayClient();
 
     // 2. If Razorpay is configured with live credentials and currency is INR, create order in Razorpay
-    if (configured && razorpay && !isUsd) {
+    if (configured && razorpay && targetCurrency === 'INR') {
       try {
         const order = await razorpay.orders.create({
           amount: amountInSmallestUnit,
@@ -162,7 +161,7 @@ export async function POST(req: NextRequest) {
           signedOrderToken: signedRzpOrderToken,
           amount: finalOrderAmount,
           currency: order.currency,
-          planName: plan.name,
+          planName: managedPlan.name,
           planId,
           billingCycle,
           keyId: process.env.RAZORPAY_KEY_ID,
@@ -180,8 +179,8 @@ export async function POST(req: NextRequest) {
       orderId: uniqueOrderId,
       signedOrderToken,
       amount: amountInSmallestUnit,
-      currency: isUsd ? 'USD' : 'INR',
-      planName: plan.name,
+      currency: targetCurrency,
+      planName: managedPlan.name,
       planId,
       billingCycle,
       keyId: configured ? process.env.RAZORPAY_KEY_ID : 'nedject_pci_secure_vault_v2',

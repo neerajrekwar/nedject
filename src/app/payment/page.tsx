@@ -29,8 +29,15 @@ import {
   CheckSquare,
   ShieldAlert,
   LogIn,
+  Globe,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
+import {
+  SupportedCurrency,
+  CURRENCY_SYMBOLS,
+  DEFAULT_PLANS,
+  ManagedPlan,
+} from '@/lib/plans-types';
 import { getUsageStats, UsageStats, setLocalUsageCount } from '@/lib/usage-limits';
 import { SecureCardCheckoutModal } from '@/components/payment/SecureCardCheckoutModal';
 import { AuthModal } from '@/components/auth/AuthModal';
@@ -55,7 +62,7 @@ interface AppliedCouponInfo {
   };
   discountAmount: number;
   finalAmount: number;
-  currency: 'INR' | 'USD';
+  currency: SupportedCurrency;
   isFree: boolean;
 }
 
@@ -67,7 +74,15 @@ function PaymentContent() {
   const initialCoupon = searchParams?.get('coupon') || '';
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
-  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR');
+  // Default to USD for whole world as requested, will update on geo detection via ipapi.co
+  const [currency, setCurrency] = useState<SupportedCurrency>('USD');
+  const [dynamicPlans, setDynamicPlans] = useState<ManagedPlan[]>(DEFAULT_PLANS);
+  const [geoInfo, setGeoInfo] = useState<{
+    countryCode: string;
+    countryName: string;
+    currency: SupportedCurrency;
+    source?: string;
+  } | null>(null);
   const [selectedPlanId, setSelectedPlanId] = useState<'pro' | 'enterprise'>(initialPlan);
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -127,11 +142,37 @@ function PaymentContent() {
     }
   }, [session]);
 
-  // Load current user usage and razorpay config
+  // Load current user usage, razorpay config, geo detection via ipapi.co, and dynamic admin plans
   useEffect(() => {
     const isLogged = Boolean(session?.user);
     const currentPlan = ((session?.user as any)?.plan || 'free') as 'free' | 'pro' | 'enterprise';
     setUsageStats(getUsageStats(isLogged, currentPlan));
+
+    // 1. Geo-detection using ipapi.co to set currency based on country (RUB for Russia, INR for India, etc., USD default)
+    fetch('/api/geo')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((geo) => {
+        if (geo?.currency) {
+          setCurrency(geo.currency);
+          setGeoInfo({
+            countryCode: geo.countryCode,
+            countryName: geo.countryName || geo.countryCode,
+            currency: geo.currency,
+            source: geo.source,
+          });
+        }
+      })
+      .catch((e) => console.warn('Geo detection warning:', e));
+
+    // 2. Load dynamic packages & plans managed by admin in /admin/plans
+    fetch('/api/plans')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((planData) => {
+        if (planData?.success && Array.isArray(planData.plans)) {
+          setDynamicPlans(planData.plans);
+        }
+      })
+      .catch((e) => console.warn('Dynamic plans load warning:', e));
 
     fetch('/api/razorpay/config')
       .then((res) => (res.ok ? res.json() : null))
@@ -207,7 +248,7 @@ function PaymentContent() {
         setCouponSuccess(
           data.isFreeUpgrade
             ? `PROMO CODE ${data.coupon.code} VERIFIED: 100% FREE UPGRADE UNLOCKED!`
-            : `COUPON ${data.coupon.code} APPLIED: Saved ${currency === 'INR' ? '₹' : '$'}${data.discountAmount} (${data.coupon.description})`
+            : `COUPON ${data.coupon.code} APPLIED: Saved ${CURRENCY_SYMBOLS[currency] || '$'}${data.discountAmount} (${data.coupon.description})`
         );
       }
     } catch (err: any) {
@@ -225,17 +266,16 @@ function PaymentContent() {
     setCouponInput('');
   };
 
-  // Calculate pricing breakdown for plan
+  // Calculate pricing breakdown for plan using dynamic admin-configured plans and multi-currency rates
   const getPlanPrice = (planId: 'pro' | 'enterprise') => {
-    const planConfig = NEDJECT_PLANS[planId];
-    const orig =
-      currency === 'INR'
-        ? billingCycle === 'yearly'
-          ? planConfig.yearlyInr
-          : planConfig.monthlyInr
-        : billingCycle === 'yearly'
-        ? planConfig.yearlyUsd
-        : planConfig.monthlyUsd;
+    const planConfig =
+      dynamicPlans.find((p) => p.id === planId) ||
+      DEFAULT_PLANS.find((p) => p.id === planId) ||
+      DEFAULT_PLANS[1];
+
+    const currPricing = planConfig.pricing?.[currency] || planConfig.pricing?.USD || { monthly: 9, yearly: 79 };
+    const orig = billingCycle === 'yearly' ? currPricing.yearly : currPricing.monthly;
+    const symbol = CURRENCY_SYMBOLS[currency] || '$';
 
     if (
       appliedCoupon &&
@@ -254,8 +294,8 @@ function PaymentContent() {
         origAmount: orig,
         finalAmount: final,
         discountAmount: discount,
-        origDisplay: `${currency === 'INR' ? '₹' : '$'}${orig.toLocaleString()}`,
-        finalDisplay: `${currency === 'INR' ? '₹' : '$'}${final.toLocaleString()}`,
+        origDisplay: `${symbol}${orig.toLocaleString()}`,
+        finalDisplay: `${symbol}${final.toLocaleString()}`,
         isFree: final === 0,
         hasDiscount: discount > 0,
       };
@@ -265,8 +305,8 @@ function PaymentContent() {
       origAmount: orig,
       finalAmount: orig,
       discountAmount: 0,
-      origDisplay: `${currency === 'INR' ? '₹' : '$'}${orig.toLocaleString()}`,
-      finalDisplay: `${currency === 'INR' ? '₹' : '$'}${orig.toLocaleString()}`,
+      origDisplay: `${symbol}${orig.toLocaleString()}`,
+      finalDisplay: `${symbol}${orig.toLocaleString()}`,
       isFree: false,
       hasDiscount: false,
     };
@@ -587,10 +627,11 @@ function PaymentContent() {
               <button
                 type="button"
                 onClick={() => {
+                  const dest = `/payment?plan=${selectedPlanId}${couponInput ? `&coupon=${encodeURIComponent(couponInput)}` : ''}`;
                   if (typeof window !== 'undefined') {
-                    setClientRedirectDestination(window.location.pathname + window.location.search);
+                    setClientRedirectDestination(dest);
+                    window.location.href = `/login?callbackUrl=${encodeURIComponent(dest)}`;
                   }
-                  setShowAuthModal(true);
                 }}
                 className="px-3.5 py-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center gap-1.5 transition-all"
               >
@@ -627,29 +668,35 @@ function PaymentContent() {
               </span>
             </div>
 
-            {/* Currency Selector */}
-            <div className="flex items-center gap-2 text-xs font-black">
-              <span className="text-zinc-600 uppercase">CURRENCY:</span>
-              <div className="inline-flex border-2 border-black bg-white shadow-[2px_2px_0px_#000000]">
-                <button
-                  type="button"
-                  onClick={() => setCurrency('INR')}
-                  className={`px-3 py-1 text-xs font-black cursor-pointer transition-colors ${
-                    currency === 'INR' ? 'bg-black text-[#ccff00]' : 'hover:bg-zinc-100 text-black'
-                  }`}
-                >
-                  INR (₹)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrency('USD')}
-                  className={`px-3 py-1 text-xs font-black cursor-pointer transition-colors border-l-2 border-black ${
-                    currency === 'USD' ? 'bg-black text-[#ccff00]' : 'hover:bg-zinc-100 text-black'
-                  }`}
-                >
-                  USD ($)
-                </button>
+            {/* Currency Selector with Geo Detection (ipapi.co) */}
+            <div className="flex items-center gap-2 text-xs font-black flex-wrap">
+              <span className="text-zinc-600 uppercase flex items-center gap-1">
+                <Globe className="w-3.5 h-3.5 text-zinc-700" />
+                <span>CURRENCY:</span>
+              </span>
+              <div className="inline-flex border-2 border-black bg-white shadow-[2px_2px_0px_#000000] flex-wrap">
+                {(['USD', 'INR', 'EUR', 'GBP', 'RUB'] as SupportedCurrency[]).map((c, idx) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setCurrency(c)}
+                    className={`px-2.5 py-1 text-xs font-black cursor-pointer transition-colors ${
+                      idx > 0 ? 'border-l-2 border-black' : ''
+                    } ${
+                      currency === c
+                        ? 'bg-black text-[#ccff00]'
+                        : 'hover:bg-zinc-100 text-black'
+                    }`}
+                  >
+                    {c} ({CURRENCY_SYMBOLS[c]})
+                  </button>
+                ))}
               </div>
+              {geoInfo && (
+                <span className="text-[10px] font-bold bg-[#ccff00] text-black px-2 py-0.5 border border-black shadow-[1px_1px_0px_#000000] flex items-center gap-1">
+                  <span>DETECTED: {geoInfo.countryName} ({geoInfo.currency})</span>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -1023,12 +1070,12 @@ function PaymentContent() {
               <div className="flex items-center justify-between border-b-2 border-black pb-3">
                 <span className="font-black text-sm uppercase text-black">FREE TIER</span>
                 <span className="text-2xl font-black text-black">
-                  {currency === 'INR' ? '₹0' : '$0'}
+                  {CURRENCY_SYMBOLS[currency]}0
                 </span>
               </div>
 
               <p className="text-xs text-zinc-600 font-sans leading-relaxed">
-                {NEDJECT_PLANS.free.description}
+                {(dynamicPlans.find(p => p.id === 'free') || DEFAULT_PLANS[0]).description}
               </p>
 
               <div className="border-t border-black/20 pt-3 space-y-2.5">
@@ -1036,7 +1083,7 @@ function PaymentContent() {
                   INCLUDED CAPABILITIES:
                 </div>
                 <ul className="space-y-2 text-xs font-bold text-zinc-800">
-                  {NEDJECT_PLANS.free.features.map((f, i) => (
+                  {(dynamicPlans.find(p => p.id === 'free') || DEFAULT_PLANS[0]).features.map((f, i) => (
                     <li key={i} className="flex items-start gap-2">
                       {f.included ? (
                         <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
@@ -1079,13 +1126,7 @@ function PaymentContent() {
                 </div>
                 <div className="text-right">
                   <span className="text-3xl font-black text-black">
-                    {currency === 'INR'
-                      ? billingCycle === 'yearly'
-                        ? '₹3,999'
-                        : '₹499'
-                      : billingCycle === 'yearly'
-                      ? '$79'
-                      : '$9'}
+                    {getPlanPrice('pro').origDisplay}
                   </span>
                   <span className="text-xs text-zinc-600 font-bold block text-right">
                     /{billingCycle === 'yearly' ? 'year' : 'month'}
@@ -1094,7 +1135,7 @@ function PaymentContent() {
               </div>
 
               <p className="text-xs text-zinc-700 font-sans leading-relaxed">
-                {NEDJECT_PLANS.pro.description}
+                {(dynamicPlans.find(p => p.id === 'pro') || DEFAULT_PLANS[1]).description}
               </p>
 
               <div className="border-t border-black/30 pt-3 space-y-2.5">
@@ -1102,7 +1143,7 @@ function PaymentContent() {
                   ALL PRO ADVANTAGES:
                 </div>
                 <ul className="space-y-2 text-xs font-bold text-zinc-900">
-                  {NEDJECT_PLANS.pro.features.map((f, i) => (
+                  {(dynamicPlans.find(p => p.id === 'pro') || DEFAULT_PLANS[1]).features.map((f, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                       <span className={f.highlight ? 'text-black font-black bg-[#ccff00]/40 px-1' : ''}>
@@ -1156,13 +1197,7 @@ function PaymentContent() {
                 <span className="font-black text-sm uppercase text-black">ENTERPRISE MATRIX</span>
                 <div className="text-right">
                   <span className="text-2xl font-black text-black">
-                    {currency === 'INR'
-                      ? billingCycle === 'yearly'
-                        ? '₹14,999'
-                        : '₹1,999'
-                      : billingCycle === 'yearly'
-                      ? '$249'
-                      : '$29'}
+                    {getPlanPrice('enterprise').origDisplay}
                   </span>
                   <span className="text-xs text-zinc-500 font-bold block text-right">
                     /{billingCycle === 'yearly' ? 'year' : 'month'}

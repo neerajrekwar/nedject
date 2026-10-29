@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  turbopack: {},
+  turbopack: {
+    root: '/app/applet',
+  },
 };
 
 export default nextConfig;
