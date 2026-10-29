@@ -1,0 +1,87 @@
+[
+  {
+    "id": "cpn_winter_2026",
+    "code": "WINTER2026",
+    "description": "Winter Arc 2026 - 50% Off Any Subscription Plan",
+    "discountType": "percentage",
+    "discountValue": 50,
+    "applicablePlans": [
+      "all"
+    ],
+    "applicableBillingCycles": [
+      "all"
+    ],
+    "maxRedemptions": 500,
+    "timesRedeemed": 28,
+    "expiresAt": "2026-12-31T23:59:59.000Z",
+    "isActive": true,
+    "createdAt": "2026-10-27T15:23:07.763Z",
+    "updatedAt": "2026-10-27T15:23:07.763Z",
+    "createdBy": "Admin Console",
+    "notes": "Official Winter Arc launch promo voucher"
+  },
+  {
+    "id": "cpn_pro_100_free",
+    "code": "PRO100FREE",
+    "description": "VIP 100% Free Pro Tier Upgrade Voucher",
+    "discountType": "percentage",
+    "discountValue": 100,
+    "applicablePlans": [
+      "pro"
+    ],
+    "applicableBillingCycles": [
+      "all"
+    ],
+    "maxRedemptions": 100,
+    "timesRedeemed": 15,
+    "expiresAt": "2027-01-01T00:00:00.000Z",
+    "isActive": true,
+    "createdAt": "2026-10-27T15:23:07.763Z",
+    "updatedAt": "2026-10-27T18:52:23.782Z",
+    "createdBy": "Super Admin",
+    "notes": "Full complimentary 100% off discount voucher for testers and VIP partners"
+  },
+  {
+    "id": "cpn_diwali_30",
+    "code": "FESTIVAL30",
+    "description": "Special 30% Off on Pro & Enterprise Yearly Plans",
+    "discountType": "percentage",
+    "discountValue": 30,
+    "applicablePlans": [
+      "pro",
+      "enterprise"
+    ],
+    "applicableBillingCycles": [
+      "yearly"
+    ],
+    "maxRedemptions": 1000,
+    "timesRedeemed": 82,
+    "expiresAt": "2026-11-30T23:59:59.000Z",
+    "isActive": true,
+    "createdAt": "2026-10-27T15:23:07.763Z",
+    "updatedAt": "2026-10-27T15:23:07.763Z",
+    "createdBy": "Marketing Desk",
+    "notes": "Seasonal festival discount for annual commitments"
+  },
+  {
+    "id": "cpn_flat_200",
+    "code": "SAVE200",
+    "description": "Flat ₹200 Instant Off on Pro Subscriptions",
+    "discountType": "fixed_inr",
+    "discountValue": 200,
+    "applicablePlans": [
+      "pro"
+    ],
+    "applicableBillingCycles": [
+      "all"
+    ],
+    "maxRedemptions": 250,
+    "timesRedeemed": 41,
+    "expiresAt": null,
+    "isActive": true,
+    "createdAt": "2026-10-27T15:23:07.763Z",
+    "updatedAt": "2026-10-27T15:23:07.763Z",
+    "createdBy": "Lead Engineer",
+    "notes": "Flat cash deduction promo"
+  }
+]
