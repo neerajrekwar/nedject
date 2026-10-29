@@ -143,10 +143,10 @@ function renderIcon(ctx, size, isMaskable = false) {
 }
 
 const sizes = [
-  { file: 'pwa-192x192.png', size: 192, maskable: false },
-  { file: 'pwa-512x512.png', size: 512, maskable: false },
-  { file: 'pwa-maskable-512x512.png', size: 512, maskable: true },
-  { file: 'apple-touch-icon.png', size: 180, maskable: false },
+  { file: 'pwa_maskable_icon_x192.png', size: 192, maskable: false },
+  { file: 'pwa_maskable_icon_x512.png', size: 512, maskable: false },
+  { file: 'pwa_maskable_icon_x384.png', size: 384, maskable: true },
+  { file: 'apple_touch_icon_x192.png', size: 180, maskable: false },
 ];
 
 for (const item of sizes) {
