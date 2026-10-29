@@ -50,33 +50,53 @@ export default function EditPostPage({
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
-  useEffect(() => {
-    const all = getAllPosts();
-    const found = all.find((p) => p._id === postId || p.slug === postId);
-    if (found) {
-      setPost(found);
-      setTitle(found.title);
-      setSlug(found.slug);
-      setExcerpt(found.excerpt);
-      setContentHtml(found.content);
-      setImageUrl(found.mainImage.url);
-      setImageAlt(found.mainImage.alt);
-      setTagsInput(found.tags.join(', '));
-      setStatus(found.status);
-      setMetaTitle(found.seo?.metaTitle || '');
-      setMetaDescription(found.seo?.metaDescription || '');
+  const applyPost = (found: SanityPost) => {
+    setPost(found);
+    setTitle(found.title || '');
+    setSlug(found.slug || '');
+    setExcerpt(found.excerpt || '');
+    setContentHtml(found.content || '');
+    setImageUrl(found.mainImage?.url || '');
+    setImageAlt(found.mainImage?.alt || '');
+    setTagsInput(Array.isArray(found.tags) ? found.tags.join(', ') : '');
+    setStatus(found.status || 'published');
+    setMetaTitle(found.seo?.metaTitle || '');
+    setMetaDescription(found.seo?.metaDescription || '');
 
-      // Match category
+    // Match category
+    if (found.category?.title) {
       const catEntry = Object.entries(PRESET_CATEGORIES).find(
         ([_, c]) => c.title.toLowerCase() === found.category.title.toLowerCase()
       );
       if (catEntry) setCategoryKey(catEntry[0]);
+    }
 
-      // Match author
+    // Match author
+    if (found.author?.name) {
       const authEntry = Object.entries(PRESET_AUTHORS).find(
         ([_, a]) => a.name.toLowerCase() === found.author.name.toLowerCase()
       );
       if (authEntry) setAuthorKey(authEntry[0]);
+    }
+  };
+
+  useEffect(() => {
+    const all = getAllPosts();
+    const found = all.find((p) => p._id === postId || p.slug === postId);
+    if (found) {
+      applyPost(found);
+    } else {
+      fetch('/api/admin/posts')
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.posts && Array.isArray(data.posts)) {
+            const serverFound = data.posts.find((p: any) => p._id === postId || p.slug === postId);
+            if (serverFound) {
+              applyPost(serverFound);
+            }
+          }
+        })
+        .catch(() => {});
     }
   }, [postId]);
 

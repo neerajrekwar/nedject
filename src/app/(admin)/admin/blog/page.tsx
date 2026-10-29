@@ -193,8 +193,8 @@ export default function AdminBlogManagementPage() {
                         <div className="w-16 h-12 border border-black bg-zinc-100 shrink-0 overflow-hidden relative">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
-                            src={post.mainImage.url}
-                            alt={post.mainImage.alt}
+                            src={post.mainImage?.url || 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=300&auto=format&fit=crop&q=80'}
+                            alt={post.mainImage?.alt || post.title}
                             className="w-full h-full object-cover"
                           />
                         </div>

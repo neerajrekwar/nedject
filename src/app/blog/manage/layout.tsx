@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import { createPageMetadata } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Sanity CMS Blog Management Studio',
+  title: 'Admin Blog Management | Nedject Editorial',
   description:
-    'Sanity Studio content management desk for Nedject print engineering, barcode architecture, and optical security publications.',
+    'Dedicated content management desk for Nedject print engineering, barcode architecture, and optical security publications.',
   path: '/blog/manage',
-  noIndex: true, // Content management desk should not be indexed by search crawlers
+  noIndex: true,
 });
 
 export default function BlogManageLayout({
@@ -14,5 +14,5 @@ export default function BlogManageLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="min-h-screen bg-[#111113] text-zinc-100">{children}</div>;
+  return <div className="min-h-screen bg-[#f5f5f0] text-black">{children}</div>;
 }

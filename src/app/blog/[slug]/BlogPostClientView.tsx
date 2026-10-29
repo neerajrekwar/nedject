@@ -111,11 +111,11 @@ export function BlogPostClientView({ initialPost, slug }: Props) {
 
         <div className="flex items-center gap-2">
           <Link
-            href={`/blog/manage?edit=${post._id}`}
+            href={`/admin/blog/edit/${post._id || post.slug}`}
             className="inline-flex items-center gap-1.5 bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black px-2.5 py-1 border border-black shadow-[2px_2px_0px_#000000] transition-colors"
           >
             <PenSquare className="w-3 h-3" />
-            <span>EDIT IN SANITY STUDIO</span>
+            <span>EDIT POST (ADMIN)</span>
           </Link>
         </div>
       </div>
@@ -155,18 +155,19 @@ export function BlogPostClientView({ initialPost, slug }: Props) {
         {/* Author Card & Social Share Bar */}
         <div className="mt-8 pt-6 border-t-2 border-black flex flex-col md:flex-row items-start md:items-center justify-between gap-4 font-mono">
           <div className="flex items-center gap-3">
-            <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-black">
+            <div className="relative w-12 h-12 rounded-full overflow-hidden border-2 border-black bg-zinc-200">
               <Image
-                src={post.author.avatar}
-                alt={post.author.name}
+                src={post.author?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                alt={post.author?.name || 'Author'}
                 fill
+                unoptimized
                 className="object-cover"
                 referrerPolicy="no-referrer"
               />
             </div>
             <div>
-              <div className="font-black text-sm text-black">{post.author.name}</div>
-              <div className="text-xs text-zinc-600">{post.author.role}</div>
+              <div className="font-black text-sm text-black">{post.author?.name || 'Nedject Engineer'}</div>
+              <div className="text-xs text-zinc-600">{post.author?.role || 'Staff Engineer'}</div>
             </div>
           </div>
 
@@ -177,7 +178,7 @@ export function BlogPostClientView({ initialPost, slug }: Props) {
               label="INSTAGRAM / WEB STORY"
               pageTitle={post.title}
               pageDescription={post.excerpt}
-              category={post.category.title}
+              category={post.category?.title || 'Engineering'}
               className="!bg-[#ccff00] !text-black !border-black"
             />
             <button
@@ -210,9 +211,10 @@ export function BlogPostClientView({ initialPost, slug }: Props) {
       <div className="border-4 border-black bg-zinc-900 shadow-[6px_6px_0px_#000000] mb-10 overflow-hidden">
         <div className="relative h-72 sm:h-96 md:h-[460px] w-full">
           <Image
-            src={post.mainImage.url}
-            alt={post.mainImage.alt}
+            src={post.mainImage?.url || 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&h=630&q=85'}
+            alt={post.mainImage?.alt || post.title}
             fill
+            unoptimized
             className="object-cover"
             referrerPolicy="no-referrer"
             priority
@@ -256,19 +258,20 @@ export function BlogPostClientView({ initialPost, slug }: Props) {
 
           {/* Author Bio Box */}
           <div className="mt-8 p-5 border-2 border-black bg-zinc-50 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-black shrink-0">
+            <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-black bg-zinc-200 shrink-0">
               <Image
-                src={post.author.avatar}
-                alt={post.author.name}
+                src={post.author?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                alt={post.author?.name || 'Author'}
                 fill
+                unoptimized
                 className="object-cover"
                 referrerPolicy="no-referrer"
               />
             </div>
             <div>
               <div className="font-mono text-xs font-bold text-zinc-500 uppercase">Written by</div>
-              <div className="font-sans text-lg font-black text-black">{post.author.name}</div>
-              <div className="font-mono text-xs text-zinc-600 mt-1">{post.author.bio}</div>
+              <div className="font-sans text-lg font-black text-black">{post.author?.name || 'Nedject Engineer'}</div>
+              <div className="font-mono text-xs text-zinc-600 mt-1">{post.author?.bio || 'Industrial print and barcode engineering contributor.'}</div>
             </div>
           </div>
         </div>
@@ -295,14 +298,14 @@ export function BlogPostClientView({ initialPost, slug }: Props) {
                 ))}
               </nav>
 
-              {/* Sanity Studio Direct Trigger */}
+              {/* Admin Blog Direct Link */}
               <div className="mt-6 pt-4 border-t-2 border-zinc-200">
                 <Link
-                  href="/blog/manage"
+                  href="/admin/blog"
                   className="w-full inline-flex items-center justify-center gap-2 bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs py-2 border border-black shadow-[2px_2px_0px_#000000] transition-colors"
                 >
                   <PenSquare className="w-3.5 h-3.5" />
-                  <span>MANAGE POSTS (SANITY)</span>
+                  <span>MANAGE IN ADMIN BLOG</span>
                 </Link>
               </div>
             </div>
@@ -482,6 +485,30 @@ function renderMarkdown(content: string) {
     } else if (inTable) {
       inTable = false;
       flushTable(i);
+    }
+
+    // Markdown Images: ![alt](url)
+    const imgMatch = line.trim().match(/^!\[(.*?)\]\((.*?)\)$/);
+    if (imgMatch) {
+      const altText = imgMatch[1];
+      const imgUrl = imgMatch[2];
+      elements.push(
+        <div key={`md-img-${i}`} className="my-6 border-2 border-black bg-zinc-950 overflow-hidden shadow-[3px_3px_0px_#000000]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={imgUrl}
+            alt={altText}
+            className="w-full h-auto object-cover max-h-[500px]"
+            loading="lazy"
+          />
+          {altText && (
+            <div className="p-2 bg-zinc-100 border-t border-black font-mono text-[11px] text-zinc-700 italic">
+              {altText}
+            </div>
+          )}
+        </div>
+      );
+      continue;
     }
 
     // Headings

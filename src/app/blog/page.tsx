@@ -25,8 +25,24 @@ export default function BlogIndexPage() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
 
   const loadPosts = () => {
-    const all = getAllPosts().filter((p) => p.status === 'published');
-    setPosts(all);
+    // 1. Initial state from local / preset storage
+    const local = getAllPosts().filter((p) => p.status === 'published');
+    if (local.length > 0) {
+      setPosts(local);
+    }
+
+    // 2. Fetch latest published posts from server API
+    fetch('/api/admin/posts')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.posts && Array.isArray(data.posts) && data.posts.length > 0) {
+          const published = data.posts.filter((p: SanityPost) => p.status === 'published');
+          if (published.length > 0) {
+            setPosts(published);
+          }
+        }
+      })
+      .catch((e) => console.warn('Server blog posts fetch warning:', e));
   };
 
   useEffect(() => {
@@ -41,11 +57,11 @@ export default function BlogIndexPage() {
 
   const filteredPosts = posts.filter((post) => {
     const matchesCategory =
-      selectedCategory === 'all' || post.category.title.toLowerCase() === selectedCategory.toLowerCase();
+      selectedCategory === 'all' || post.category?.title?.toLowerCase() === selectedCategory.toLowerCase();
     const matchesSearch =
-      post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.excerpt.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase()));
+      post.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.excerpt?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (Array.isArray(post.tags) && post.tags.some((t) => t.toLowerCase().includes(searchQuery.toLowerCase())));
     return matchesCategory && matchesSearch;
   });
 
@@ -54,7 +70,7 @@ export default function BlogIndexPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 py-8 sm:py-12">
-      {/* Top Banner: Industrial Header & Sanity CMS Studio Link */}
+      {/* Top Banner: Industrial Header & Admin Management Link */}
       <div className="border-4 border-black bg-white p-6 sm:p-8 shadow-[6px_6px_0px_#000000] mb-8">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
@@ -65,25 +81,25 @@ export default function BlogIndexPage() {
               </span>
               <span className="bg-zinc-100 border border-black text-xs font-mono px-2 py-0.5 font-bold flex items-center gap-1">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                Sanity CMS Live Sync
+                Editorial Engine Active
               </span>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-black font-sans">
-              Print Calibration & Barcode Architecture
+              Print Calibration &amp; Barcode Architecture
             </h1>
             <p className="mt-2 text-sm sm:text-base text-zinc-700 max-w-2xl font-mono">
               Industrial-grade specifications, optical decodability mathematics, prepress dot gain calibration, and forensic QR audit blueprints.
             </p>
           </div>
 
-          {/* Quick link to Sanity CMS Studio */}
+          {/* Link to Admin Blog Management */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <Link
-              href="/blog/manage"
+              href="/admin/blog"
               className="inline-flex items-center justify-center gap-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black px-4 py-2.5 text-xs sm:text-sm font-mono transition-all shadow-[3px_3px_0px_#000000]"
             >
               <PenSquare className="w-4 h-4" />
-              <span>SANITY CMS STUDIO</span>
+              <span>ADMIN BLOG MANAGER</span>
             </Link>
           </div>
         </div>
@@ -135,9 +151,10 @@ export default function BlogIndexPage() {
             {/* Image Pane */}
             <div className="lg:col-span-7 relative h-64 sm:h-80 lg:h-auto min-h-[280px] bg-zinc-900 border-b-4 lg:border-b-0 lg:border-r-4 border-black overflow-hidden">
               <Image
-                src={featuredPost.mainImage.url}
-                alt={featuredPost.mainImage.alt}
+                src={featuredPost.mainImage?.url || 'https://images.unsplash.com/photo-1563986768609-322da13575f3?auto=format&fit=crop&w=1200&h=630&q=85'}
+                alt={featuredPost.mainImage?.alt || featuredPost.title}
                 fill
+                unoptimized
                 className="object-cover"
                 referrerPolicy="no-referrer"
                 priority
@@ -148,7 +165,7 @@ export default function BlogIndexPage() {
                   FEATURED PUBLICATION
                 </span>
                 <span className="bg-white text-black text-xs font-bold font-mono px-2.5 py-1 border border-black shadow-[2px_2px_0px_#000000]">
-                  {featuredPost.category.title}
+                  {featuredPost.category?.title}
                 </span>
               </div>
             </div>
@@ -182,7 +199,7 @@ export default function BlogIndexPage() {
 
                 {/* Tags */}
                 <div className="mt-4 flex flex-wrap gap-1.5">
-                  {featuredPost.tags.map((tag) => (
+                  {featuredPost.tags?.map((tag) => (
                     <span
                       key={tag}
                       className="text-[11px] font-mono bg-zinc-100 border border-zinc-400 px-2 py-0.5 font-semibold text-zinc-800"
@@ -196,11 +213,12 @@ export default function BlogIndexPage() {
               {/* Author & CTA */}
               <div className="mt-6 pt-6 border-t-2 border-black flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="relative w-9 h-9 rounded-full overflow-hidden border border-black">
+                  <div className="relative w-9 h-9 rounded-full overflow-hidden border border-black bg-zinc-200">
                     <Image
-                      src={featuredPost.author.avatar}
-                      alt={featuredPost.author.name}
+                      src={featuredPost.author?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                      alt={featuredPost.author?.name || 'Author'}
                       fill
+                      unoptimized
                       className="object-cover"
                       referrerPolicy="no-referrer"
                     />
@@ -237,15 +255,16 @@ export default function BlogIndexPage() {
               {/* Card Image */}
               <div className="relative h-48 sm:h-56 w-full border-b-4 border-black bg-zinc-900 overflow-hidden">
                 <Image
-                  src={post.mainImage.url}
-                  alt={post.mainImage.alt}
+                  src={post.mainImage?.url || 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=1200&auto=format&fit=crop&q=80'}
+                  alt={post.mainImage?.alt || post.title}
                   fill
+                  unoptimized
                   className="object-cover hover:scale-105 transition-transform duration-300"
                   referrerPolicy="no-referrer"
                 />
                 <div className="absolute top-3 left-3">
                   <span className="bg-black text-[#ccff00] text-[11px] font-black font-mono px-2 py-0.5 border border-black shadow-[1px_1px_0px_#000000]">
-                    {post.category.title}
+                    {post.category?.title}
                   </span>
                 </div>
               </div>
@@ -278,7 +297,7 @@ export default function BlogIndexPage() {
 
                 {/* Tags */}
                 <div className="mt-3 flex flex-wrap gap-1">
-                  {post.tags.slice(0, 4).map((tag) => (
+                  {post.tags?.slice(0, 4).map((tag) => (
                     <span
                       key={tag}
                       className="text-[10px] font-mono bg-zinc-100 border border-zinc-300 px-1.5 py-0.5 font-medium text-zinc-700"
@@ -293,16 +312,17 @@ export default function BlogIndexPage() {
             {/* Footer */}
             <div className="p-5 sm:p-6 pt-0 border-t-2 border-zinc-200 mt-4 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="relative w-7 h-7 rounded-full overflow-hidden border border-black">
+                <div className="relative w-7 h-7 rounded-full overflow-hidden border border-black bg-zinc-200">
                   <Image
-                    src={post.author.avatar}
-                    alt={post.author.name}
+                    src={post.author?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&auto=format&fit=crop&q=80'}
+                    alt={post.author?.name || 'Author'}
                     fill
+                    unoptimized
                     className="object-cover"
                     referrerPolicy="no-referrer"
                   />
                 </div>
-                <span className="text-xs font-mono font-bold text-black">{post.author.name}</span>
+                <span className="text-xs font-mono font-bold text-black">{post.author?.name || 'Nedject Engineer'}</span>
               </div>
 
               <Link

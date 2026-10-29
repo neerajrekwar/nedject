@@ -405,33 +405,35 @@ const STORAGE_KEY = 'nedject_sanity_posts_v1';
 
 export function getAllPosts(): SanityPost[] {
   if (typeof window === 'undefined') {
-    return [];
+    return PRESET_POSTS;
   }
 
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return [];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(PRESET_POSTS));
+      return PRESET_POSTS;
     }
     const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) {
+    if (Array.isArray(parsed) && parsed.length > 0) {
       return parsed;
     }
-    return [];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(PRESET_POSTS));
+    return PRESET_POSTS;
   } catch (e) {
-    console.warn('Error reading from localStorage:', e);
-    return [];
+    console.warn('Error reading from localStorage, fallback to PRESET_POSTS:', e);
+    return PRESET_POSTS;
   }
 }
 
 export function getPostBySlug(slug: string): SanityPost | undefined {
   const posts = getAllPosts();
-  return posts.find((p) => p.slug === slug);
+  const found = posts.find((p) => p.slug === slug);
+  if (found) return found;
+  return PRESET_POSTS.find((p) => p.slug === slug);
 }
 
 export function savePost(post: SanityPost): SanityPost[] {
-  if (typeof window === 'undefined') return PRESET_POSTS;
-
   const posts = getAllPosts();
   const existingIndex = posts.findIndex((p) => p._id === post._id || p.slug === post.slug);
 
@@ -443,28 +445,40 @@ export function savePost(post: SanityPost): SanityPost[] {
     updated = [post, ...posts];
   }
 
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    // Dispatch custom event so listeners on the same page can re-render
-    window.dispatchEvent(new Event('nedject_sanity_updated'));
-  } catch (e) {
-    console.error('Failed to save post to localStorage:', e);
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new Event('nedject_sanity_updated'));
+
+      // Asynchronously sync to backend MongoDB & data/posts.json
+      fetch('/api/admin/posts', {
+        method: existingIndex >= 0 ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(post),
+      }).catch((e) => console.warn('Server blog sync notice:', e));
+    } catch (e) {
+      console.error('Failed to save post to localStorage:', e);
+    }
   }
 
   return updated;
 }
 
 export function deletePost(id: string): SanityPost[] {
-  if (typeof window === 'undefined') return PRESET_POSTS;
-
   const posts = getAllPosts();
   const updated = posts.filter((p) => p._id !== id);
 
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new Event('nedject_sanity_updated'));
-  } catch (e) {
-    console.error('Failed to delete post from localStorage:', e);
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      window.dispatchEvent(new Event('nedject_sanity_updated'));
+
+      fetch(`/api/admin/posts?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }).catch((e) => console.warn('Server delete sync notice:', e));
+    } catch (e) {
+      console.error('Failed to delete post from localStorage:', e);
+    }
   }
 
   return updated;

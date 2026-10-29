@@ -93,11 +93,12 @@ export async function proxy(request: NextRequest) {
 
   // 6. Admin API Routes (/api/admin/*)
   if (pathname.startsWith('/api/admin')) {
-    // Exempt login, logout, and seed routes
+    // Exempt login, logout, seed routes, and public blog post reading (GET /api/admin/posts)
     if (
       pathname === '/api/admin/auth/login' ||
       pathname === '/api/admin/auth/logout' ||
-      pathname === '/api/admin/seed'
+      pathname === '/api/admin/seed' ||
+      (pathname === '/api/admin/posts' && request.method === 'GET')
     ) {
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
