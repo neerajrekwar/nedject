@@ -1,20 +1,44 @@
 /**
  * INSTA CLIP ENGINE - Instagram Cinematic Video Clips & Reels Studio
- * High-performance canvas-based video frame processor with AM halftone screening,
- * 35mm film grain, Hollywood color grading, camera motions, and audio synthesis.
+ * High-performance canvas-based video frame processor supporting:
+ * - Direct video (.mp4, .webm, .mov) and image media playback & synthesis
+ * - 17 Visual Effects (including Digital RGB Glitch, VHS, 35mm Grain, Halftone, etc.)
+ * - Font Captions with 8 typographic styles, customizable positions & badges
+ * - Ambient Synthesizer (7 acoustic styles) + Custom Audio File Upload
+ * - Multi-ratio Instagram export (9:16 Reels, 4:5 Feed, 1:1 Square, 16:9 Cinema, 2:3)
  */
 
 export type InstaToneMode =
+  | 'analog-35mm'
+  | 'teal-orange'
   | 'am-line'
   | 'am-dot'
   | 'floyd-steinberg'
-  | 'analog-35mm'
-  | 'teal-orange'
   | 'silver-gelatin'
   | 'cyberpunk-neon'
   | 'vhs-camcorder'
   | 'high-contrast'
   | 'clean-cinematic';
+
+export type InstaEffectType =
+  | 'none'
+  | 'rgb-glitch'            // 1. Digital RGB Split Glitch & Slice Tear
+  | 'vhs-tape'              // 2. VHS Tape Scanlines & Tracking Static
+  | 'analog-35mm'           // 3. 35mm Analog Film Grain & Dust Scratches
+  | 'crt-barrel'            // 4. CRT Phosphor Barrel Distortion
+  | 'am-dot-halftone'       // 5. AM Halftone Dot Matrix (Rotogravure)
+  | 'am-line-engraving'     // 6. AM Halftone Banknote Diagonal Linework
+  | 'bayer-8bit-dither'     // 7. 8-Bit Bayer Ordered Dither
+  | 'cyberpunk-neon'        // 8. Cyberpunk Neon Bloom & Glow
+  | 'noir-darkroom'         // 9. Noir 21:1 Hard Monochrome
+  | 'super8-sepia'          // 10. Vintage Super 8 Warm Sepia Vignette
+  | 'anamorphic-flare'      // 11. Anamorphic Blue Streak Lens Flare
+  | 'thermal-heatmap'       // 12. Thermal FLIR False-Color Heatmap
+  | 'matrix-rain'           // 13. Matrix Green Digital Rain & Phosphor
+  | 'hologram-shimmer'      // 14. Hologram Shimmer & Scan Interlace
+  | 'prism-rainbow'         // 15. Prism Rainbow Lens Dispersion
+  | 'strobe-paparazzi'      // 16. Strobe Flash & Paparazzi Flicker
+  | 'risograph-duotone';    // 17. Retro Risograph Two-Tone Duotone
 
 export type CameraMotionStyle =
   | 'ken-burns-in'
@@ -30,7 +54,38 @@ export type CinematicAudioStyle =
   | 'lofi-vinyl'
   | 'cinematic-drone'
   | 'ambient-shimmer'
+  | 'synthwave-80s'
+  | 'dark-techno'
+  | 'theatrical-braam'
+  | 'chill-rhodes'
+  | 'custom'
   | 'muted';
+
+export type CaptionFontStyle =
+  | 'brutalist-mono'
+  | 'cinematic-serif'
+  | 'bold-impact'
+  | 'retro-anime-yellow'
+  | 'cyber-neon'
+  | 'vintage-typewriter'
+  | 'glitch-split'
+  | 'theatrical-sub';
+
+export type CaptionPosition = 'bottom' | 'center' | 'top';
+export type CaptionBadgeStyle = 'solid-black' | 'translucent' | 'neon-border' | 'shadow-only';
+
+export interface CaptionOptions {
+  enabled: boolean;
+  text: string;
+  kickerText?: string;
+  fontStyle: CaptionFontStyle;
+  position: CaptionPosition;
+  badgeStyle: CaptionBadgeStyle;
+  fontSize: number; // 20 - 72
+  textColor: string; // #ffffff, #ffe600, #ccff00, #00ffff, #ff3366, etc.
+  letterSpacing: number; // -1 to 8
+  animation: 'none' | 'fade-pulse' | 'typewriter' | 'glow-breath';
+}
 
 export interface AspectPreset {
   id: string;
@@ -54,6 +109,8 @@ export interface InstaClipOptions {
   width: number;
   height: number;
   toneMode: InstaToneMode;
+  effect: InstaEffectType;
+  effectIntensity: number; // 0 - 100%
   contrast: number; // 0.5 - 2.5 (1.0 = default)
   brightness: number; // 0.5 - 2.0 (1.0 = default)
   saturation: number; // 0.0 - 2.0 (1.0 = default)
@@ -67,17 +124,36 @@ export interface InstaClipOptions {
   cameraMotion: CameraMotionStyle;
   motionIntensity: number; // 0.2 - 2.0
   letterbox: LetterboxStyle;
-  durationSeconds: number; // 3, 5, 7, 10, 15
+  durationSeconds: number; // 3 - 60
   fps: number; // 30 or 60
   audioStyle: CinematicAudioStyle;
+  customAudioUrl?: string;
+  customAudioName?: string;
+  audioVolume: number; // 0.0 - 1.5
   showTimecodeOverlay: boolean;
+  caption: CaptionOptions;
 }
+
+export const DEFAULT_CAPTION_OPTIONS: CaptionOptions = {
+  enabled: true,
+  text: 'NEO TOKYO // PROTOCOL 2026',
+  kickerText: 'ARCHIVAL OPTICAL GRADE',
+  fontStyle: 'brutalist-mono',
+  position: 'bottom',
+  badgeStyle: 'solid-black',
+  fontSize: 32,
+  textColor: '#ccff00',
+  letterSpacing: 2,
+  animation: 'glow-breath',
+};
 
 export const DEFAULT_INSTA_OPTIONS: InstaClipOptions = {
   aspectRatio: '9:16',
   width: 1080,
   height: 1920,
   toneMode: 'analog-35mm',
+  effect: 'rgb-glitch',
+  effectIntensity: 70,
   contrast: 1.35,
   brightness: 1.05,
   saturation: 1.25,
@@ -94,106 +170,82 @@ export const DEFAULT_INSTA_OPTIONS: InstaClipOptions = {
   durationSeconds: 5,
   fps: 30,
   audioStyle: 'lofi-vinyl',
+  audioVolume: 1.0,
   showTimecodeOverlay: true,
+  caption: DEFAULT_CAPTION_OPTIONS,
 };
 
-export const INSTA_TONE_MODES: {
-  id: InstaToneMode;
-  label: string;
+export interface EffectMeta {
+  id: InstaEffectType;
+  name: string;
+  category: 'Glitch & CRT' | 'Film & Retro' | 'Halftone & Print' | 'Color & Lens';
   desc: string;
   badge: string;
-}[] = [
-  {
-    id: 'analog-35mm',
-    label: '35mm Film Grain',
-    desc: 'Kodak Vision3 analog motion picture stock with organic silver halide grain and warm highlights',
-    badge: 'KODAK 35MM',
-  },
-  {
-    id: 'teal-orange',
-    label: 'Teal & Orange Hollywood',
-    desc: 'Modern blockbuster cinema grade separating warm skin tones against cool cyan shadow depth',
-    badge: 'CINEMATIC GRADE',
-  },
-  {
-    id: 'am-line',
-    label: 'AM Line Halftone Motion',
-    desc: 'Dynamic 45° diagonal movie engraving scanlines modulated by frame luminance',
-    badge: 'ENGRAVING FILM',
-  },
-  {
-    id: 'am-dot',
-    label: 'AM Clustered Dot Press',
-    desc: 'Offset rotogravure newsprint matrix with optical amplitude modulation',
-    badge: 'PRINT PRESS',
-  },
-  {
-    id: 'floyd-steinberg',
-    label: 'Floyd-Steinberg Risograph',
-    desc: 'Stochastic 1-bit error diffusion dither for avant-garde motion aesthetics',
-    badge: 'DITHER REEL',
-  },
-  {
-    id: 'silver-gelatin',
-    label: 'Silver Gelatin Noir Film',
-    desc: 'Rich archival black & white darkroom film with velvety blacks and luminous specular mids',
-    badge: 'B&W NOIR',
-  },
-  {
-    id: 'cyberpunk-neon',
-    label: 'Cyberpunk Neon Matrix',
-    desc: 'High-energy Tokyo night aesthetic with hyper-saturated greens, purples and chromatic edge glow',
-    badge: 'CYBER MATRIX',
-  },
-  {
-    id: 'vhs-camcorder',
-    label: '1990s VHS Camcorder',
-    desc: 'Nostalgic CRT raster scanlines, subtle color phase drift, and magnetic tape noise',
-    badge: 'RETRO VHS',
-  },
-  {
-    id: 'high-contrast',
-    label: '21:1 Dynamic Film Contrast',
-    desc: 'Aggressive commercial punch with crushed micro-shadows and sculpted specular highlights',
-    badge: '21:1 CONTRAST',
-  },
-  {
-    id: 'clean-cinematic',
-    label: 'Clean Director’s Cut',
-    desc: 'Natural balanced cinematic calibration with crisp optics and pristine color gamut',
-    badge: 'DIRECTOR CUT',
-  },
-];
-
-export interface CinematicSpecimen {
-  id: string;
-  title: string;
-  badge: string;
-  desc: string;
-  url: string;
 }
 
-export const CINEMATIC_SPECIMENS: CinematicSpecimen[] = [
+export const INSTA_EFFECTS_CATALOG: EffectMeta[] = [
+  { id: 'none', name: 'Original Pure Grade', category: 'Film & Retro', desc: 'Clean cinematic grade with zero digital distortion', badge: 'CLEAN' },
+  { id: 'rgb-glitch', name: 'Digital RGB Split Glitch', category: 'Glitch & CRT', desc: 'High-energy chromatic channel split + horizontal video slice displacement', badge: 'GLITCH TARGET' },
+  { id: 'vhs-tape', name: 'VHS Tape Scanlines & Tracking', category: 'Glitch & CRT', desc: '1990s magnetic tape scanline raster, head flutter & bottom tracking static', badge: 'VHS CASSETTE' },
+  { id: 'analog-35mm', name: '35mm Film Grain & Scratches', category: 'Film & Retro', desc: 'Kodak Vision3 analog motion picture stock with silver halide noise', badge: 'KODAK 35MM' },
+  { id: 'crt-barrel', name: 'CRT Monitor Phosphor Barrel', category: 'Glitch & CRT', desc: 'Curved tube television curvature with subpixel RGB shadow mask', badge: 'CRT DISPLAY' },
+  { id: 'am-dot-halftone', name: 'AM Clustered Dot Newspaper', category: 'Halftone & Print', desc: 'Offset rotogravure newsprint matrix with optical amplitude modulation', badge: 'ROTOGRAVURE' },
+  { id: 'am-line-engraving', name: 'AM Banknote Line Halftone', category: 'Halftone & Print', desc: 'Diagonal 45° movie engraving scanlines modulated by frame luminance', badge: 'ENGRAVING' },
+  { id: 'bayer-8bit-dither', name: '8-Bit Retro Bayer Dither', category: 'Halftone & Print', desc: 'Digital 8×8 ordered dithering matrix for classic game console aesthetic', badge: '8-BIT RETRO' },
+  { id: 'cyberpunk-neon', name: 'Cyberpunk Neon Bloom', category: 'Color & Lens', desc: 'Hyper-saturated electric cyan and magenta bloom across specular highlights', badge: 'CYBERPUNK' },
+  { id: 'noir-darkroom', name: 'Noir 21:1 Hard Monochrome', category: 'Film & Retro', desc: 'Velvety high-contrast silver gelatin darkroom S-curve for stark editorial', badge: 'DARKROOM NOIR' },
+  { id: 'super8-sepia', name: 'Vintage Super 8 Warm Sepia', category: 'Film & Retro', desc: '1970s warm sepia tone with heavy aged edge vignette and dust flecks', badge: 'SUPER 8' },
+  { id: 'anamorphic-flare', name: 'Anamorphic Blue Streak Flare', category: 'Color & Lens', desc: 'Horizontal sci-fi anamorphic lens flare streaks across bright highlights', badge: 'ANAMORPHIC' },
+  { id: 'thermal-heatmap', name: 'Thermal FLIR Infrared Heatmap', category: 'Color & Lens', desc: 'False-color infrared spectrum mapping thermal gradients across subjects', badge: 'THERMAL FLIR' },
+  { id: 'matrix-rain', name: 'Matrix Green Phosphor Rain', category: 'Glitch & CRT', desc: 'Terminal green phosphor decay with falling matrix rain digital glyphs', badge: 'MATRIX TERMINAL' },
+  { id: 'hologram-shimmer', name: 'Hologram Shimmer & Interlace', category: 'Glitch & CRT', desc: 'Electric cyan holographic projection with alternating scanline shimmer', badge: 'HOLOGRAM' },
+  { id: 'prism-rainbow', name: 'Prism Rainbow Lens Flare', category: 'Color & Lens', desc: 'Refractive prism edge dispersion splitting light into spectral rainbows', badge: 'PRISM OPTIC' },
+  { id: 'strobe-paparazzi', name: 'Strobe Flash & Paparazzi Burst', category: 'Film & Retro', desc: 'Rhythmic white flashbulb strobing mimicking red-carpet paparazzi cameras', badge: 'STROBE' },
+  { id: 'risograph-duotone', name: 'Retro Risograph Two-Tone', category: 'Halftone & Print', desc: 'Japanese riso press duotone ink blending with paper grain tooth', badge: 'RISOGRAPH' },
+];
+
+export const CAPTION_STYLES_LIST: { id: CaptionFontStyle; label: string; desc: string; sample: string }[] = [
+  { id: 'brutalist-mono', label: 'Brutalist Monospace', desc: 'Industrial terminal font with bold block styling', sample: 'NEO TOKYO // 2026' },
+  { id: 'cinematic-serif', label: 'Cinematic Movie Serif', desc: 'Elegant dramatic theatrical title font', sample: 'The Autumn Solitude' },
+  { id: 'bold-impact', label: 'Modern Sans Impact', desc: 'Heavyweight street typography for reels', sample: 'DO NOT FEAR THE VOID' },
+  { id: 'retro-anime-yellow', label: 'Retro 90s Anime Subtitle', desc: 'Classic yellow VHS subtitle with black stroke', sample: 'Wait, is that true?' },
+  { id: 'cyber-neon', label: 'Cyberpunk Neon Glow', desc: 'Glowing electric cyan with pink outer aura', sample: 'SYSTEM OVERRIDE' },
+  { id: 'vintage-typewriter', label: 'Mechanical Typewriter', desc: 'Monochrome ink-ribbon strike typography', sample: 'CHAPTER 04: THE DAWN' },
+  { id: 'glitch-split', label: 'Glitch Chromatic Stamp', desc: 'Dual-offset red and cyan shifted text', sample: 'CORRUPTED MEMORY' },
+  { id: 'theatrical-sub', label: 'Theatrical Lower Third', desc: 'Minimal clean documentary subtitle', sample: 'Location: Shinjuku, 02:44 AM' },
+];
+
+export const AUDIO_STYLES_CATALOG: {
+  id: CinematicAudioStyle;
+  label: string;
+  category: 'Synthesizer' | 'Beats' | 'Custom';
+  desc: string;
+}[] = [
+  { id: 'lofi-vinyl', label: 'Lo-Fi Vinyl & Tape Hiss', category: 'Synthesizer', desc: 'Warm 33 RPM needle crackle & organic tape noise' },
+  { id: 'cinematic-drone', label: 'Sub-Bass Cinematic Drone', category: 'Synthesizer', desc: 'Low 55Hz harmonic sub-bass theater resonance' },
+  { id: 'ambient-shimmer', label: 'Ambient Cyber Shimmer', category: 'Synthesizer', desc: 'Soft spatial breeze & atmospheric pink noise' },
+  { id: 'synthwave-80s', label: 'Retro 80s Synthwave Bass', category: 'Synthesizer', desc: 'Pulsing 110 BPM analog arpeggiator & neon synths' },
+  { id: 'dark-techno', label: 'Dark Techno Industrial Kick', category: 'Beats', desc: 'Heavy four-on-the-floor warehouse bass pulse' },
+  { id: 'theatrical-braam', label: 'Theatrical Inception Braam', category: 'Synthesizer', desc: 'Epic low brass trailer roar with long reverb tail' },
+  { id: 'chill-rhodes', label: 'Chill Hop Rain & Rhodes', category: 'Beats', desc: 'Relaxing rain textures with warm electric piano chords' },
+  { id: 'custom', label: 'Custom Audio Track (Uploaded)', category: 'Custom', desc: 'Use your own uploaded MP3, WAV, or AAC audio file' },
+  { id: 'muted', label: 'Muted (Silent Video)', category: 'Custom', desc: 'Export pure video without any audio stream' },
+];
+
+export const CINEMATIC_SPECIMENS = [
   {
-    id: 'tokyo-neon',
-    title: 'Neo Tokyo Night Neon',
-    badge: 'CYBER REEL',
-    desc: 'Atmospheric rainy Tokyo crosswalk illuminated by towering cyberpunk neon billboards',
+    id: 'neo-tokyo',
+    title: 'Neo Tokyo Midnight Neon',
+    badge: 'CYBERPUNK',
+    desc: 'Rain-slicked asphalt reflecting vibrant magenta & electric cyan neon signage',
     url: 'https://images.unsplash.com/photo-1509198397868-475647b2a1e5?auto=format&fit=crop&w=1200&q=80',
   },
   {
-    id: 'supercar-highway',
-    title: 'Golden Hour Cruiser',
-    badge: 'SPEED & HORIZON',
-    desc: 'High-speed sunset canyon highway driving with cinematic lens flares and warm golden light',
-    url: 'https://images.unsplash.com/photo-1617814076367-b759c7d7e738?auto=format&fit=crop&w=1200&q=80',
-  },
-  {
-    id: 'fashion-editorial',
-    title: 'High-Fashion Silhouette',
-    badge: 'PARIS EDITORIAL',
-    desc: 'Sculptural haute couture runway silhouette in dramatic architectural lighting',
-    url: 'https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?auto=format&fit=crop&w=1200&q=80',
+    id: 'cinematic-desert',
+    title: 'Dune Solitude Golden Hour',
+    badge: 'CINEMASCOPE',
+    desc: 'Sweeping undulating desert sand dunes under deep amber and warm haze',
+    url: 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80',
   },
   {
     id: 'nordic-mist',
@@ -251,17 +303,12 @@ export function computeCameraTransform(
         transY: 0,
         rotate: 0,
       };
-    case 'film-jitter':
-      // High-frequency pseudo-random gate weave
-      const jitterX = (Math.sin(progress * 137.5) * 3) * intensity;
-      const jitterY = (Math.cos(progress * 223.1) * 2.5) * intensity;
-      const jitterRot = (Math.sin(progress * 89.3) * 0.2) * intensity;
-      return {
-        scale: 1.04,
-        transX: jitterX,
-        transY: jitterY,
-        rotate: jitterRot,
-      };
+    case 'film-jitter': {
+      const jitterX = Math.sin(progress * 137.5) * 3 * intensity;
+      const jitterY = Math.cos(progress * 223.1) * 2.5 * intensity;
+      const jitterRot = Math.sin(progress * 89.3) * 0.2 * intensity;
+      return { scale: 1.04, transX: jitterX, transY: jitterY, rotate: jitterRot };
+    }
     case 'drift-right':
       return {
         scale: 1.06,
@@ -273,6 +320,132 @@ export function computeCameraTransform(
     default:
       return { scale: 1.0, transX: 0, transY: 0, rotate: 0 };
   }
+}
+
+/**
+ * Renders font caption overlay directly onto the canvas frame
+ */
+export function renderCaptionOverlay(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  caption: CaptionOptions,
+  timeSeconds: number
+) {
+  if (!caption.enabled || !caption.text.trim()) return;
+
+  ctx.save();
+
+  // Position calculation
+  let targetY = h * 0.85; // Bottom default
+  if (caption.position === 'center') targetY = h * 0.5;
+  if (caption.position === 'top') targetY = h * 0.15;
+
+  const centerX = w / 2;
+  const fontSize = Math.max(16, Math.round((caption.fontSize / 1080) * Math.min(w, h)));
+
+  // Font Family resolution
+  let fontFamily = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+  if (caption.fontStyle === 'cinematic-serif') {
+    fontFamily = '"Georgia", "Times New Roman", serif';
+  } else if (caption.fontStyle === 'bold-impact') {
+    fontFamily = '"Impact", "Arial Black", sans-serif';
+  } else if (caption.fontStyle === 'vintage-typewriter') {
+    fontFamily = '"Courier New", Courier, monospace';
+  }
+
+  // Animation pulse
+  let animAlpha = 1.0;
+  if (caption.animation === 'fade-pulse') {
+    animAlpha = 0.8 + 0.2 * Math.sin(timeSeconds * 4);
+  } else if (caption.animation === 'glow-breath') {
+    animAlpha = 0.85 + 0.15 * Math.sin(timeSeconds * 3);
+  }
+
+  ctx.globalAlpha = animAlpha;
+
+  // Measure text
+  ctx.font = `900 ${fontSize}px ${fontFamily}`;
+  const metrics = ctx.measureText(caption.text);
+  const textWidth = metrics.width;
+  const paddingX = Math.round(fontSize * 0.6);
+  const paddingY = Math.round(fontSize * 0.35);
+  const boxW = textWidth + paddingX * 2;
+  const boxH = fontSize * 1.35 + (caption.kickerText ? fontSize * 0.6 : 0);
+  const boxX = centerX - boxW / 2;
+  const boxY = targetY - fontSize * 0.95;
+
+  // 1. Draw Badge / Pill Background
+  if (caption.badgeStyle === 'solid-black') {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = caption.textColor || '#ccff00';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+  } else if (caption.badgeStyle === 'translucent') {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.72)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+  } else if (caption.badgeStyle === 'neon-border') {
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillRect(boxX, boxY, boxW, boxH);
+    ctx.strokeStyle = '#ccff00';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+  }
+
+  // 2. Kicker Text (Sub-heading)
+  if (caption.kickerText && caption.kickerText.trim()) {
+    ctx.font = `700 ${Math.round(fontSize * 0.36)}px ui-monospace, monospace`;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.fillText(caption.kickerText.toUpperCase(), centerX, targetY - fontSize * 0.45);
+  }
+
+  // 3. Main Headline Text
+  ctx.font = `900 ${fontSize}px ${fontFamily}`;
+  ctx.textAlign = 'center';
+
+  if (caption.fontStyle === 'retro-anime-yellow') {
+    // Japanese anime subtitle style: yellow text with thick black outline
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = Math.max(3, Math.round(fontSize * 0.14));
+    ctx.lineJoin = 'round';
+    ctx.strokeText(caption.text, centerX, targetY);
+    ctx.fillStyle = '#ffe600';
+    ctx.fillText(caption.text, centerX, targetY);
+  } else if (caption.fontStyle === 'glitch-split') {
+    // Red / Cyan split chromatic glitch
+    const jitter = Math.sin(timeSeconds * 25) * 4;
+    ctx.fillStyle = 'rgba(255, 0, 60, 0.85)';
+    ctx.fillText(caption.text, centerX - jitter, targetY);
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.85)';
+    ctx.fillText(caption.text, centerX + jitter, targetY);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(caption.text, centerX, targetY);
+  } else if (caption.fontStyle === 'cyber-neon') {
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 15;
+    ctx.fillStyle = '#00ffff';
+    ctx.fillText(caption.text, centerX, targetY);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(caption.text, centerX, targetY);
+    ctx.shadowBlur = 0;
+  } else {
+    // Standard text render with drop shadow
+    if (caption.badgeStyle === 'shadow-only') {
+      ctx.shadowColor = 'rgba(0,0,0,0.95)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+    }
+    ctx.fillStyle = caption.textColor || '#ffffff';
+    ctx.fillText(caption.text, centerX, targetY);
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+  }
+
+  ctx.restore();
 }
 
 /**
@@ -292,7 +465,14 @@ export function renderInstaClipFrame(
   const h = targetCanvas.height;
 
   const progress = (timeSeconds % options.durationSeconds) / options.durationSeconds;
-  const camera = computeCameraTransform(options.cameraMotion, progress, options.motionIntensity);
+  const isVideo = source instanceof HTMLVideoElement;
+  
+  // For video, only apply slight camera motion if requested, or keep static to avoid double movement
+  const camera = computeCameraTransform(
+    options.cameraMotion,
+    progress,
+    isVideo ? options.motionIntensity * 0.4 : options.motionIntensity
+  );
 
   // Clear canvas
   ctx.save();
@@ -300,8 +480,8 @@ export function renderInstaClipFrame(
   ctx.fillRect(0, 0, w, h);
 
   // Source aspect ratio math (Cover fit)
-  const srcW = (source instanceof HTMLVideoElement ? source.videoWidth : source.naturalWidth) || 1200;
-  const srcH = (source instanceof HTMLVideoElement ? source.videoHeight : source.naturalHeight) || 1200;
+  const srcW = (isVideo ? source.videoWidth : source.naturalWidth) || 1200;
+  const srcH = (isVideo ? source.videoHeight : source.naturalHeight) || 1200;
 
   const srcAspect = srcW / srcH;
   const targetAspect = w / h;
@@ -312,12 +492,10 @@ export function renderInstaClipFrame(
   let offsetY = 0;
 
   if (srcAspect > targetAspect) {
-    // Source is wider than target: fit height, crop width
     drawH = h;
     drawW = h * srcAspect;
     offsetX = (w - drawW) / 2;
   } else {
-    // Source is taller than target: fit width, crop height
     drawW = w;
     drawH = w / srcAspect;
     offsetY = (h - drawH) / 2;
@@ -329,7 +507,7 @@ export function renderInstaClipFrame(
   ctx.scale(camera.scale, camera.scale);
   ctx.translate(-w / 2 + camera.transX, -h / 2 + camera.transY);
 
-  // Draw source image
+  // Draw source image or video frame
   ctx.drawImage(source, offsetX, offsetY, drawW, drawH);
   ctx.restore();
 
@@ -342,7 +520,8 @@ export function renderInstaClipFrame(
   const contrastFactor = options.contrast;
   const brightnessOffset = (options.brightness - 1.0) * 255;
   const saturation = options.saturation;
-  const grainSeed = (Math.sin(timeSeconds * 43.13) * 10000) % 1;
+  const effect = options.effect || 'none';
+  const effectAmt = (options.effectIntensity || 70) / 100;
 
   // Pixel manipulation loop
   for (let i = 0; i < pixelCount; i += 4) {
@@ -350,86 +529,82 @@ export function renderInstaClipFrame(
     let g = data[i + 1];
     let b = data[i + 2];
 
-    // 1. Brightness
+    // 1. Brightness & Contrast
     r += brightnessOffset;
     g += brightnessOffset;
     b += brightnessOffset;
 
-    // 2. Contrast
     r = (r - 128) * contrastFactor + 128;
     g = (g - 128) * contrastFactor + 128;
     b = (b - 128) * contrastFactor + 128;
 
-    // Luminance
     let lum = 0.299 * r + 0.587 * g + 0.114 * b;
 
-    // 3. Saturation
+    // 2. Saturation
     if (saturation !== 1.0) {
       r = lum + (r - lum) * saturation;
       g = lum + (g - lum) * saturation;
       b = lum + (b - lum) * saturation;
     }
 
-    // 4. Tone Mode Processing
-    switch (options.toneMode) {
-      case 'analog-35mm': {
-        // Warm Kodak 35mm film curve
-        r = r * 1.06 + 8;
-        g = g * 0.98 + 2;
-        b = b * 0.90 - 4;
-        break;
+    // 3. Specific Effect Processing (17 Effects)
+    if (effect === 'rgb-glitch') {
+      // Channel phase offset will be applied after loop in secondary pass
+    } else if (effect === 'thermal-heatmap') {
+      // Map luminance 0-255 to false thermal colors (Navy -> Purple -> Orange -> Yellow -> White)
+      const norm = Math.max(0, Math.min(255, lum)) / 255;
+      if (norm < 0.25) {
+        r = 10;
+        g = 15;
+        b = Math.round(norm * 4 * 200 + 40);
+      } else if (norm < 0.5) {
+        const sub = (norm - 0.25) * 4;
+        r = Math.round(sub * 200 + 10);
+        g = 20;
+        b = Math.round(240 - sub * 80);
+      } else if (norm < 0.75) {
+        const sub = (norm - 0.5) * 4;
+        r = 240;
+        g = Math.round(sub * 200);
+        b = 10;
+      } else {
+        const sub = (norm - 0.75) * 4;
+        r = 255;
+        g = Math.round(200 + sub * 55);
+        b = Math.round(sub * 255);
       }
-      case 'teal-orange': {
-        // Teal shadows, Orange highlights
-        const normLum = Math.max(0, Math.min(255, lum)) / 255;
-        if (normLum > 0.45) {
-          // Warm skin / highlights
-          r = r * 1.15 + 15;
-          g = g * 1.03;
-          b = b * 0.85;
-        } else {
-          // Teal deep shadows
-          r = r * 0.82;
-          g = g * 1.08 + 8;
-          b = b * 1.25 + 18;
-        }
-        break;
+    } else if (effect === 'matrix-rain') {
+      // Terminal phosphor green
+      r = Math.round(lum * 0.12);
+      g = Math.round(lum * 1.35 + 25);
+      b = Math.round(lum * 0.18);
+    } else if (effect === 'super8-sepia') {
+      // Aged warm sepia
+      r = lum * 1.18 + 24;
+      g = lum * 0.98 + 10;
+      b = lum * 0.76 - 10;
+    } else if (effect === 'noir-darkroom') {
+      // Extreme 21:1 stark darkroom S-curve
+      lum = lum < 128 ? (lum / 128) ** 1.8 * 115 : 128 + ((lum - 128) / 128) ** 0.8 * 127;
+      r = lum;
+      g = lum;
+      b = lum;
+    } else if (effect === 'risograph-duotone') {
+      // Fluorescent pink (#FF007F) & Deep Teal (#004C54)
+      const norm = Math.max(0, Math.min(255, lum)) / 255;
+      r = Math.round(norm * 255 + (1 - norm) * 0);
+      g = Math.round(norm * 20 + (1 - norm) * 76);
+      b = Math.round(norm * 135 + (1 - norm) * 84);
+    } else if (effect === 'cyberpunk-neon') {
+      if (lum > 130) {
+        r = Math.min(255, r * 1.3 + 25);
+        g = Math.min(255, g * 0.55);
+        b = Math.min(255, b * 1.4 + 45);
+      } else {
+        r = Math.max(0, r * 0.55);
+        g = Math.min(255, g * 1.25 + 15);
+        b = Math.max(0, b * 0.9);
       }
-      case 'silver-gelatin': {
-        // High-depth Black & White Silver Gelatin
-        r = lum * 0.98;
-        g = lum * 0.98;
-        b = lum * 1.02; // very subtle cool silver tone
-        break;
-      }
-      case 'cyberpunk-neon': {
-        // Cyberpunk neon mapping
-        if (lum > 140) {
-          r = Math.min(255, r * 1.35 + 20);
-          g = Math.min(255, g * 0.6);
-          b = Math.min(255, b * 1.4 + 40); // Magenta/Neon blue highlights
-        } else {
-          r = Math.max(0, r * 0.6);
-          g = Math.min(255, g * 1.3 + 15);
-          b = Math.max(0, b * 0.9); // Electric emerald shadows
-        }
-        break;
-      }
-      case 'vhs-camcorder': {
-        // 90s VHS color phase drift
-        r = r * 1.05 + 12;
-        b = b * 0.95 - 5;
-        break;
-      }
-      case 'high-contrast': {
-        lum = lum < 128 ? lum * 0.75 : 128 + (lum - 128) * 1.35;
-        r = lum;
-        g = lum;
-        b = lum;
-        break;
-      }
-      default:
-        break;
     }
 
     // Invert if active
@@ -439,7 +614,6 @@ export function renderInstaClipFrame(
       b = 255 - b;
     }
 
-    // Clamp
     data[i] = Math.max(0, Math.min(255, r));
     data[i + 1] = Math.max(0, Math.min(255, g));
     data[i + 2] = Math.max(0, Math.min(255, b));
@@ -448,11 +622,159 @@ export function renderInstaClipFrame(
   // Put modified pixels back
   ctx.putImageData(imgData, 0, 0);
 
-  // 5. Film Grain / 35mm Silver Halide Noise Overlay
+  // 4. Secondary Pass: RGB Split Glitch & Horizontal Slice Tears (User requested!)
+  if (effect === 'rgb-glitch' && effectAmt > 0) {
+    ctx.save();
+    const glitchDist = Math.round(effectAmt * 18);
+    const sliceCount = Math.round(effectAmt * 6);
+
+    // Chromatic RGB Channel Shift
+    ctx.globalCompositeOperation = 'screen';
+    ctx.drawImage(targetCanvas, -glitchDist, 0); // Red shift
+    ctx.drawImage(targetCanvas, glitchDist, 0);  // Cyan shift
+
+    // Horizontal Slice Displacement
+    for (let s = 0; s < sliceCount; s++) {
+      const sliceY = (Math.sin(timeSeconds * 12.5 + s * 17) * 0.5 + 0.5) * h;
+      const sliceH = 8 + (s % 4) * 14;
+      const sliceOffset = (Math.sin(timeSeconds * 42 + s * 9) * 2 - 1) * glitchDist * 1.8;
+      ctx.drawImage(targetCanvas, 0, sliceY, w, sliceH, sliceOffset, sliceY, w, sliceH);
+    }
+    ctx.restore();
+  }
+
+  // 5. VHS Scanlines & Bottom Tracking Noise
+  if (effect === 'vhs-tape') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+    for (let y = 0; y < h; y += 4) {
+      ctx.fillRect(0, y, w, 1.5);
+    }
+    // Bottom tracking noise band
+    const trackingY = h - 60 + Math.sin(timeSeconds * 3) * 15;
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+    for (let x = 0; x < w; x += 6) {
+      if (Math.random() > 0.4) {
+        ctx.fillRect(x, trackingY + Math.random() * 20, 4, 2);
+      }
+    }
+    ctx.restore();
+  }
+
+  // 6. CRT Phosphor Barrel Distortion & Scanlines
+  if (effect === 'crt-barrel') {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+    for (let y = 0; y < h; y += 3) {
+      ctx.fillRect(0, y, w, 1);
+    }
+    // Vignette barrel edge
+    const grad = ctx.createRadialGradient(w / 2, h / 2, Math.min(w, h) * 0.4, w / 2, h / 2, Math.max(w, h) * 0.75);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,0.85)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
+  // 7. AM Halftone Dot Matrix
+  if (effect === 'am-dot-halftone') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = '#000000';
+    const dotStep = Math.max(4, Math.round(options.halftoneDotSize * 2.2));
+    for (let y = 0; y < h; y += dotStep) {
+      for (let x = 0; x < w; x += dotStep) {
+        ctx.beginPath();
+        ctx.arc(x, y, Math.max(1, options.halftoneDotSize * 0.45), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // 8. AM Banknote Line Halftone
+  if (effect === 'am-line-engraving') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = Math.max(1, Math.round(options.halftoneDotSize * 0.4));
+    const angleRad = (options.screenAngle * Math.PI) / 180;
+    const step = Math.max(4, Math.round(options.halftoneDotSize * 1.8));
+    const maxDim = Math.hypot(w, h);
+    ctx.beginPath();
+    for (let d = -maxDim; d < maxDim; d += step) {
+      const cos = Math.cos(angleRad);
+      const sin = Math.sin(angleRad);
+      ctx.moveTo(w / 2 + d * cos - maxDim * sin, h / 2 + d * sin + maxDim * cos);
+      ctx.lineTo(w / 2 + d * cos + maxDim * sin, h / 2 + d * sin - maxDim * cos);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // 9. Anamorphic Blue Streak Lens Flare
+  if (effect === 'anamorphic-flare') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const flareY = h * 0.42 + Math.sin(timeSeconds * 1.5) * 40;
+    const flareGrad = ctx.createLinearGradient(0, flareY, w, flareY);
+    flareGrad.addColorStop(0, 'rgba(0, 200, 255, 0)');
+    flareGrad.addColorStop(0.3, 'rgba(0, 200, 255, 0.15)');
+    flareGrad.addColorStop(0.5, 'rgba(180, 240, 255, 0.85)');
+    flareGrad.addColorStop(0.7, 'rgba(0, 200, 255, 0.15)');
+    flareGrad.addColorStop(1, 'rgba(0, 200, 255, 0)');
+    ctx.fillStyle = flareGrad;
+    ctx.fillRect(0, flareY - 12, w, 24);
+    ctx.restore();
+  }
+
+  // 10. Hologram Shimmer & Interlace
+  if (effect === 'hologram-shimmer') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    ctx.fillStyle = 'rgba(0, 255, 240, 0.08)';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = 'rgba(0, 255, 240, 0.22)';
+    const scanOffset = (timeSeconds * 60) % 8;
+    for (let y = scanOffset; y < h; y += 8) {
+      ctx.fillRect(0, y, w, 3);
+    }
+    ctx.restore();
+  }
+
+  // 11. Strobe Paparazzi Flash
+  if (effect === 'strobe-paparazzi') {
+    const isFlash = Math.sin(timeSeconds * 16) > 0.88;
+    if (isFlash) {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.65)';
+      ctx.fillRect(0, 0, w, h);
+      ctx.restore();
+    }
+  }
+
+  // 12. Prism Rainbow Lens Dispersion
+  if (effect === 'prism-rainbow') {
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+    const rainbowGrad = ctx.createRadialGradient(w * 0.85, h * 0.15, 10, w * 0.85, h * 0.15, w * 0.6);
+    rainbowGrad.addColorStop(0, 'rgba(255, 0, 0, 0.45)');
+    rainbowGrad.addColorStop(0.2, 'rgba(255, 165, 0, 0.4)');
+    rainbowGrad.addColorStop(0.4, 'rgba(255, 255, 0, 0.35)');
+    rainbowGrad.addColorStop(0.6, 'rgba(0, 255, 0, 0.3)');
+    rainbowGrad.addColorStop(0.8, 'rgba(0, 200, 255, 0.35)');
+    rainbowGrad.addColorStop(1, 'rgba(238, 130, 238, 0)');
+    ctx.fillStyle = rainbowGrad;
+    ctx.fillRect(0, 0, w, h);
+    ctx.restore();
+  }
+
+  // 13. Film Grain (Always applied based on grainIntensity)
   if (options.grainIntensity > 0) {
     const grainCanvas = document.createElement('canvas');
-    const gw = Math.min(w, 400);
-    const gh = Math.min(h, 400);
+    const gw = Math.min(w, 360);
+    const gh = Math.min(h, 360);
     grainCanvas.width = gw;
     grainCanvas.height = gh;
     const gctx = grainCanvas.getContext('2d');
@@ -475,85 +797,12 @@ export function renderInstaClipFrame(
     }
   }
 
-  // 6. AM Halftone Line/Dot Overlay (if AM modes selected)
-  if (options.toneMode === 'am-line' || options.toneMode === 'am-dot') {
-    ctx.save();
-    ctx.globalCompositeOperation = 'multiply';
-    ctx.strokeStyle = '#000000';
-    ctx.fillStyle = '#000000';
-
-    const angleRad = (options.screenAngle * Math.PI) / 180;
-    const step = Math.max(3, Math.round(options.halftoneDotSize));
-
-    if (options.toneMode === 'am-line') {
-      ctx.lineWidth = Math.max(1, Math.round(step * 0.45));
-      ctx.beginPath();
-      // Draw diagonal screen lines
-      const maxDim = Math.hypot(w, h);
-      for (let d = -maxDim; d < maxDim; d += step * 2) {
-        const cos = Math.cos(angleRad);
-        const sin = Math.sin(angleRad);
-        const x1 = w / 2 + d * cos - maxDim * sin;
-        const y1 = h / 2 + d * sin + maxDim * cos;
-        const x2 = w / 2 + d * cos + maxDim * sin;
-        const y2 = h / 2 + d * sin - maxDim * cos;
-        ctx.moveTo(x1, y1);
-        ctx.lineTo(x2, y2);
-      }
-      ctx.stroke();
-    } else {
-      // Clustered Dot matrix
-      const dotStep = Math.max(4, step * 2);
-      for (let y = 0; y < h; y += dotStep) {
-        for (let x = 0; x < w; x += dotStep) {
-          ctx.beginPath();
-          ctx.arc(x, y, Math.max(1, step * 0.5), 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-    }
-    ctx.restore();
-  }
-
-  // 7. VHS Scanlines (for VHS mode)
-  if (options.toneMode === 'vhs-camcorder') {
-    ctx.save();
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
-    const scanStep = 4;
-    for (let y = (Math.floor(timeSeconds * 60) % scanStep); y < h; y += scanStep) {
-      ctx.fillRect(0, y, w, 1.5);
-    }
-    ctx.restore();
-  }
-
-  // 8. Optical Vignette Shading
-  if (options.vignette > 0) {
-    ctx.save();
-    const radius = Math.hypot(w, h) / 2;
-    const vigGradient = ctx.createRadialGradient(
-      w / 2,
-      h / 2,
-      radius * 0.45,
-      w / 2,
-      h / 2,
-      radius
-    );
-    const vigAlpha = (options.vignette / 100) * 0.85;
-    vigGradient.addColorStop(0, 'rgba(0,0,0,0)');
-    vigGradient.addColorStop(1, `rgba(0,0,0,${vigAlpha.toFixed(2)})`);
-    ctx.fillStyle = vigGradient;
-    ctx.fillRect(0, 0, w, h);
-    ctx.restore();
-  }
-
-  // 9. Letterbox Anamorphic Black Bars (NO decorative frame, just clean cinematic matte)
+  // 14. Anamorphic Letterbox Matte (Cinema Black Bars)
   if (options.letterbox !== 'none') {
     let barHeight = 0;
     if (options.letterbox === 'cinemascope') {
-      // 2.39:1 matte
       barHeight = Math.max(0, (h - w / 2.39) / 2);
     } else if (options.letterbox === 'academy') {
-      // 1.85:1 matte
       barHeight = Math.max(0, (h - w / 1.85) / 2);
     } else if (options.letterbox === 'minimal') {
       barHeight = Math.round(h * 0.06);
@@ -568,20 +817,19 @@ export function renderInstaClipFrame(
     }
   }
 
-  // 10. Brutalist Timecode / Telemetry Stamp
+  // 15. Render Font Captions
+  if (options.caption && options.caption.enabled) {
+    renderCaptionOverlay(ctx, w, h, options.caption, timeSeconds);
+  }
+
+  // 16. Brutalist Timecode Overlay
   if (options.showTimecodeOverlay) {
     ctx.save();
     const curSeconds = timeSeconds % options.durationSeconds;
-    const mins = Math.floor(curSeconds / 60)
-      .toString()
-      .padStart(2, '0');
-    const secs = Math.floor(curSeconds % 60)
-      .toString()
-      .padStart(2, '0');
-    const frames = Math.floor((curSeconds % 1) * options.fps)
-      .toString()
-      .padStart(2, '0');
-    const timecode = `REC [${mins}:${secs}:${frames}] · 4K 60FPS · ${options.aspectRatio} CINEMA`;
+    const mins = Math.floor(curSeconds / 60).toString().padStart(2, '0');
+    const secs = Math.floor(curSeconds % 60).toString().padStart(2, '0');
+    const frames = Math.floor((curSeconds % 1) * options.fps).toString().padStart(2, '0');
+    const timecode = `REC [${mins}:${secs}:${frames}] · 60FPS · ${options.aspectRatio} · ${options.effect.toUpperCase()}`;
 
     ctx.font = '700 13px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
     ctx.fillStyle = '#000000';
@@ -594,10 +842,11 @@ export function renderInstaClipFrame(
 
 /**
  * Audio Synthesizer Engine using Web Audio API
- * Generates continuous audio stream (vinyl crackle, tape hiss, or drone) for MediaRecorder
+ * Generates continuous audio streams (vinyl, drone, synthwave, techno, braam, rhodes) or mixes custom audio
  */
 export function createCinematicAudioStream(
-  audioStyle: CinematicAudioStyle
+  audioStyle: CinematicAudioStyle,
+  customAudioElement?: HTMLAudioElement | null
 ): { context: AudioContext; stream: MediaStream | null } {
   if (typeof window === 'undefined' || audioStyle === 'muted') {
     return { context: null as any, stream: null };
@@ -609,18 +858,25 @@ export function createCinematicAudioStream(
   const ctx = new AudioCtx();
   const dest = ctx.createMediaStreamDestination();
 
-  // Master Gain
   const masterGain = ctx.createGain();
-  masterGain.gain.value = 0.35;
+  masterGain.gain.value = 0.4;
   masterGain.connect(dest);
 
+  if (audioStyle === 'custom' && customAudioElement) {
+    try {
+      const sourceNode = ctx.createMediaElementSource(customAudioElement);
+      sourceNode.connect(masterGain);
+    } catch {
+      // If already connected or cross-origin
+    }
+    return { context: ctx, stream: dest.stream };
+  }
+
   if (audioStyle === 'lofi-vinyl') {
-    // Generate organic vinyl noise buffer
     const bufferSize = ctx.sampleRate * 2;
     const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
-      // White noise base + sporadic dust clicks
       const base = (Math.random() * 2 - 1) * 0.02;
       const isClick = Math.random() < 0.0006;
       output[i] = base + (isClick ? (Math.random() * 2 - 1) * 0.35 : 0);
@@ -629,7 +885,6 @@ export function createCinematicAudioStream(
     whiteNoise.buffer = noiseBuffer;
     whiteNoise.loop = true;
 
-    // Filter to warm lo-fi tape frequencies
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
     filter.frequency.value = 2400;
@@ -638,7 +893,6 @@ export function createCinematicAudioStream(
     filter.connect(masterGain);
     whiteNoise.start();
   } else if (audioStyle === 'cinematic-drone') {
-    // Low sub-bass harmonic drone
     const osc1 = ctx.createOscillator();
     osc1.type = 'sawtooth';
     osc1.frequency.value = 55; // A1 low drone
@@ -658,7 +912,6 @@ export function createCinematicAudioStream(
     osc1.start();
     osc2.start();
   } else if (audioStyle === 'ambient-shimmer') {
-    // Gentle pink atmospheric breeze
     const bufferSize = ctx.sampleRate * 2;
     const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
     const output = noiseBuffer.getChannelData(0);
@@ -668,20 +921,85 @@ export function createCinematicAudioStream(
       b0 = 0.99886 * b0 + white * 0.0555179;
       b1 = 0.99332 * b1 + white * 0.0750759;
       b2 = 0.96900 * b2 + white * 0.1538520;
-      output[i] = (b0 + b1 + b2) * 0.04;
+      output[i] = (b0 + b1 + b2 + white * 0.5362) * 0.035;
     }
     const pinkNoise = ctx.createBufferSource();
     pinkNoise.buffer = noiseBuffer;
     pinkNoise.loop = true;
 
-    const bandpass = ctx.createBiquadFilter();
-    bandpass.type = 'bandpass';
-    bandpass.frequency.value = 800;
-    bandpass.Q.value = 0.5;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1400;
+    filter.Q.value = 1.2;
 
-    pinkNoise.connect(bandpass);
-    bandpass.connect(masterGain);
+    pinkNoise.connect(filter);
+    filter.connect(masterGain);
     pinkNoise.start();
+  } else if (audioStyle === 'synthwave-80s') {
+    // Pulsing 80s bassline
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.value = 65.4; // C2
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 800;
+
+    // LFO modulation for pulse
+    const lfo = ctx.createOscillator();
+    lfo.frequency.value = 4.0; // 4Hz pulse
+    const lfoGain = ctx.createGain();
+    lfoGain.gain.value = 400;
+    lfo.connect(filter.frequency);
+    lfo.start();
+
+    osc.connect(filter);
+    filter.connect(masterGain);
+    osc.start();
+  } else if (audioStyle === 'dark-techno') {
+    // 128 BPM Techno Kick Pulse (2.13Hz)
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = 50;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 180;
+
+    osc.connect(filter);
+    filter.connect(masterGain);
+    osc.start();
+  } else if (audioStyle === 'theatrical-braam') {
+    // Heavy brass trailer roar
+    const osc1 = ctx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = 43.65; // F1
+
+    const osc2 = ctx.createOscillator();
+    osc2.type = 'triangle';
+    osc2.frequency.value = 65.4;
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 450;
+
+    osc1.connect(filter);
+    osc2.connect(filter);
+    filter.connect(masterGain);
+    osc1.start();
+    osc2.start();
+  } else if (audioStyle === 'chill-rhodes') {
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.value = 220; // A3 warm tone
+
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 650;
+
+    osc.connect(filter);
+    filter.connect(masterGain);
+    osc.start();
   }
 
   return { context: ctx, stream: dest.stream };
@@ -694,18 +1012,18 @@ export async function recordInstaClipVideo(
   sourceCanvas: HTMLCanvasElement,
   sourceMedia: HTMLImageElement | HTMLVideoElement,
   options: InstaClipOptions,
-  onProgress?: (percent: number, currentSecond: number) => void
+  onProgress?: (percent: number, currentSecond: number) => void,
+  customAudioElement?: HTMLAudioElement | null
 ): Promise<Blob> {
-  // Create offscreen recording canvas
   const recCanvas = document.createElement('canvas');
   recCanvas.width = options.width;
   recCanvas.height = options.height;
 
-  // Capture video stream from offscreen canvas
   const canvasStream = recCanvas.captureStream(options.fps);
-
-  // Setup synthesized audio stream if not muted
-  const { context: audioCtx, stream: audioStream } = createCinematicAudioStream(options.audioStyle);
+  const { context: audioCtx, stream: audioStream } = createCinematicAudioStream(
+    options.audioStyle,
+    customAudioElement
+  );
 
   const combinedStream = new MediaStream();
   canvasStream.getVideoTracks().forEach((track) => combinedStream.addTrack(track));
@@ -713,7 +1031,6 @@ export async function recordInstaClipVideo(
     audioStream.getAudioTracks().forEach((track) => combinedStream.addTrack(track));
   }
 
-  // Detect supported mimeType
   const mimeTypes = [
     'video/mp4;codecs=avc1',
     'video/mp4',
@@ -721,11 +1038,11 @@ export async function recordInstaClipVideo(
     'video/webm;codecs=vp8,opus',
     'video/webm',
   ];
-  let chosenMime = mimeTypes.find((m) => MediaRecorder.isTypeSupported(m)) || 'video/webm';
+  const chosenMime = mimeTypes.find((m) => MediaRecorder.isTypeSupported(m)) || 'video/webm';
 
   const mediaRecorder = new MediaRecorder(combinedStream, {
     mimeType: chosenMime,
-    videoBitsPerSecond: 8000000, // 8 Mbps high quality
+    videoBitsPerSecond: 8000000,
   });
 
   const recordedChunks: Blob[] = [];
@@ -738,9 +1055,7 @@ export async function recordInstaClipVideo(
     };
 
     mediaRecorder.onstop = () => {
-      if (audioCtx) {
-        audioCtx.close().catch(() => {});
-      }
+      if (audioCtx) audioCtx.close().catch(() => {});
       const finalBlob = new Blob(recordedChunks, { type: chosenMime });
       resolve(finalBlob);
     };
@@ -755,25 +1070,32 @@ export async function recordInstaClipVideo(
     const totalFrames = Math.round(options.durationSeconds * options.fps);
     const frameIntervalMs = 1000 / options.fps;
     let currentFrame = 0;
+    const isVideo = sourceMedia instanceof HTMLVideoElement;
 
-    const renderLoop = () => {
+    const renderLoop = async () => {
       if (currentFrame >= totalFrames) {
-        setTimeout(() => {
-          mediaRecorder.stop();
-        }, 150);
+        mediaRecorder.stop();
         return;
       }
 
-      const currentTime = currentFrame / options.fps;
-      renderInstaClipFrame(recCanvas, sourceMedia, options, currentTime);
+      const currentSec = (currentFrame / options.fps);
 
-      currentFrame++;
-      if (onProgress) {
-        const percent = Math.min(100, Math.round((currentFrame / totalFrames) * 100));
-        onProgress(percent, currentTime);
+      // If video source, seek video before rendering frame
+      if (isVideo && sourceMedia.duration > 0) {
+        sourceMedia.currentTime = currentSec % sourceMedia.duration;
+        // Small pause to allow frame seek
+        await new Promise((r) => setTimeout(r, 12));
       }
 
-      setTimeout(renderLoop, frameIntervalMs);
+      renderInstaClipFrame(recCanvas, sourceMedia, options, currentSec);
+
+      currentFrame++;
+      const percent = Math.min(100, Math.round((currentFrame / totalFrames) * 100));
+      if (onProgress) {
+        onProgress(percent, currentSec);
+      }
+
+      setTimeout(renderLoop, frameIntervalMs * 0.5);
     };
 
     renderLoop();
@@ -781,20 +1103,16 @@ export async function recordInstaClipVideo(
 }
 
 /**
- * Downloads a high-res Still Poster Frame (PNG)
+ * Exports current canvas as a 4K Still Poster PNG
  */
 export function exportInstaPoster(
   canvas: HTMLCanvasElement,
   options: InstaClipOptions,
-  filenamePrefix = 'InstaClip-Poster'
+  filenamePrefix: string = 'InstaClip-Poster'
 ) {
-  canvas.toBlob((blob) => {
-    if (!blob) return;
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${filenamePrefix}-${options.aspectRatio.replace(':', 'x')}-${Date.now()}.png`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }, 'image/png');
+  const url = canvas.toDataURL('image/png');
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${filenamePrefix}_${options.aspectRatio.replace(':', 'x')}_${options.effect}_${Date.now()}.png`;
+  a.click();
 }
