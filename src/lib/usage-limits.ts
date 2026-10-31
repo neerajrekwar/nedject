@@ -7,8 +7,10 @@ export const PRO_GENERATION_LIMIT = 99999; // Unlimited for Pro
 export type ToolKey =
   | 'qr_studio'
   | 'photo_dpi'
+  | 'insta_clip'
   | 'barcode_pick'
   | 'fitness_glass'
+  | 'mockup_studio'
   | 'batch_zip'
   | 'general_generator';
 

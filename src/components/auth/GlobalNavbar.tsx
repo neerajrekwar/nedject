@@ -87,6 +87,7 @@ export function GlobalNavbar() {
 
   const navLinks = [
     { href: '/', label: '300 DPI Photo QR' },
+    { href: '/insta-clip', label: 'Insta Clip Studio' },
     { href: '/normal-dpi-photo', label: 'Normal DPI' },
     { href: '/barcode-pick', label: 'Barcode Pick' },
     { href: '/mochup', label: 'Mockup Studio' },

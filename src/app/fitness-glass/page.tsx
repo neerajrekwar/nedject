@@ -45,12 +45,24 @@ import {
   renderFitnessA4ToCanvas,
 } from '@/lib/fitness-glass-engine';
 import { UsageBanner } from '@/components/auth/UsageBanner';
+import { useSession } from 'next-auth/react';
+import { consumeToolQuota } from '@/lib/usage-limits';
 
 export type ManagementMode = 'digital_web' | 'print_paper';
 
 const STORAGE_KEY = 'fitness_glass_protocol_v8_dual_clean';
 
 export default function FitnessGlassPage() {
+  const { data: session } = useSession();
+
+  const isLogged = Boolean(session?.user);
+  const userPlan = (((session?.user as any)?.plan || (isLogged ? 'free' : 'guest')) as 'guest' | 'free' | 'pro' | 'enterprise');
+
+  const verifyQuota = async () => {
+    const res = await consumeToolQuota('fitness_glass', isLogged, userPlan === 'guest' ? 'free' : userPlan);
+    return res.allowed;
+  };
+
   // Dual Usage Management Mode:
   // 1. 'digital_web': Interactive clicking on web, live % calculations, real-time dynamic graph
   // 2. 'print_paper': Physical A4 printable layout with clean empty boxes for manual black ball pen ticking
@@ -355,6 +367,9 @@ export default function FitnessGlassPage() {
   };
 
   const handleExportPDF = async (overrideStyle?: PrintCheckStyle) => {
+    const allowed = await verifyQuota();
+    if (!allowed) return;
+
     setIsExporting(true);
     try {
       const dataToExport = overrideStyle
@@ -378,6 +393,9 @@ export default function FitnessGlassPage() {
   };
 
   const handleExportPNG = async () => {
+    const allowed = await verifyQuota();
+    if (!allowed) return;
+
     setIsExporting(true);
     try {
       const canvas = hiddenCanvasRef.current || document.createElement('canvas');
@@ -397,7 +415,10 @@ export default function FitnessGlassPage() {
     }
   };
 
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    const allowed = await verifyQuota();
+    if (!allowed) return;
+
     exportFitnessToCSV(currentDataset);
     showToast('Exported CSV with checklist grid & 80% stats');
   };

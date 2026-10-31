@@ -345,7 +345,7 @@ export default function BlogIndexPage() {
           </p>
           <p className="text-sm text-zinc-600 mt-1">
             {posts.length === 0
-              ? 'Real-time articles will appear here once authored in Sanity Studio or created via terminal CLI.'
+              ? 'Real-time articles will appear here once authored in the Editorial Studio or created via terminal CLI.'
               : 'Try another keyword or reset the category filter.'}
           </p>
           {posts.length > 0 && (
@@ -362,7 +362,7 @@ export default function BlogIndexPage() {
         </div>
       )}
 
-      {/* Bottom Callout: Sanity CMS Studio Engine */}
+      {/* Bottom Callout: Native Editorial Studio Engine */}
       <div className="mt-12 border-4 border-black bg-[#ccff00] p-6 sm:p-8 shadow-[6px_6px_0px_#000000]">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div>
@@ -371,14 +371,14 @@ export default function BlogIndexPage() {
                 Content Management System
               </span>
               <span className="text-xs font-mono font-bold text-black">
-                Sanity Studio v3 Architecture
+                Native Markdown Knowledge Engine
               </span>
             </div>
             <h3 className="text-2xl font-black text-black">
-              Manage, Author &amp; Publish Articles via Sanity CMS
+              Manage, Author &amp; Publish Articles via Native Editorial Studio
             </h3>
             <p className="text-xs sm:text-sm font-mono text-zinc-800 mt-1 max-w-2xl">
-              Equipped with real-time schema validation, portable text formatting, Unsplash media picker, live split-screen preview, and instant localStorage / Sanity data store sync.
+              Equipped with real-time markdown parsing, rich code highlighting, live split-screen preview, SEO schema validation, and instant database persistence.
             </p>
           </div>
 
@@ -387,7 +387,7 @@ export default function BlogIndexPage() {
             className="inline-flex items-center gap-2 border-2 border-black bg-black text-[#ccff00] hover:bg-white hover:text-black font-black px-5 py-3 text-sm font-mono transition-all shadow-[4px_4px_0px_#000000]"
           >
             <PenSquare className="w-4 h-4" />
-            <span>LAUNCH SANITY STUDIO</span>
+            <span>LAUNCH EDITORIAL STUDIO</span>
           </Link>
         </div>
       </div>

@@ -20,6 +20,8 @@ import {
   renderQRToCanvas,
   insertDpiIntoPngBlob,
 } from '@/lib/qr-engine';
+import { useSession } from 'next-auth/react';
+import { enforceFeatureAccess, PlanTier } from '@/lib/plan-capabilities';
 
 export interface BatchItem {
   id: string;
@@ -48,6 +50,10 @@ const SAMPLE_DEV_BADGES = [
 ];
 
 export function BatchProcessor({ baseOptions }: BatchProcessorProps) {
+  const { data: session } = useSession();
+  const isLogged = Boolean(session?.user);
+  const userPlan = (((session?.user as any)?.plan || (isLogged ? 'free' : 'guest')) as PlanTier);
+
   const [items, setItems] = useState<BatchItem[]>([]);
   const [rawText, setRawText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -212,6 +218,12 @@ export function BatchProcessor({ baseOptions }: BatchProcessorProps) {
 
   // Export all rendered codes as a ZIP file with 300 DPI metadata
   const handleDownloadZip = async () => {
+    // Batch ZIP matrix is a Pro Studio feature
+    if (userPlan === 'guest' || userPlan === 'free') {
+      const allowed = enforceFeatureAccess('batch_zip_matrix', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const renderedItems = items.filter((item) => item.status === 'rendered');
     if (renderedItems.length === 0) return;
 
@@ -441,6 +453,11 @@ export function BatchProcessor({ baseOptions }: BatchProcessorProps) {
               >
                 <FileArchive className="w-4 h-4" />
                 <span>ZIP ({renderedCount})</span>
+                {(userPlan === 'guest' || userPlan === 'free') && (
+                  <span className="text-[9px] bg-black text-[#ccff00] px-1.5 py-0.5 rounded font-black">
+                    PRO ($9)
+                  </span>
+                )}
               </button>
             )}
           </div>

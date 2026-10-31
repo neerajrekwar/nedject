@@ -11,11 +11,27 @@ import {
   Check,
   ArrowRight,
   CreditCard,
+  Lock,
+  Zap,
   ShieldCheck,
+  Film,
+  Layers,
+  FileText,
+  Printer,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
-import { setLocalUsageCount } from '@/lib/usage-limits';
+import { setLocalUsageCount, getUsageStats } from '@/lib/usage-limits';
 import { setClientRedirectDestination } from '@/lib/auth-redirect';
+import { PlanTier } from '@/lib/plan-capabilities';
+
+interface LockedFeatureDetails {
+  featureKey: string;
+  title: string;
+  description: string;
+  requiredPlan: 'pro' | 'enterprise';
+  proPrice?: string;
+  enterprisePrice?: string;
+}
 
 interface QuotaLimitModalProps {
   isOpen?: boolean;
@@ -29,7 +45,9 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
   const { data: session } = useSession();
   const [internalOpen, setInternalOpen] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
-  const [triggerTool, setTriggerTool] = useState<string>('Generator');
+  const [triggerTool, setTriggerTool] = useState<string>('GENERATOR');
+  const [modalMode, setModalMode] = useState<'quota_exhausted' | 'feature_locked'>('quota_exhausted');
+  const [lockedDetails, setLockedDetails] = useState<LockedFeatureDetails | null>(null);
 
   const isModalOpen = propIsOpen !== undefined ? propIsOpen : internalOpen;
 
@@ -42,26 +60,50 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
   };
 
   useEffect(() => {
-    // Listen for global limit exhaustion events
+    // 1. Listen for global limit exhaustion events
     const handleLimitExhausted = (e: any) => {
+      setModalMode('quota_exhausted');
+      setLockedDetails(null);
       if (e.detail?.toolKey) {
-        setTriggerTool(e.detail.toolKey.replace('_', ' ').toUpperCase());
+        setTriggerTool(e.detail.toolKey.replace(/_/g, ' ').toUpperCase());
+      }
+      setInternalOpen(true);
+    };
+
+    // 2. Listen for feature lock events (e.g. 600 DPI, 4K Poster, Batch ZIP, Vector PDF)
+    const handleFeatureLocked = (e: any) => {
+      setModalMode('feature_locked');
+      if (e.detail) {
+        setLockedDetails({
+          featureKey: e.detail.featureKey || 'pro_feature',
+          title: e.detail.title || 'Premium Studio Capability',
+          description: e.detail.description || 'This feature requires an active Pro or Enterprise subscription tier.',
+          requiredPlan: e.detail.requiredPlan || 'pro',
+          proPrice: e.detail.proPrice || '$9/mo (₹499)',
+          enterprisePrice: e.detail.enterprisePrice || '$29/mo (₹1,999)',
+        });
       }
       setInternalOpen(true);
     };
 
     window.addEventListener('Nedject_limit_exhausted', handleLimitExhausted);
-    return () => window.removeEventListener('Nedject_limit_exhausted', handleLimitExhausted);
+    window.addEventListener('Nedject_feature_locked', handleFeatureLocked);
+
+    return () => {
+      window.removeEventListener('Nedject_limit_exhausted', handleLimitExhausted);
+      window.removeEventListener('Nedject_feature_locked', handleFeatureLocked);
+    };
   }, []);
 
   const isGuest = !session?.user;
+  const userPlan = (((session?.user as any)?.plan || (isGuest ? 'guest' : 'free')) as PlanTier);
 
   if (!isModalOpen) return null;
 
   return (
     <>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-mono animate-in fade-in duration-150">
-        <div className="relative w-full max-w-lg border-4 border-black bg-white shadow-[10px_10px_0px_#000000] p-5 sm:p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm font-mono animate-in fade-in duration-150">
+        <div className="relative w-full max-w-xl border-4 border-black bg-white shadow-[10px_10px_0px_#000000] p-5 sm:p-6 space-y-4 max-h-[92vh] overflow-y-auto">
           
           {/* Close button */}
           <button
@@ -72,30 +114,49 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
             <X className="w-4 h-4" />
           </button>
 
-          {/* Header */}
-          <div className="space-y-1.5 pr-8">
-            <div className="flex items-center gap-2">
-              <span className="w-3 h-3 bg-rose-600 border border-black inline-block animate-pulse" />
-              <h2 className="text-base sm:text-lg font-black uppercase text-black">
-                GENERATION QUOTA REACHED
+          {/* Modal Header */}
+          {modalMode === 'feature_locked' && lockedDetails ? (
+            <div className="space-y-2 pr-8">
+              <div className="flex items-center gap-2">
+                <span className="p-1 border border-black bg-[#ccff00] text-black inline-flex items-center justify-center">
+                  <Lock className="w-3.5 h-3.5 stroke-[2.5]" />
+                </span>
+                <span className="text-[11px] font-black uppercase tracking-wider bg-black text-[#ccff00] px-2 py-0.5">
+                  {lockedDetails.requiredPlan === 'enterprise' ? 'ENTERPRISE TIER' : 'PRO STUDIO TIER'}
+                </span>
+              </div>
+              <h2 className="text-base sm:text-lg font-black uppercase text-black leading-tight">
+                {lockedDetails.title}
               </h2>
+              <p className="text-xs font-bold text-zinc-700 leading-relaxed">
+                {lockedDetails.description}
+              </p>
             </div>
-            <p className="text-xs font-bold text-zinc-700">
-              {isGuest
-                ? `You've used all 2 guest generations on ${triggerTool}. Sign in for 10 free generations or upgrade to Pro for unlimited access!`
-                : `You've used all 10 free generations on ${triggerTool}. Upgrade to Pro Studio to unlock unlimited 300 & 600 DPI generations.`}
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-1.5 pr-8">
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 bg-rose-600 border border-black inline-block animate-pulse" />
+                <h2 className="text-base sm:text-lg font-black uppercase text-black">
+                  GENERATION QUOTA REACHED
+                </h2>
+              </div>
+              <p className="text-xs font-bold text-zinc-700 leading-relaxed">
+                {isGuest
+                  ? `You've used all 2 guest generations on ${triggerTool}. Sign in to get 10 free generations or upgrade to Pro for unlimited exports!`
+                  : `You've reached your free plan allowance (10 generations) on ${triggerTool}. Upgrade to Pro Studio to unlock unlimited 300 & 600 DPI generations.`}
+              </p>
+            </div>
+          )}
 
-          {/* Guest Sign-in Promo (if guest) */}
-          {isGuest && (
+          {/* Guest Sign-in Option (Only for quota exhaustion when not logged in) */}
+          {isGuest && modalMode === 'quota_exhausted' && (
             <div className="border-2 border-black bg-[#fffde6] p-3.5 space-y-2">
               <div className="font-black text-xs uppercase text-black flex items-center gap-1.5">
                 <LogIn className="w-3.5 h-3.5" />
-                <span>OPTION 1: SIGN IN (FREE 10 LIMITS)</span>
+                <span>OPTION 1: SIGN IN (UNLOCK 10 FREE GENERATIONS)</span>
               </div>
               <p className="text-[11px] text-zinc-700 font-bold">
-                Connect your Google or Email account instantly to unlock 10 daily limits.
+                Connect your Google or Email account instantly to claim 10 account generations.
               </p>
               <button
                 type="button"
@@ -110,47 +171,157 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
             </div>
           )}
 
-          {/* Pro Upgrade Option */}
-          <div className="border-2 border-black bg-[#f0fde8] p-4 space-y-3">
-            <div className="flex justify-between items-center font-black">
-              <span className="uppercase text-black flex items-center gap-1.5 text-xs">
-                <Sparkles className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-                <span>{isGuest ? 'OPTION 2: UPGRADE TO PRO' : 'UPGRADE TO PRO STUDIO'}</span>
+          {/* Pricing Plan Cards Grid */}
+          <div className="space-y-3 pt-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-black uppercase text-zinc-500">
+                RECOMMENDED SUBSCRIPTION TIERS
               </span>
-              <span className="text-xs bg-black text-[#ccff00] px-2 py-0.5 font-black">
-                UNLIMITED
+              <span className="text-[10px] font-bold text-zinc-500">
+                CURRENT TIER: <span className="text-black font-black uppercase underline">{userPlan}</span>
               </span>
             </div>
 
-            <ul className="text-[11px] text-zinc-800 space-y-1 font-bold">
-              <li className="flex items-center gap-1.5">
-                <Check className="w-3 h-3 text-emerald-700" />
-                <span>Unlimited 300 &amp; 600 DPI vector exports</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <Check className="w-3 h-3 text-emerald-700" />
-                <span>Batch ZIP Matrix &amp; All 8 Barcode formats</span>
-              </li>
-              <li className="flex items-center gap-1.5">
-                <Check className="w-3 h-3 text-emerald-700" />
-                <span>Instant activation (UPI, Cards, NetBanking)</span>
-              </li>
-            </ul>
+            {/* Pro Plan Card ($9/mo or ₹499/mo) */}
+            <div className={`border-2 border-black p-4 space-y-3 relative ${
+              lockedDetails?.requiredPlan === 'enterprise'
+                ? 'bg-zinc-50'
+                : 'bg-[#f0fde8] shadow-[4px_4px_0px_#000000]'
+            }`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+                    <span className="font-black text-sm uppercase text-black">
+                      NEDJECT PRO STUDIO
+                    </span>
+                    <span className="text-[10px] bg-black text-[#ccff00] px-1.5 py-0.2 font-black">
+                      MOST POPULAR
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-600 font-bold mt-0.5">
+                    For creators, print operators &amp; designers
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-base font-black text-black">
+                    $9 <span className="text-[10px] font-normal text-zinc-600">/ mo</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-bold">
+                    or ₹499 / mo
+                  </div>
+                </div>
+              </div>
 
-            <Link
-              href="/payment?plan=pro"
-              onClick={() => {
-                if (isGuest) {
-                  setClientRedirectDestination('/payment?plan=pro');
-                }
-                handleClose();
-              }}
-              className="w-full py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
-            >
-              <CreditCard className="w-3.5 h-3.5" />
-              <span>UPGRADE TO PRO STUDIO</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-zinc-800 font-bold">
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-emerald-700 shrink-0" />
+                  <span>Unlimited 300 &amp; 600 DPI Generations</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-emerald-700 shrink-0" />
+                  <span>Insta-Clip 4K Reels &amp; 30s Video</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-emerald-700 shrink-0" />
+                  <span>ISO Vector PDF &amp; SVG Halftone</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-emerald-700 shrink-0" />
+                  <span>Batch ZIP Matrix (All 8 Barcodes)</span>
+                </div>
+              </div>
+
+              <Link
+                href="/payment?plan=pro"
+                onClick={() => {
+                  if (isGuest) {
+                    setClientRedirectDestination('/payment?plan=pro');
+                  }
+                  handleClose();
+                }}
+                className="w-full py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>UPGRADE TO PRO STUDIO ($9/MO)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+
+            {/* Enterprise Plan Card ($29/mo or ₹1,999/mo) */}
+            <div className={`border-2 border-black p-4 space-y-3 relative ${
+              lockedDetails?.requiredPlan === 'enterprise'
+                ? 'bg-[#fffde6] shadow-[4px_4px_0px_#000000]'
+                : 'bg-white'
+            }`}>
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
+                    <span className="font-black text-sm uppercase text-black">
+                      NEDJECT ENTERPRISE MATRIX
+                    </span>
+                    <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.2 font-black">
+                      POWER USERS
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-600 font-bold mt-0.5">
+                    Maximum throughput, 1200 DPI &amp; unlimited batch pipelines
+                  </p>
+                </div>
+                <div className="text-right">
+                  <div className="text-base font-black text-black">
+                    $29 <span className="text-[10px] font-normal text-zinc-600">/ mo</span>
+                  </div>
+                  <div className="text-[10px] text-zinc-500 font-bold">
+                    or ₹1,999 / mo
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-zinc-800 font-bold">
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-blue-700 shrink-0" />
+                  <span>Everything in Pro Included</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-blue-700 shrink-0" />
+                  <span>1200 DPI Micro-Screening Output</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-blue-700 shrink-0" />
+                  <span>60s+ Cinematic Reels &amp; 4K Renders</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Check className="w-3 h-3 text-blue-700 shrink-0" />
+                  <span>Unlimited Batch Processing (1,000+ items)</span>
+                </div>
+              </div>
+
+              <Link
+                href="/payment?plan=enterprise"
+                onClick={() => {
+                  if (isGuest) {
+                    setClientRedirectDestination('/payment?plan=enterprise');
+                  }
+                  handleClose();
+                }}
+                className="w-full py-2.5 border-2 border-black bg-white hover:bg-black hover:text-white font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <CreditCard className="w-3.5 h-3.5" />
+                <span>UPGRADE TO ENTERPRISE ($29/MO)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Secure Trust Badges */}
+          <div className="pt-2 flex items-center justify-between text-[10px] text-zinc-500 border-t border-zinc-200 font-mono">
+            <span className="flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3 text-emerald-600" />
+              <span>Instant Activation · Cancel Anytime</span>
+            </span>
+            <span>Razorpay · Cards · UPI · NetBanking</span>
           </div>
 
         </div>

@@ -34,6 +34,7 @@ import { UsageBanner } from '@/components/auth/UsageBanner';
 import { useSession } from 'next-auth/react';
 import { consumeToolQuota } from '@/lib/usage-limits';
 import { QuotaLimitModal } from '@/components/auth/QuotaLimitModal';
+import { enforceFeatureAccess, PlanTier } from '@/lib/plan-capabilities';
 
 const QUICK_PRESETS: { label: string; format: BarcodeFormat; payload: string; desc: string }[] = [
   {
@@ -87,10 +88,11 @@ export default function BarcodePickPage() {
 
   const activeDef = BARCODE_CATALOG.find((b) => b.format === options.format) || BARCODE_CATALOG[0];
 
+  const isLogged = Boolean(session?.user);
+  const userPlan = (((session?.user as any)?.plan || (isLogged ? 'free' : 'guest')) as PlanTier);
+
   const verifyQuota = async () => {
-    const isLogged = Boolean(session?.user);
-    const plan = ((session?.user as any)?.plan || 'free') as 'free' | 'pro';
-    const res = await consumeToolQuota('barcode_pick', isLogged, plan);
+    const res = await consumeToolQuota('barcode_pick', isLogged, userPlan === 'guest' ? 'free' : userPlan);
     return res.allowed;
   };
 
@@ -119,6 +121,14 @@ export default function BarcodePickPage() {
 
   const handleSelectFormat = (format: BarcodeFormat) => {
     const def = BARCODE_CATALOG.find((b) => b.format === format);
+
+    // Industrial / Specialty formats require Pro tier
+    const isIndustrial = def?.category === 'Logistics' || def?.category === 'Industrial' || def?.category === 'Specialty';
+    if (isIndustrial && userPlan === 'guest') {
+      const allowed = enforceFeatureAccess('barcode_industrial_formats', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     handleUpdate({
       format,
       payload: def ? def.defaultPayload : '12345678',
@@ -161,6 +171,12 @@ export default function BarcodePickPage() {
   };
 
   const handleDownloadSVG = async () => {
+    // Vector SVG format is a Pro feature
+    if (userPlan === 'guest' || userPlan === 'free') {
+      const allowed = enforceFeatureAccess('barcode_vector_pdf', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 
@@ -176,6 +192,12 @@ export default function BarcodePickPage() {
   };
 
   const handleDownloadPDF = async () => {
+    // Vector PDF is a Pro feature
+    if (userPlan === 'guest' || userPlan === 'free') {
+      const allowed = enforceFeatureAccess('barcode_vector_pdf', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 

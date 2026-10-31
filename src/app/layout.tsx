@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/components/auth/AuthProvider";
 import { GlobalNavbar } from "@/components/auth/GlobalNavbar";
 import { StoryShareButton } from "@/components/story/StoryShareButton";
+import { QuotaLimitModal } from "@/components/auth/QuotaLimitModal";
 import { GA_TRACKING_ID } from "@/lib/gtag";
 
 const geistSans = Geist({
@@ -163,6 +164,8 @@ export default function RootLayout({
             variant="floating"
             label="SHARE STORY"
           />
+          {/* Universal Quota Exhaustion & Plan Upgrade Modal */}
+          <QuotaLimitModal />
         </AuthProvider>
 
         {/* Global Schema.org JSON-LD Structured Data */}

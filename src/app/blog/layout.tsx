@@ -18,7 +18,7 @@ export const metadata: Metadata = createPageMetadata({
     'Code 128 tutorial',
     'Amazon FNSKU specifications',
     'quishing security audit',
-    'Sanity CMS blog',
+    'Editorial Knowledge Base',
   ],
 });
 

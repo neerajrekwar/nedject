@@ -38,6 +38,7 @@ import { UsageBanner } from '@/components/auth/UsageBanner';
 import { useSession } from 'next-auth/react';
 import { consumeToolQuota } from '@/lib/usage-limits';
 import { QuotaLimitModal } from '@/components/auth/QuotaLimitModal';
+import { enforceFeatureAccess, PlanTier } from '@/lib/plan-capabilities';
 
 const ASPECT_RATIO_PRESETS = [
   { id: '1:1', label: '1:1 Square', w: 6, h: 6, desc: 'Social / PWA / Vinyl' },
@@ -671,15 +672,23 @@ export default function NormalDPIPhotoPage() {
     reader.readAsDataURL(file);
   };
 
+  const isLogged = Boolean(session?.user);
+  const userPlan = (((session?.user as any)?.plan || (isLogged ? 'free' : 'guest')) as PlanTier);
+
   const verifyQuota = async () => {
-    const isLogged = Boolean(session?.user);
-    const plan = ((session?.user as any)?.plan || 'free') as 'free' | 'pro';
-    const res = await consumeToolQuota('photo_dpi', isLogged, plan);
+    const res = await consumeToolQuota('photo_dpi', isLogged, userPlan === 'guest' ? 'free' : userPlan);
     return res.allowed;
   };
 
   const handleExportPNG = async () => {
     if (!canvasRef.current) return;
+
+    // Check if DPI exceeds user plan allowance
+    if (options.dpi >= 600 && userPlan !== 'pro' && userPlan !== 'enterprise') {
+      const allowed = enforceFeatureAccess('photo_dpi_600', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 
@@ -698,6 +707,13 @@ export default function NormalDPIPhotoPage() {
 
   const handleExportPDF = async () => {
     if (!canvasRef.current) return;
+
+    // ISO Print Card PDF is a Pro Studio feature
+    if (userPlan === 'guest' || userPlan === 'free') {
+      const allowed = enforceFeatureAccess('photo_dpi_vector_pdf', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 
@@ -716,6 +732,13 @@ export default function NormalDPIPhotoPage() {
 
   const handleExportSVG = async () => {
     if (!canvasRef.current) return;
+
+    // Mathematical Vector SVG is a Pro Studio feature
+    if (userPlan === 'guest' || userPlan === 'free') {
+      const allowed = enforceFeatureAccess('photo_dpi_vector_svg', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 
@@ -1287,23 +1310,44 @@ export default function NormalDPIPhotoPage() {
                     </p>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                       {[
-                        { dpi: 300, label: '300 DPI', desc: 'Standard Press' },
-                        { dpi: 600, label: '600 DPI (Recommended)', desc: 'Office Laser Printer' },
-                        { dpi: 1200, label: '1200 DPI (Photo Pro)', desc: 'High-End Photo/Laser' },
-                        { dpi: 2400, label: '2400 DPI', desc: 'Commercial Platesetter' },
+                        { dpi: 300, label: '300 DPI', desc: 'Standard Press', badge: 'FREE' },
+                        { dpi: 600, label: '600 DPI', desc: 'Office Laser Printer', badge: 'PRO' },
+                        { dpi: 1200, label: '1200 DPI', desc: 'High-End Photo/Laser', badge: 'ENTERPRISE' },
+                        { dpi: 2400, label: '2400 DPI', desc: 'Platesetter Press', badge: 'ENTERPRISE' },
                       ].map((item) => {
                         const isSelected = options.dpi === item.dpi;
                         return (
                           <button
                             key={item.dpi}
-                            onClick={() => handleUpdate({ dpi: item.dpi })}
-                            className={`p-2 border-2 border-black text-left font-mono transition-all cursor-pointer ${
+                            onClick={() => {
+                              if (item.dpi === 600 && userPlan !== 'pro' && userPlan !== 'enterprise') {
+                                const allowed = enforceFeatureAccess('photo_dpi_600', userPlan, isLogged);
+                                if (!allowed) return;
+                              } else if (item.dpi >= 1200 && userPlan !== 'enterprise') {
+                                const allowed = enforceFeatureAccess('photo_dpi_1200', userPlan, isLogged);
+                                if (!allowed) return;
+                              }
+                              handleUpdate({ dpi: item.dpi });
+                              showToast(`DPI set to ${item.dpi}`);
+                            }}
+                            className={`p-2 border-2 border-black text-left font-mono transition-all cursor-pointer relative ${
                               isSelected
                                 ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
                                 : 'bg-white text-black hover:bg-zinc-100'
                             }`}
                           >
-                            <div className="font-black text-xs">{item.label}</div>
+                            <div className="flex items-center justify-between">
+                              <span className="font-black text-xs">{item.label}</span>
+                              <span className={`text-[8px] font-black px-1 py-0 border border-black ${
+                                item.badge === 'PRO'
+                                  ? 'bg-amber-400 text-black'
+                                  : item.badge === 'ENTERPRISE'
+                                  ? 'bg-blue-600 text-white'
+                                  : 'bg-zinc-200 text-zinc-700'
+                              }`}>
+                                {item.badge}
+                              </span>
+                            </div>
                             <div className="text-[9px] opacity-75 mt-0.5">{item.desc}</div>
                           </button>
                         );
@@ -1815,7 +1859,14 @@ export default function NormalDPIPhotoPage() {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-black text-sm uppercase">EXPORT SPECIMEN PDF</span>
-                          <FileText className="w-4 h-4" />
+                          <div className="flex items-center gap-1.5">
+                            {(userPlan === 'guest' || userPlan === 'free') && (
+                              <span className="text-[9px] bg-black text-[#ccff00] px-1.5 py-0.5 font-black border border-black">
+                                PRO ($9)
+                              </span>
+                            )}
+                            <FileText className="w-4 h-4" />
+                          </div>
                         </div>
                         <div className="text-[11px] opacity-80 leading-snug">
                           ISO Print Card with corner trim marks, registration targets, 10-step grayscale density strip, and technical metadata.
@@ -1829,7 +1880,14 @@ export default function NormalDPIPhotoPage() {
                       >
                         <div className="flex items-center justify-between mb-2">
                           <span className="font-black text-sm uppercase">DOWNLOAD SVG VECTOR</span>
-                          <Download className="w-4 h-4" />
+                          <div className="flex items-center gap-1.5">
+                            {(userPlan === 'guest' || userPlan === 'free') && (
+                              <span className="text-[9px] bg-[#ccff00] text-black px-1.5 py-0.5 font-black border border-black">
+                                PRO ($9)
+                              </span>
+                            )}
+                            <Download className="w-4 h-4" />
+                          </div>
                         </div>
                         <div className="text-[11px] opacity-80 leading-snug">
                           Lossless Scalable Vector Graphic with physical print units ({options.targetWidthInches}&quot;×{options.targetHeightInches}&quot;) and prepress metadata for CAD &amp; RIP software.

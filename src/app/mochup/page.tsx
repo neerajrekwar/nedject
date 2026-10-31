@@ -55,6 +55,9 @@ import {
   MobileStudioScene,
   MinimalInteriorTemplate,
 } from '@/components/mockup/MockupScenes';
+import { useSession } from 'next-auth/react';
+import { consumeToolQuota } from '@/lib/usage-limits';
+import { enforceFeatureAccess, PlanTier } from '@/lib/plan-capabilities';
 
 type SceneMode = 'mobile' | 'trio' | 'long-scroll' | 'handheld' | 'matrix' | 'single';
 type ExportTarget = 'scene' | 'desktop' | 'tablet' | 'mobile';
@@ -263,6 +266,16 @@ const IDEAL_PURPOSE_PRESETS: PurposePreset[] = [
 const LOCAL_STORAGE_CUSTOM_RESOLUTIONS_KEY = 'nedject_saved_custom_mockup_resolutions_v2';
 
 export default function MochupPage() {
+  const { data: session } = useSession();
+
+  const isLogged = Boolean(session?.user);
+  const userPlan = (((session?.user as any)?.plan || (isLogged ? 'free' : 'guest')) as PlanTier);
+
+  const verifyQuota = async () => {
+    const res = await consumeToolQuota('mockup_studio', isLogged, userPlan === 'guest' ? 'free' : userPlan);
+    return res.allowed;
+  };
+
   // =========================================================================
   // 1. SCREEN RESOLUTION (Preview Display Viewport: 100vw × 100vh)
   // =========================================================================
@@ -783,6 +796,9 @@ export default function MochupPage() {
   // 4. DOWNLOAD EXPORT ENGINE (Render to Exact Purpose Resolution)
   // =========================================================================
   const handleGenerateDownload = async (directDownload = false) => {
+    const allowed = await verifyQuota();
+    if (!allowed) return;
+
     let targetId = 'mockup-export-target';
     if (exportTarget === 'mobile') {
       if (activeScene === 'mobile') {
@@ -821,6 +837,12 @@ export default function MochupPage() {
     }
 
     const { width: targetWidth, height: targetHeight, ratio: activeRatio } = getActivePurposeDimensions();
+
+    // 4K Ultra-Res Mockup Gate
+    if ((targetWidth >= 3000 || targetHeight >= 2000) && (userPlan === 'guest' || userPlan === 'free')) {
+      const allowed = enforceFeatureAccess('mockup_ultra_4k', userPlan, isLogged);
+      if (!allowed) return;
+    }
 
     const wasInteractive = renderMode === 'interactive';
     if (wasInteractive) {

@@ -37,6 +37,7 @@ import { generate300DpiPDF, triggerDownload } from '@/lib/qr-export';
 import { PHOTO_PRESETS } from '@/lib/photo-presets';
 import { useSession } from 'next-auth/react';
 import { consumeToolQuota } from '@/lib/usage-limits';
+import { enforceFeatureAccess, PlanTier } from '@/lib/plan-capabilities';
 import { RAPID_PAYLOAD_TEMPLATES, PayloadTemplate } from '@/lib/payload-templates';
 import { DPIGlideBar } from './DPIGlideBar';
 
@@ -129,10 +130,11 @@ export function QRStudio({ options, onOptionsChange, onCodeExported }: QRStudioP
   const isHighContrast = contrast >= 7.0;
   const isContrastWarning = contrast < 4.5;
 
+  const isLogged = Boolean(session?.user);
+  const userPlan = (((session?.user as any)?.plan || (isLogged ? 'free' : 'guest')) as PlanTier);
+
   const verifyQuota = async () => {
-    const isLogged = Boolean(session?.user);
-    const plan = ((session?.user as any)?.plan || 'free') as 'free' | 'pro';
-    const res = await consumeToolQuota('qr_studio', isLogged, plan);
+    const res = await consumeToolQuota('qr_studio', isLogged, userPlan === 'guest' ? 'free' : userPlan);
     return res.allowed;
   };
 
@@ -214,6 +216,12 @@ export function QRStudio({ options, onOptionsChange, onCodeExported }: QRStudioP
   };
 
   const handleDownloadPNG = async (dpi: number = options.dpi || 300) => {
+    // 600 DPI Print Press Gate
+    if (dpi >= 600 && userPlan !== 'pro' && userPlan !== 'enterprise') {
+      const allowed = enforceFeatureAccess('photo_dpi_600', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 
@@ -254,6 +262,11 @@ export function QRStudio({ options, onOptionsChange, onCodeExported }: QRStudioP
   };
 
   const handleDownloadSVG = async () => {
+    if (userPlan === 'guest') {
+      const allowed = enforceFeatureAccess('photo_dpi_vector_svg', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 
@@ -275,6 +288,11 @@ export function QRStudio({ options, onOptionsChange, onCodeExported }: QRStudioP
   };
 
   const handleCopySVG = async () => {
+    if (userPlan === 'guest') {
+      const allowed = enforceFeatureAccess('photo_dpi_vector_svg', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 
@@ -285,6 +303,11 @@ export function QRStudio({ options, onOptionsChange, onCodeExported }: QRStudioP
   };
 
   const handleDownloadPDF = async () => {
+    if (userPlan === 'guest') {
+      const allowed = enforceFeatureAccess('photo_dpi_vector_pdf', userPlan, isLogged);
+      if (!allowed) return;
+    }
+
     const allowed = await verifyQuota();
     if (!allowed) return;
 
