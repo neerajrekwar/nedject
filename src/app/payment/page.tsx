@@ -98,6 +98,9 @@ function PaymentContent() {
       label: string;
       tag: string;
       description?: string;
+      discountType?: string;
+      discountValue?: number;
+      applicablePlans?: string[];
     }>
   >([]);
 
@@ -186,15 +189,15 @@ function PaymentContent() {
       })
       .catch(() => {});
 
-    // Fetch only admin-pinned public coupons
-    fetch('/api/coupons/pinned')
+    // Fetch only admin-pinned public coupons with no-cache guarantee
+    fetch(`/api/coupons/pinned?t=${Date.now()}`, { cache: 'no-store' })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data?.success && Array.isArray(data.coupons)) {
           setPinnedCoupons(data.coupons);
         }
       })
-      .catch(() => {});
+      .catch((e) => console.warn('Pinned coupons fetch warning:', e));
 
     // Preload Razorpay Checkout SDK
     if (typeof window !== 'undefined' && !window.Razorpay) {
@@ -767,6 +770,83 @@ function PaymentContent() {
               PROVISIONER VERIFIED
             </span>
           </div>
+
+          {/* FEATURED ADMIN-PINNED PROMO OFFERS */}
+          {pinnedCoupons.length > 0 && (
+            <div className="border-3 border-black bg-white p-4 shadow-[4px_4px_0px_#000000] space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-black/10 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-[#ccff00] border-2 border-black flex items-center justify-center font-black text-xs shadow-[1px_1px_0px_#000000]">
+                    📌
+                  </div>
+                  <div>
+                    <span className="font-mono text-xs font-black uppercase text-black tracking-tight block">
+                      FEATURED PROMO VOUCHERS PINNED BY ADMIN
+                    </span>
+                    <span className="text-[10px] text-zinc-500 font-bold block">
+                      Special promotional codes enabled for public discount checkout
+                    </span>
+                  </div>
+                </div>
+                <span className="text-[10px] font-mono font-black uppercase bg-[#ccff00] text-black border border-black px-2 py-0.5 shadow-[1px_1px_0px_#000000]">
+                  {pinnedCoupons.length} {pinnedCoupons.length === 1 ? 'ACTIVE PIN' : 'ACTIVE PINS'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {pinnedCoupons.map((c) => {
+                  const isCurrentApplied = appliedCoupon?.coupon?.code === c.code;
+                  return (
+                    <div
+                      key={c.code}
+                      className={`p-3.5 border-2 border-black transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                        isCurrentApplied
+                          ? 'bg-[#ccff00]/30 border-black shadow-[3px_3px_0px_#000000]'
+                          : 'bg-[#fafaf5] hover:bg-white shadow-[2px_2px_0px_#000000]'
+                      }`}
+                    >
+                      <div className="space-y-1.5 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono font-black text-xs tracking-wider text-black bg-white px-2 py-0.5 border border-black shadow-[1px_1px_0px_#000000]">
+                            {c.code}
+                          </span>
+                          <span className="font-mono font-black text-xs text-black bg-[#ccff00] px-2 py-0.5 border border-black shadow-[1px_1px_0px_#000000]">
+                            {c.label}
+                          </span>
+                          {c.tag && (
+                            <span className="text-[9px] font-black bg-black text-[#ccff00] px-1.5 py-0.5 uppercase border border-black">
+                              {c.tag}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] font-sans font-medium text-zinc-800 leading-snug">
+                          {c.description || `${c.code} promotional discount`}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isCurrentApplied) {
+                            handleRemoveCoupon();
+                          } else {
+                            handleApplyCoupon(c.code);
+                          }
+                        }}
+                        className={`shrink-0 px-3.5 py-2 border-2 border-black font-mono text-xs font-black uppercase tracking-wider transition-all cursor-pointer shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 ${
+                          isCurrentApplied
+                            ? 'bg-black text-[#ccff00] hover:bg-zinc-800'
+                            : 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00]'
+                        }`}
+                      >
+                        {isCurrentApplied ? 'APPLIED ✓' : '1-CLICK APPLY'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* PROMO VOUCHERS & DISCOUNTS */}
           <div className="border-2 border-black bg-white p-5 space-y-4 shadow-[3px_3px_0px_#000000]">

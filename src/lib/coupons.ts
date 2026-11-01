@@ -112,7 +112,24 @@ function readLocalCoupons(): Coupon[] {
     const content = fs.readFileSync(COUPONS_FILE, 'utf8');
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      return parsed;
+      // Backfill missing schema fields from DEFAULT_COUPONS for seamless migration
+      let changed = false;
+      const hydrated = parsed.map((c: Coupon) => {
+        const def = DEFAULT_COUPONS.find((d) => d.code === c.code || d.id === c.id);
+        if (def && c.isPinned === undefined && def.isPinned !== undefined) {
+          changed = true;
+          return {
+            ...c,
+            isPinned: def.isPinned,
+            pinnedTag: c.pinnedTag || def.pinnedTag || 'OFFICIAL',
+          };
+        }
+        return c;
+      });
+      if (changed) {
+        fs.writeFileSync(COUPONS_FILE, JSON.stringify(hydrated, null, 2), 'utf8');
+      }
+      return hydrated;
     }
     fs.writeFileSync(COUPONS_FILE, JSON.stringify(DEFAULT_COUPONS, null, 2), 'utf8');
     return DEFAULT_COUPONS;
@@ -137,22 +154,29 @@ function writeLocalCoupons(coupons: Coupon[]): void {
 let memoryCoupons: Coupon[] = [];
 
 export async function getAllCoupons(): Promise<Coupon[]> {
+  const local = readLocalCoupons();
   try {
     const db = await getDb();
     if (db) {
       const dbCoupons = await db.collection<Coupon>('coupons').find({}).toArray();
       if (dbCoupons && dbCoupons.length > 0) {
-        return dbCoupons.map((c) => ({
+        const mapped = dbCoupons.map((c) => ({
           ...c,
           id: c.id || (c as any)._id?.toString(),
         }));
+        // Merge mongo with local defaults so default coupons are always accessible
+        const map = new Map<string, Coupon>();
+        local.forEach((c) => map.set(c.code.toUpperCase(), c));
+        mapped.forEach((c) => map.set(c.code.toUpperCase(), c));
+        const merged = Array.from(map.values());
+        memoryCoupons = merged;
+        return merged;
       }
     }
   } catch (e) {
     // Mongo fallback
   }
 
-  const local = readLocalCoupons();
   if (local.length > 0) {
     memoryCoupons = local;
     return local;
@@ -206,6 +230,8 @@ export async function createCoupon(data: Partial<Coupon> & { code: string }): Pr
     timesRedeemed: 0,
     expiresAt: data.expiresAt || null,
     isActive: data.isActive !== undefined ? Boolean(data.isActive) : true,
+    isPinned: Boolean(data.isPinned),
+    pinnedTag: data.pinnedTag ? String(data.pinnedTag).trim().toUpperCase() : 'OFFICIAL',
     createdAt: now,
     updatedAt: now,
     createdBy: data.createdBy || 'Admin',
@@ -231,26 +257,60 @@ export async function createCoupon(data: Partial<Coupon> & { code: string }): Pr
 
 export async function updateCoupon(id: string, updates: Partial<Coupon>): Promise<Coupon | null> {
   const now = new Date().toISOString();
-  const cleanUpdates = { ...updates, updatedAt: now };
+  const cleanUpdates: any = { ...updates, updatedAt: now };
 
   if (cleanUpdates.code) {
     cleanUpdates.code = cleanUpdates.code.trim().toUpperCase();
   }
+  if (cleanUpdates.isPinned !== undefined) {
+    cleanUpdates.isPinned = Boolean(cleanUpdates.isPinned);
+  }
+  if (cleanUpdates.pinnedTag !== undefined) {
+    cleanUpdates.pinnedTag = String(cleanUpdates.pinnedTag).trim().toUpperCase();
+  }
+  if (cleanUpdates.isActive !== undefined) {
+    cleanUpdates.isActive = Boolean(cleanUpdates.isActive);
+  }
 
+  let mongoDoc: Coupon | null = null;
   try {
     const db = await getDb();
     if (db) {
-      await db.collection('coupons').updateOne({ id }, { $set: cleanUpdates });
+      const { ObjectId } = await import('mongodb');
+      const orClauses: any[] = [{ id }];
+      if (ObjectId.isValid(id)) {
+        try {
+          orClauses.push({ _id: new ObjectId(id) });
+        } catch {}
+      }
+      const res = await db.collection<Coupon>('coupons').findOneAndUpdate(
+        { $or: orClauses },
+        { $set: cleanUpdates },
+        { returnDocument: 'after' }
+      );
+      if (res) {
+        mongoDoc = {
+          ...res,
+          id: res.id || (res as any)._id?.toString(),
+        };
+      }
     }
-  } catch (e) {}
+  } catch (e) {
+    console.warn('[Coupons] Mongo update error:', e);
+  }
 
   const local = readLocalCoupons();
-  const index = local.findIndex((c) => c.id === id);
+  const index = local.findIndex((c) => c.id === id || (c as any)._id?.toString() === id);
   if (index >= 0) {
     local[index] = { ...local[index], ...cleanUpdates };
     writeLocalCoupons(local);
     memoryCoupons = local;
     return local[index];
+  } else if (mongoDoc) {
+    local.unshift(mongoDoc);
+    writeLocalCoupons(local);
+    memoryCoupons = local;
+    return mongoDoc;
   }
 
   return null;

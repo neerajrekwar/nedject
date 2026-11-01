@@ -41,6 +41,8 @@ export async function POST(req: NextRequest) {
       maxRedemptions: body.maxRedemptions !== undefined ? Number(body.maxRedemptions) : -1,
       expiresAt: body.expiresAt || null,
       isActive: body.isActive !== undefined ? Boolean(body.isActive) : true,
+      isPinned: Boolean(body.isPinned),
+      pinnedTag: body.pinnedTag ? String(body.pinnedTag).trim().toUpperCase() : 'OFFICIAL',
       createdBy: body.createdBy || 'Admin Console',
       notes: body.notes || '',
     });

@@ -15,6 +15,8 @@
     "timesRedeemed": 28,
     "expiresAt": "2026-12-31T23:59:59.000Z",
     "isActive": true,
+    "isPinned": true,
+    "pinnedTag": "OFFICIAL",
     "createdAt": "2026-10-27T15:23:07.763Z",
     "updatedAt": "2026-10-27T15:23:07.763Z",
     "createdBy": "Admin Console",
@@ -39,7 +41,9 @@
     "createdAt": "2026-10-27T15:23:07.763Z",
     "updatedAt": "2026-10-27T18:52:23.782Z",
     "createdBy": "Super Admin",
-    "notes": "Full complimentary 100% off discount voucher for testers and VIP partners"
+    "notes": "Full complimentary 100% off discount voucher for testers and VIP partners",
+    "isPinned": false,
+    "pinnedTag": "OFFICIAL"
   },
   {
     "id": "cpn_diwali_30",
