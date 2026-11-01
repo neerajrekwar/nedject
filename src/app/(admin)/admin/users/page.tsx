@@ -287,7 +287,7 @@ export default function AdminUsersPage() {
           </button>
         </form>
 
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-zinc-500 font-bold uppercase text-[10px]">Filter Plan:</span>
           {(['all', 'free', 'pro', 'enterprise'] as const).map((p) => (
             <button
@@ -337,7 +337,10 @@ export default function AdminUsersPage() {
                   const isCancelled = user.subscriptionStatus === 'cancelled';
 
                   return (
-                    <tr key={user._id} className="hover:bg-zinc-50 transition-colors">
+                    <tr
+                      key={user._id}
+                      className="hover:bg-zinc-50 transition-colors"
+                    >
                       {/* User Info */}
                       <td className="p-3.5">
                         <div className="flex items-center gap-3">
@@ -418,25 +421,12 @@ export default function AdminUsersPage() {
                         )}
                       </td>
 
-                      {/* Quota */}
+                      {/* Generations Used / Limit */}
                       <td className="p-3.5 font-mono">
-                        <div className="font-bold text-black">
+                        <span className="font-bold text-black">
                           {user.generationsUsed} /{' '}
                           {user.generationsLimit > 9999 ? '∞ Unlimited' : user.generationsLimit}
-                        </div>
-                        <div className="w-24 bg-zinc-200 border border-black h-1.5 mt-1 overflow-hidden">
-                          <div
-                            className="bg-black h-full"
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                user.generationsLimit > 0
-                                  ? (user.generationsUsed / user.generationsLimit) * 100
-                                  : 0
-                              )}%`,
-                            }}
-                          />
-                        </div>
+                        </span>
                       </td>
 
                       {/* Registered Date */}

@@ -609,6 +609,40 @@ export default function AdminCouponsPage() {
           </div>
 
           <div className="flex items-center flex-wrap gap-2">
+            {/* Small Counter next to bulk action buttons displaying currently selected coupons */}
+            <div
+              className={`flex items-center gap-2 px-2.5 py-1.5 border-2 border-black font-mono text-xs font-black transition-all ${
+                selectedIds.length > 0
+                  ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
+                  : 'bg-zinc-100 text-zinc-500 border-zinc-400 shadow-none'
+              }`}
+              title="Number of currently selected coupons for batch operations"
+            >
+              <div className="flex items-center gap-1.5">
+                <CheckSquare className="w-3.5 h-3.5" />
+                <span>SELECTED:</span>
+                <span
+                  className={`px-1.5 py-0.5 border border-black text-xs font-black ${
+                    selectedIds.length > 0
+                      ? 'bg-[#ccff00] text-black'
+                      : 'bg-zinc-200 text-zinc-600 border-zinc-300'
+                  }`}
+                >
+                  {selectedIds.length}
+                </span>
+              </div>
+              {selectedIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedIds([])}
+                  className="text-[10px] text-zinc-400 hover:text-white underline ml-0.5 cursor-pointer"
+                  title="Clear selection"
+                >
+                  CLEAR
+                </button>
+              )}
+            </div>
+
             {/* Bulk Pin Button */}
             <button
               type="button"

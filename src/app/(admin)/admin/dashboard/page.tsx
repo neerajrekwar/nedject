@@ -21,6 +21,7 @@ import {
   RefreshCw,
   ShieldCheck,
   Zap,
+  AlertTriangle,
 } from 'lucide-react';
 
 interface RealMetrics {
@@ -83,6 +84,18 @@ interface RealMetrics {
     status: string;
     invoiceId: string;
     avatar?: string;
+  }>;
+  quotaAlertUsers?: Array<{
+    id: string;
+    name: string;
+    email: string;
+    plan: string;
+    generationsUsed: number;
+    generationsLimit: number;
+    percentage: number;
+    isExhausted: boolean;
+    createdAt: string;
+    image?: string;
   }>;
   mongoConnected: boolean;
 }
@@ -194,6 +207,20 @@ export default function AdminDashboardPage() {
           <div className="text-[11px] text-zinc-600">
             {metrics?.users.free || 0} Free &bull; {metrics?.revenue.activeSubscribers || 0} Pro/Ent
           </div>
+
+          {/* Quota Risk Notice on Users Card */}
+          {!loading && (metrics?.quotaAlertUsers?.length || 0) > 0 ? (
+            <div className="pt-1">
+              <Link
+                href="/admin/users"
+                className="inline-flex items-center gap-1.5 text-[11px] font-black text-amber-700 hover:text-amber-900 underline"
+                title="View users nearing quota limit"
+              >
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                <span>{metrics?.quotaAlertUsers?.length} user(s) at &ge;90% quota</span>
+              </Link>
+            </div>
+          ) : null}
         </div>
 
         {/* Real Blog Posts Count */}
@@ -226,6 +253,112 @@ export default function AdminDashboardPage() {
         </div>
 
       </div>
+
+      {/* 2.5. VISUAL WARNING INDICATOR: USERS WHO HAVE REACHED 90% OR MORE OF GENERATION QUOTA */}
+      {!loading && metrics?.quotaAlertUsers && metrics.quotaAlertUsers.length > 0 ? (
+        <section className="border-4 border-black bg-[#fff8eb] p-5 sm:p-6 shadow-[6px_6px_0px_#000000] border-l-[12px] border-l-amber-500 space-y-4 font-mono">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-black pb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 border-2 border-black bg-amber-400 flex items-center justify-center text-black font-black shadow-[2px_2px_0px_#000000] shrink-0">
+                <AlertTriangle className="w-6 h-6 text-black animate-pulse" />
+              </div>
+              <div>
+                <div className="text-[11px] font-black uppercase tracking-wider text-amber-900 mb-0.5">
+                  Quota Warning &bull; &ge;90% Limit Reached
+                </div>
+                <h2 className="text-base sm:text-lg font-black uppercase text-black tracking-tight">
+                  High-Usage Accounts ({metrics.quotaAlertUsers.length})
+                </h2>
+                <p className="text-xs text-zinc-700 font-sans mt-0.5">
+                  Accounts that have reached 90% or more of their generation quota.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Link
+                href="/admin/users"
+                className="px-3 py-1.5 bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase border-2 border-black transition-colors shadow-[2px_2px_0px_#000000] flex items-center gap-1.5"
+              >
+                <span>Manage in Users</span>
+                <ArrowUpRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          </div>
+
+          {/* High-Quota Users Table */}
+          <div className="overflow-x-auto border-2 border-black bg-white shadow-[3px_3px_0px_#000000]">
+            <table className="w-full text-left text-xs">
+              <thead className="border-b-2 border-black bg-zinc-100 uppercase text-[10px] text-zinc-700">
+                <tr>
+                  <th className="p-3">User / Identity</th>
+                  <th className="p-3">Current Plan</th>
+                  <th className="p-3">Quota Consumed</th>
+                  <th className="p-3 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y-2 divide-zinc-200">
+                {metrics.quotaAlertUsers.map((u) => {
+                  return (
+                    <tr
+                      key={u.id}
+                      className="bg-white hover:bg-zinc-50"
+                    >
+                      {/* Identity */}
+                      <td className="p-3">
+                        <div className="font-black text-black">{u.name}</div>
+                        <div className="text-zinc-600 text-[11px] font-sans truncate max-w-[200px]">{u.email}</div>
+                      </td>
+
+                      {/* Plan */}
+                      <td className="p-3">
+                        <span className="px-2 py-0.5 border border-black font-black text-[10px] uppercase bg-zinc-100 text-black">
+                          {u.plan}
+                        </span>
+                      </td>
+
+                      {/* Quota Consumed */}
+                      <td className="p-3 font-bold text-black font-mono">
+                        <span className="text-amber-800 font-black">
+                          {u.generationsUsed} / {u.generationsLimit} ({u.percentage}%)
+                        </span>
+                      </td>
+
+                      {/* Action */}
+                      <td className="p-3 text-right">
+                        <Link
+                          href={`/admin/users?q=${encodeURIComponent(u.email)}`}
+                          className="px-2.5 py-1 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-[10px] uppercase shadow-[1.5px_1.5px_0px_#000000] inline-flex items-center gap-1 transition-colors"
+                          title="Open user profile to adjust limits or upgrade"
+                        >
+                          <span>Manage</span>
+                          <ArrowUpRight className="w-3 h-3" />
+                        </Link>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      ) : !loading && metrics ? (
+        /* Reassuring Nominal Status Card when all users are below 90% */
+        <div className="border-2 border-black bg-[#f0fbf0] p-4 shadow-[4px_4px_0px_#000000] border-l-[8px] border-l-emerald-600 flex flex-wrap items-center justify-between gap-3 font-mono">
+          <div className="flex items-center gap-2.5">
+            <span className="w-3 h-3 rounded-full bg-emerald-500 border border-black shrink-0" />
+            <span className="font-black text-xs uppercase text-emerald-950">
+              QUOTA CAPACITY MONITOR: ALL USER ACCOUNTS HEALTHY
+            </span>
+            <span className="text-zinc-600 text-xs hidden md:inline">
+              &bull; Zero accounts have reached or exceeded 90% of their generation limit.
+            </span>
+          </div>
+          <span className="text-[10px] font-black uppercase bg-emerald-200 text-emerald-900 border border-emerald-600 px-2 py-0.5 shadow-[1px_1px_0px_#000000]">
+            ALL QUOTAS NOMINAL (&lt;90%)
+          </span>
+        </div>
+      ) : null}
 
       {/* 3. REAL CUSTOMER PURCHASES & TRANSACTIONS LOG */}
       <section className="border-2 border-black bg-white shadow-[6px_6px_0px_#000000] overflow-hidden">

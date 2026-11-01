@@ -37,6 +37,7 @@ export async function GET() {
         purchases: [],
         dailyActivity: [],
         toolBreakdown: [],
+        quotaAlertUsers: [],
       });
     }
 
@@ -61,6 +62,37 @@ export async function GET() {
       createdAt: u.createdAt || new Date().toISOString(),
       image: u.image || '',
     }));
+
+    // Query all users reaching 90% or more of generation quota
+    const allUsersDocs = await usersCol.find({}).toArray();
+    const quotaAlertUsers = allUsersDocs
+      .filter((u) => {
+        // Exclude unlimited plans
+        if (u.plan === 'pro' || u.plan === 'enterprise' || (u.generationsLimit && u.generationsLimit > 9999)) {
+          return false;
+        }
+        const limit = u.generationsLimit || 10;
+        const used = u.generationsUsed || 0;
+        return limit > 0 && (used / limit) >= 0.9;
+      })
+      .map((u) => {
+        const limit = u.generationsLimit || 10;
+        const used = u.generationsUsed || 0;
+        const percentage = Math.min(100, Math.round((used / limit) * 100));
+        return {
+          id: u._id.toString(),
+          name: u.name || 'User',
+          email: u.email,
+          plan: u.plan || 'free',
+          generationsUsed: used,
+          generationsLimit: limit,
+          percentage,
+          isExhausted: used >= limit,
+          createdAt: u.createdAt || new Date().toISOString(),
+          image: u.image || '',
+        };
+      })
+      .sort((a, b) => b.percentage - a.percentage);
 
     // 2. REAL PURCHASES / PAID SUBSCRIBERS
     const paidUsersDocs = await usersCol
@@ -294,6 +326,7 @@ export async function GET() {
       purchases, // Real paid customers array (empty if 0 paid users)
       toolBreakdown, // Real breakdown (empty if 0)
       dailyActivity, // Real daily activity
+      quotaAlertUsers, // Users at >=90% of generation quota limit
     });
   } catch (error: any) {
     console.error('Error fetching real-time admin metrics:', error);
