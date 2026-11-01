@@ -332,14 +332,20 @@ export default function UserProfilePage() {
             </div>
             <div className="border-2 border-black bg-zinc-50 p-3 shadow-[2px_2px_0px_#000000]">
               <span className="text-[10px] font-black text-zinc-500 uppercase block">SUBSCRIPTION PLAN</span>
-              <span className="font-black text-emerald-700 uppercase block mt-0.5">
-                {userPlan.toUpperCase()}
+              <span className={`font-black uppercase block mt-0.5 ${
+                userPlan === 'enterprise'
+                  ? 'text-purple-700'
+                  : userPlan === 'pro'
+                  ? 'text-amber-600'
+                  : 'text-emerald-700'
+              }`}>
+                {userPlan === 'enterprise' ? 'ENTERPRISE PACK (PURPLE)' : userPlan === 'pro' ? 'PRO STUDIO (YELLOW)' : 'FREE TIER (GREEN)'}
               </span>
             </div>
             <div className="border-2 border-black bg-zinc-50 p-3 shadow-[2px_2px_0px_#000000]">
               <span className="text-[10px] font-black text-zinc-500 uppercase block">GENERATIONS QUOTA</span>
               <span className="font-black text-black block mt-0.5">
-                {userPlan === 'pro' || userPlan === 'enterprise' ? 'UNLIMITED' : `${usageStats.used} / ${usageStats.limit}`}
+                {userPlan === 'pro' || userPlan === 'enterprise' ? '∞ UNLIMITED' : `${usageStats.remaining} / 10 REMAINING`}
               </span>
             </div>
             <div className="border-2 border-black bg-zinc-50 p-3 shadow-[2px_2px_0px_#000000]">

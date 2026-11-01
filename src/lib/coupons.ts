@@ -331,6 +331,32 @@ export async function deleteCoupon(id: string): Promise<boolean> {
   return true;
 }
 
+export async function bulkUpdateCoupons(
+  ids: string[],
+  updates: Partial<Coupon>
+): Promise<{ updatedCount: number; updatedCoupons: Coupon[] }> {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { updatedCount: 0, updatedCoupons: [] };
+  }
+
+  const updatedCoupons: Coupon[] = [];
+  for (const id of ids) {
+    try {
+      const updated = await updateCoupon(id, updates);
+      if (updated) {
+        updatedCoupons.push(updated);
+      }
+    } catch (e) {
+      console.warn(`[Coupons] Bulk update failed for coupon id ${id}:`, e);
+    }
+  }
+
+  return {
+    updatedCount: updatedCoupons.length,
+    updatedCoupons,
+  };
+}
+
 export async function recordCouponRedemption(code: string, userEmail?: string): Promise<boolean> {
   const coupon = await getCouponByCode(code);
   if (!coupon) return false;

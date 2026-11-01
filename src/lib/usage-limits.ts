@@ -20,12 +20,28 @@ export interface UsageStats {
   remaining: number;
   canGenerate: boolean;
   isLoggedIn: boolean;
+  isAdmin?: boolean;
+  isUnlimited?: boolean;
   plan: 'guest' | 'free' | 'pro' | 'enterprise';
+  badgeColor?: 'green' | 'yellow' | 'purple';
+  badgeLabel?: string;
+  displayRemaining?: string;
+  displayLimit?: string;
   toolBreakdown?: Record<string, number>;
 }
 
 const STORAGE_USAGE_KEY = 'Nedject_usage_count_v2';
 const STORAGE_BREAKDOWN_KEY = 'Nedject_tool_breakdown_v2';
+
+export function isClientAdmin(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    const raw = localStorage.getItem('nedject_admin_session_v1');
+    return Boolean(raw);
+  } catch {
+    return false;
+  }
+}
 
 export function getLocalUsageCount(): number {
   if (typeof window === 'undefined') return 0;
@@ -67,18 +83,63 @@ export function setLocalUsageCount(count: number, toolKey?: ToolKey): void {
 
 export function getUsageStats(
   isLoggedIn: boolean,
-  plan: 'free' | 'pro' | 'enterprise' = 'free'
+  plan: 'free' | 'pro' | 'enterprise' | string = 'free',
+  isAdminOverride?: boolean
 ): UsageStats {
   const used = getLocalUsageCount();
-  const isPaidPlan = plan === 'pro' || plan === 'enterprise';
+  const isAdmin = isAdminOverride ?? isClientAdmin();
+  const normalizedPlan: 'guest' | 'free' | 'pro' | 'enterprise' = !isLoggedIn
+    ? 'guest'
+    : isAdmin
+    ? 'enterprise'
+    : (plan === 'pro' || plan === 'enterprise' ? plan : 'free');
+
+  const isPaidPlan = normalizedPlan === 'pro' || normalizedPlan === 'enterprise';
+  const isUnlimited = isAdmin || isPaidPlan;
   const limit = !isLoggedIn
     ? GUEST_GENERATION_LIMIT
-    : isPaidPlan
+    : isUnlimited
     ? PRO_GENERATION_LIMIT
     : AUTH_FREE_GENERATION_LIMIT;
 
-  const remaining = Math.max(0, limit - used);
-  const canGenerate = remaining > 0;
+  const remaining = isUnlimited ? 99999 : Math.max(0, limit - used);
+  const canGenerate = isUnlimited || remaining > 0;
+
+  // Colors based on user specifications:
+  // Green: free / guest / 2-10 uses
+  // Yellow: pro studio
+  // Purple: enterprise pack / admin
+  let badgeColor: 'green' | 'yellow' | 'purple' = 'green';
+  let badgeLabel = '2 Free Uses';
+  let displayRemaining = '2 Uses';
+  let displayLimit = '2';
+
+  if (!isLoggedIn) {
+    badgeColor = 'green';
+    badgeLabel = '2 Free Uses';
+    displayRemaining = '2 Uses';
+    displayLimit = '2';
+  } else if (isAdmin) {
+    badgeColor = 'purple';
+    badgeLabel = 'Admin Unlimited';
+    displayRemaining = '∞ Unlimited';
+    displayLimit = 'Unlimited';
+  } else if (normalizedPlan === 'enterprise') {
+    badgeColor = 'purple';
+    badgeLabel = 'Enterprise Pack';
+    displayRemaining = '∞ Unlimited';
+    displayLimit = 'Unlimited';
+  } else if (normalizedPlan === 'pro') {
+    badgeColor = 'yellow';
+    badgeLabel = 'Pro Studio';
+    displayRemaining = '∞ Unlimited';
+    displayLimit = 'Unlimited';
+  } else {
+    badgeColor = 'green';
+    badgeLabel = 'Free Tier';
+    displayRemaining = `${remaining} / 10`;
+    displayLimit = '10';
+  }
 
   return {
     used,
@@ -86,7 +147,13 @@ export function getUsageStats(
     remaining,
     canGenerate,
     isLoggedIn,
-    plan: !isLoggedIn ? 'guest' : plan,
+    isAdmin,
+    isUnlimited,
+    plan: normalizedPlan,
+    badgeColor,
+    badgeLabel,
+    displayRemaining,
+    displayLimit,
     toolBreakdown: getLocalToolBreakdown(),
   };
 }
@@ -97,14 +164,15 @@ export function getUsageStats(
 export async function consumeToolQuota(
   toolKey: ToolKey = 'general_generator',
   isLoggedIn: boolean = false,
-  plan: 'free' | 'pro' | 'enterprise' = 'free'
+  plan: 'free' | 'pro' | 'enterprise' | string = 'free',
+  isAdminOverride?: boolean
 ): Promise<{ allowed: boolean; stats: UsageStats; message?: string }> {
-  const currentStats = getUsageStats(isLoggedIn, plan);
+  const currentStats = getUsageStats(isLoggedIn, plan, isAdminOverride);
 
   if (!currentStats.canGenerate) {
     const message = !isLoggedIn
-      ? `Guest generation limit reached (${GUEST_GENERATION_LIMIT}/${GUEST_GENERATION_LIMIT}). Sign in with Google or Email to unlock 10 daily generations or upgrade to Pro!`
-      : `Account limit reached (${currentStats.limit}/${currentStats.limit}). Upgrade to Pro to unlock unlimited 300/600 DPI generations and vector exports.`;
+      ? `Initial free guest uses (${GUEST_GENERATION_LIMIT}) reached. Sign in with Google or Email to unlock 10 account credits, or upgrade to Pro for unlimited!`
+      : `Account limit reached (${currentStats.limit}/${currentStats.limit}). Upgrade to Pro Studio to unlock unlimited 300 & 600 DPI generations and vector exports.`;
 
     // Trigger universal quota exhaustion dialog modal
     if (typeof window !== 'undefined') {
@@ -131,7 +199,7 @@ export async function consumeToolQuota(
     }).catch((e) => console.warn('Usage sync warning:', e));
   }
 
-  const updatedStats = getUsageStats(isLoggedIn, plan);
+  const updatedStats = getUsageStats(isLoggedIn, plan, isAdminOverride);
   return { allowed: true, stats: updatedStats };
 }
 

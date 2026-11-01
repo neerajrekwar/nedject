@@ -24,6 +24,11 @@ import {
   TrendingUp,
   Tag,
   Gift,
+  Pin,
+  PinOff,
+  CheckSquare,
+  Square,
+  Loader2,
 } from 'lucide-react';
 import { Coupon } from '@/lib/coupons';
 
@@ -35,6 +40,10 @@ export default function AdminCouponsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+
+  // Batch Pin selection state
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [isBulkPinning, setIsBulkPinning] = useState(false);
 
   // Modal State for Create / Edit
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -342,6 +351,82 @@ export default function AdminCouponsPage() {
     });
   }, [coupons, search, planFilter, statusFilter]);
 
+  // Batch selection computed state
+  const allFilteredSelected = useMemo(() => {
+    return filteredCoupons.length > 0 && filteredCoupons.every((c) => selectedIds.includes(c.id));
+  }, [filteredCoupons, selectedIds]);
+
+  const someFilteredSelected = useMemo(() => {
+    return filteredCoupons.some((c) => selectedIds.includes(c.id)) && !allFilteredSelected;
+  }, [filteredCoupons, selectedIds, allFilteredSelected]);
+
+  // Toggle selection for a single coupon
+  const handleToggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  // Toggle select all visible coupons
+  const handleSelectAllFiltered = () => {
+    if (allFilteredSelected) {
+      const filteredIdSet = new Set(filteredCoupons.map((c) => c.id));
+      setSelectedIds((prev) => prev.filter((id) => !filteredIdSet.has(id)));
+    } else {
+      const newIds = new Set([...selectedIds, ...filteredCoupons.map((c) => c.id)]);
+      setSelectedIds(Array.from(newIds));
+    }
+  };
+
+  // Clear selection
+  const handleClearSelection = () => {
+    setSelectedIds([]);
+  };
+
+  // Bulk Pin/Unpin action
+  const handleBulkPin = async (pin: boolean) => {
+    if (selectedIds.length === 0) {
+      showNotify('error', 'Please select at least one coupon to batch pin/unpin.');
+      return;
+    }
+
+    try {
+      setIsBulkPinning(true);
+
+      // Optimistic update
+      setCoupons((prev) =>
+        prev.map((c) => (selectedIds.includes(c.id) ? { ...c, isPinned: pin } : c))
+      );
+
+      const res = await fetch('/api/admin/coupons/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ids: selectedIds,
+          action: pin ? 'pin' : 'unpin',
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        showNotify('error', data.error || 'Failed to update coupons in bulk');
+        fetchCoupons();
+      } else {
+        showNotify(
+          'success',
+          pin
+            ? `SUCCESS: Batch pinned ${data.updatedCount || selectedIds.length} coupons to checkout!`
+            : `SUCCESS: Batch unpinned ${data.updatedCount || selectedIds.length} coupons from checkout!`
+        );
+      }
+    } catch (e: any) {
+      showNotify('error', 'Network error during bulk operation: ' + e.message);
+      fetchCoupons();
+    } finally {
+      setIsBulkPinning(false);
+    }
+  };
+
   // Summary Metrics
   const metrics = useMemo(() => {
     const total = coupons.length;
@@ -453,49 +538,139 @@ export default function AdminCouponsPage() {
         </div>
       </div>
 
-      {/* 4. CONTROLS & FILTER BAR */}
-      <div className="border-4 border-black bg-white p-4 shadow-[4px_4px_0px_#000000] flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center gap-2 flex-1 min-w-[240px]">
-          <div className="relative w-full max-w-md">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
-            <input
-              type="text"
-              placeholder="SEARCH BY COUPON CODE OR CAMPAIGN..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 border-2 border-black font-mono text-xs uppercase placeholder:text-zinc-400 focus:outline-none focus:bg-[#fafaf5]"
-            />
+      {/* 4. CONTROLS & BATCH ACTION BAR (Targeted by .admin-coupons-management-controls) */}
+      <div className="admin-coupons-management-controls border-4 border-black bg-white p-4 shadow-[4px_4px_0px_#000000] space-y-4">
+        {/* Search & Filters Row */}
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2 flex-1 min-w-[240px]">
+            <div className="relative w-full max-w-md">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <input
+                type="text"
+                placeholder="SEARCH BY COUPON CODE OR CAMPAIGN..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border-2 border-black font-mono text-xs uppercase placeholder:text-zinc-400 focus:outline-none focus:bg-[#fafaf5]"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Plan Filter */}
+            <div className="flex items-center gap-1 font-mono text-xs">
+              <span className="text-zinc-500 uppercase font-bold text-[10px]">PLAN:</span>
+              <select
+                value={planFilter}
+                onChange={(e) => setPlanFilter(e.target.value)}
+                className="border-2 border-black px-2.5 py-1.5 font-mono text-xs uppercase bg-[#fafaf5] focus:outline-none cursor-pointer"
+              >
+                <option value="all">ALL PLANS</option>
+                <option value="pro">PRO TIER</option>
+                <option value="enterprise">ENTERPRISE</option>
+              </select>
+            </div>
+
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 font-mono text-xs">
+              <span className="text-zinc-500 uppercase font-bold text-[10px]">STATUS:</span>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="border-2 border-black px-2.5 py-1.5 font-mono text-xs uppercase bg-[#fafaf5] focus:outline-none cursor-pointer"
+              >
+                <option value="all">ALL STATUSES</option>
+                <option value="active">ACTIVE ONLY</option>
+                <option value="inactive">DEACTIVATED</option>
+                <option value="expired">EXPIRED</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Plan Filter */}
-          <div className="flex items-center gap-1 font-mono text-xs">
-            <span className="text-zinc-500 uppercase font-bold text-[10px]">PLAN:</span>
-            <select
-              value={planFilter}
-              onChange={(e) => setPlanFilter(e.target.value)}
-              className="border-2 border-black px-2.5 py-1.5 font-mono text-xs uppercase bg-[#fafaf5] focus:outline-none"
-            >
-              <option value="all">ALL PLANS</option>
-              <option value="pro">PRO TIER</option>
-              <option value="enterprise">ENTERPRISE</option>
-            </select>
+        {/* Bulk Action Controls Bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t-2 border-black/10 bg-[#fafaf5] p-3 border-2 border-black">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 bg-black text-[#ccff00] px-2.5 py-1 font-mono text-[11px] font-black tracking-wider uppercase shadow-[1.5px_1.5px_0px_#000000]">
+              <Pin className="w-3.5 h-3.5" />
+              <span>BULK PIN ACTIONS</span>
+            </div>
+            <span className="font-mono text-xs font-bold text-zinc-700">
+              {selectedIds.length === 0 ? (
+                <span className="text-zinc-500">
+                  Select coupons via the <strong className="text-black">Batch Pin</strong> checkboxes below to bulk pin or unpin
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-black">
+                  <span className="inline-block w-2.5 h-2.5 bg-[#ccff00] border-2 border-black animate-pulse" />
+                  <strong>{selectedIds.length}</strong> coupon{selectedIds.length > 1 ? 's' : ''} selected
+                </span>
+              )}
+            </span>
           </div>
 
-          {/* Status Filter */}
-          <div className="flex items-center gap-1 font-mono text-xs">
-            <span className="text-zinc-500 uppercase font-bold text-[10px]">STATUS:</span>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="border-2 border-black px-2.5 py-1.5 font-mono text-xs uppercase bg-[#fafaf5] focus:outline-none"
+          <div className="flex items-center flex-wrap gap-2">
+            {/* Bulk Pin Button */}
+            <button
+              type="button"
+              onClick={() => handleBulkPin(true)}
+              disabled={selectedIds.length === 0 || isBulkPinning}
+              className={`flex items-center gap-2 px-3 py-1.5 border-2 border-black font-mono text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 ${
+                selectedIds.length > 0 && !isBulkPinning
+                  ? 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] cursor-pointer'
+                  : 'bg-zinc-200 text-zinc-400 border-zinc-400 cursor-not-allowed shadow-none'
+              }`}
+              title="Pin all selected coupons to checkout /payment promotion banner"
             >
-              <option value="all">ALL STATUSES</option>
-              <option value="active">ACTIVE ONLY</option>
-              <option value="inactive">DEACTIVATED</option>
-              <option value="expired">EXPIRED</option>
-            </select>
+              {isBulkPinning ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Pin className="w-3.5 h-3.5 fill-current" />
+              )}
+              <span>PIN ALL SELECTED ({selectedIds.length})</span>
+            </button>
+
+            {/* Bulk Unpin Button */}
+            <button
+              type="button"
+              onClick={() => handleBulkPin(false)}
+              disabled={selectedIds.length === 0 || isBulkPinning}
+              className={`flex items-center gap-2 px-3 py-1.5 border-2 border-black font-mono text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 ${
+                selectedIds.length > 0 && !isBulkPinning
+                  ? 'bg-amber-300 text-black hover:bg-black hover:text-[#ccff00] cursor-pointer'
+                  : 'bg-zinc-200 text-zinc-400 border-zinc-400 cursor-not-allowed shadow-none'
+              }`}
+              title="Unpin all selected coupons from public checkout"
+            >
+              {isBulkPinning ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <PinOff className="w-3.5 h-3.5" />
+              )}
+              <span>UNPIN ALL SELECTED ({selectedIds.length})</span>
+            </button>
+
+            {/* Quick Select All / Deselect Controls */}
+            {filteredCoupons.length > 0 && (
+              <button
+                type="button"
+                onClick={handleSelectAllFiltered}
+                disabled={isBulkPinning}
+                className="px-2.5 py-1.5 border-2 border-black bg-white hover:bg-zinc-100 text-black font-mono text-xs font-bold uppercase transition-colors shadow-[1.5px_1.5px_0px_#000000] cursor-pointer"
+              >
+                {allFilteredSelected ? 'DESELECT VISIBLE' : 'SELECT ALL VISIBLE'}
+              </button>
+            )}
+
+            {selectedIds.length > 0 && (
+              <button
+                type="button"
+                onClick={handleClearSelection}
+                disabled={isBulkPinning}
+                className="px-2.5 py-1.5 border-2 border-black bg-white hover:bg-zinc-100 text-zinc-700 font-mono text-xs font-bold uppercase transition-colors shadow-[1.5px_1.5px_0px_#000000] cursor-pointer"
+              >
+                CLEAR
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -524,6 +699,22 @@ export default function AdminCouponsPage() {
             <table className="w-full text-left font-mono text-xs border-collapse">
               <thead>
                 <tr className="border-b-2 border-black bg-[#fafaf5] text-[11px] font-black uppercase text-zinc-700">
+                  {/* BATCH PIN CHECKBOX HEADER */}
+                  <th className="p-3.5 text-center whitespace-nowrap w-24 bg-[#f4f4ea] border-r-2 border-black/20">
+                    <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={allFilteredSelected}
+                        ref={(el) => {
+                          if (el) el.indeterminate = someFilteredSelected;
+                        }}
+                        onChange={handleSelectAllFiltered}
+                        className="w-4 h-4 rounded-none accent-black cursor-pointer border-2 border-black"
+                        title={allFilteredSelected ? 'Deselect all visible coupons' : 'Select all visible coupons for batch pin'}
+                      />
+                      <span className="text-[10px] font-black text-black">BATCH PIN</span>
+                    </label>
+                  </th>
                   <th className="p-3.5">PROMO CODE</th>
                   <th className="p-3.5">DISCOUNT</th>
                   <th className="p-3.5">CAMPAIGN / DESCRIPTION</th>
@@ -540,14 +731,26 @@ export default function AdminCouponsPage() {
                   const isExpired = c.expiresAt && new Date(c.expiresAt).getTime() < Date.now();
                   const isUnlimited = c.maxRedemptions <= 0;
                   const percentUsed = isUnlimited ? 0 : Math.min(100, Math.round((c.timesRedeemed / c.maxRedemptions) * 100));
+                  const isSelected = selectedIds.includes(c.id);
 
                   return (
                     <tr
                       key={c.id}
                       className={`hover:bg-[#fafaf5] transition-colors ${
-                        !c.isActive ? 'opacity-60 bg-zinc-50' : ''
-                      }`}
+                        isSelected ? 'bg-amber-50/80 ring-2 ring-inset ring-amber-400' : ''
+                      } ${!c.isActive ? 'opacity-60 bg-zinc-50' : ''}`}
                     >
+                      {/* BATCH PIN CHECKBOX ROW CELL */}
+                      <td className="p-3.5 text-center whitespace-nowrap bg-[#fafaf5]/60 border-r-2 border-black/10">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleToggleSelect(c.id)}
+                          className="w-4 h-4 rounded-none accent-black cursor-pointer border-2 border-black"
+                          title={`Select ${c.code} for batch pin`}
+                        />
+                      </td>
+
                       {/* CODE */}
                       <td className="p-3.5 whitespace-nowrap">
                         <div className="flex items-center gap-2">

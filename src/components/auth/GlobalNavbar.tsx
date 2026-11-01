@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { getUsageStats, UsageStats } from '@/lib/usage-limits';
+import { getAdminSession } from '@/lib/admin-auth';
 import { PWAInstallButton } from '@/components/pwa/PWAInstallButton';
 import { StoryShareButton } from '@/components/story/StoryShareButton';
 
@@ -25,16 +26,10 @@ export function GlobalNavbar() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
+  const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [monetizationMode, setMonetizationMode] = useState<1 | 0>(1);
-  const [usageStats, setUsageStats] = useState<UsageStats>({
-    used: 0,
-    limit: 2,
-    remaining: 2,
-    canGenerate: true,
-    isLoggedIn: false,
-    plan: 'guest',
-  });
+  const [usageStats, setUsageStats] = useState<UsageStats>(() => getUsageStats(false, 'guest', false));
 
   // Load feature flag from API
   useEffect(() => {
@@ -48,19 +43,42 @@ export function GlobalNavbar() {
       .catch((e) => console.warn('Failed to load feature flags:', e));
   }, []);
 
+  // Check admin privileges
+  const checkAdminStatus = () => {
+    const adminSes = getAdminSession();
+    const sessionUser = session?.user as any;
+    const isAdm = Boolean(
+      adminSes ||
+      sessionUser?.role === 'admin' ||
+      sessionUser?.isAdmin === true ||
+      sessionUser?.email === 'admin@nedject.com' ||
+      sessionUser?.planAssignedBy === 'admin'
+    );
+    setIsAdmin(isAdm);
+    return isAdm;
+  };
+
   // Update usage stats on mount and session change
   const refreshUsage = () => {
+    const isAdm = checkAdminStatus();
     const isLogged = Boolean(session?.user);
-    const plan = ((session?.user as any)?.plan || 'free') as 'free' | 'pro';
-    setUsageStats(getUsageStats(isLogged, plan));
+    const plan = ((session?.user as any)?.plan || 'free') as string;
+    setUsageStats(getUsageStats(isLogged, plan, isAdm));
   };
 
   useEffect(() => {
     refreshUsage();
 
     const handleUsageUpdated = () => refreshUsage();
+    const handleAdminChanged = () => refreshUsage();
+
     window.addEventListener('Nedject_usage_updated', handleUsageUpdated);
-    return () => window.removeEventListener('Nedject_usage_updated', handleUsageUpdated);
+    window.addEventListener('nedject_admin_auth_changed', handleAdminChanged);
+
+    return () => {
+      window.removeEventListener('Nedject_usage_updated', handleUsageUpdated);
+      window.removeEventListener('nedject_admin_auth_changed', handleAdminChanged);
+    };
   }, [session]);
 
   // Open auth modal if user was intercepted and redirected with ?auth=signin or ?destination=
@@ -105,6 +123,152 @@ export function GlobalNavbar() {
   return (
     <>
       <header className="border-b-4 border-black bg-white sticky top-0 z-30 print:hidden select-none font-mono">
+        
+        {/* TOP BAR (ABOVE NAVBAR): QUOTA BATCH STRIP WITH GREEN / YELLOW / PURPLE TIER BASES */}
+        <div className="border-b-2 border-black bg-zinc-950 text-white px-3 sm:px-4 py-1.5 text-xs font-mono">
+          <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2.5">
+            
+            {/* Left: Quota / Credit Status Badge & Prompt */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              {!session?.user && !isAdmin ? (
+                /* 1. GUEST (NOT LOGGED IN): Shows initial 2 uses (no used credits shown), Green base */
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(true)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.3)] hover:bg-emerald-500/30 transition-colors cursor-pointer"
+                    title="Guest quota: 2 initial free uses. Click to sign in and unlock 10 credits!"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                    <span>INITIAL USES: 2 FREE CREDITS</span>
+                  </button>
+                  <span className="text-[11px] text-zinc-300 hidden md:inline">
+                    Initial free guest tier · Connect your account to unlock 10 uses
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthModal(true)}
+                    className="text-[11px] font-black text-[#ccff00] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>Sign In &amp; Unlock 10 →</span>
+                  </button>
+                </>
+              ) : isAdmin ? (
+                /* 2. ADMIN USER: Purple Base, Unlimited */
+                <>
+                  <Link
+                    href="/admin/dashboard"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-xs bg-purple-500/30 text-purple-300 border border-purple-400/70 shadow-[0_0_12px_rgba(168,85,247,0.4)] hover:bg-purple-500/40 transition-colors"
+                    title="Admin Master: All generation restrictions bypassed"
+                  >
+                    <ShieldAlert className="w-3.5 h-3.5 text-purple-300" />
+                    <span>ADMIN MASTER // ∞ UNLIMITED USES</span>
+                  </Link>
+                  <span className="text-[11px] text-purple-200 hidden md:inline">
+                    Full administrative privileges · Unlimited 300/600/1200 DPI &amp; batch matrix
+                  </span>
+                  <Link
+                    href="/admin/dashboard"
+                    className="text-[11px] font-black text-purple-300 hover:text-white underline underline-offset-2"
+                  >
+                    Admin Suite →
+                  </Link>
+                </>
+              ) : usageStats.plan === 'enterprise' ? (
+                /* 3. ENTERPRISE PACK: Purple Base, Unlimited */
+                <>
+                  <Link
+                    href="/payment"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-xs bg-purple-500/30 text-purple-300 border border-purple-400/70 shadow-[0_0_10px_rgba(168,85,247,0.35)] hover:bg-purple-500/40 transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-purple-300" />
+                    <span>ENTERPRISE PACK // ∞ UNLIMITED USES</span>
+                  </Link>
+                  <span className="text-[11px] text-purple-200 hidden md:inline">
+                    Enterprise Matrix active · Unlimited batch runs &amp; priority rendering
+                  </span>
+                  <Link
+                    href="/payment"
+                    className="text-[11px] font-black text-purple-300 hover:text-white underline underline-offset-2"
+                  >
+                    Enterprise Active →
+                  </Link>
+                </>
+              ) : usageStats.plan === 'pro' ? (
+                /* 4. PRO STUDIO: Yellow Base, Unlimited */
+                <>
+                  <Link
+                    href="/payment"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-xs bg-amber-400/25 text-amber-300 border border-amber-400/70 shadow-[0_0_10px_rgba(251,191,36,0.3)] hover:bg-amber-400/35 transition-colors"
+                  >
+                    <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                    <span>PRO STUDIO // ∞ UNLIMITED USES</span>
+                  </Link>
+                  <span className="text-[11px] text-amber-100 hidden md:inline">
+                    Unlimited 300 &amp; 600 DPI, 4K Reels &amp; Vector PDF active
+                  </span>
+                  <Link
+                    href="/payment"
+                    className="text-[11px] font-black text-amber-300 hover:text-white underline underline-offset-2"
+                  >
+                    Plan Active →
+                  </Link>
+                </>
+              ) : (
+                /* 5. LOGGED-IN FREE TIER: Green Base, 10 Uses (NO 99999!) */
+                <>
+                  <Link
+                    href="/payment"
+                    className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-black text-xs bg-emerald-500/20 text-emerald-400 border border-emerald-500/60 shadow-[0_0_8px_rgba(16,185,129,0.25)] hover:bg-emerald-500/30 transition-colors"
+                    title="Authenticated standard quota: 10 generations"
+                  >
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span>AUTH QUOTA: {usageStats.remaining} / 10 CREDITS REMAINING</span>
+                  </Link>
+                  <span className="text-[11px] text-zinc-300 hidden md:inline">
+                    Need unlimited 300/600 DPI &amp; 4K video clips?
+                  </span>
+                  <Link
+                    href="/payment"
+                    className="text-[11px] font-black text-amber-300 hover:underline flex items-center gap-1"
+                  >
+                    <span>Upgrade to Pro ($9) →</span>
+                  </Link>
+                </>
+              )}
+            </div>
+
+            {/* Right: Plan Packages Names with Color Set: Green (Free/2-10), Yellow (Pro), Purple (Enterprise Pack) */}
+            <div className="flex items-center gap-2 overflow-x-auto text-[10px] font-black uppercase">
+              {/* Green Base: Starter / Free Tier */}
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-emerald-500/70 bg-emerald-950/80 text-emerald-300">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                <span>STARTER // 2-10 USES</span>
+              </span>
+
+              {/* Yellow Base: Pro Studio */}
+              <Link
+                href="/payment?plan=pro"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-amber-400/80 bg-amber-950/80 text-amber-300 hover:bg-amber-400 hover:text-black transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+                <span>PRO STUDIO // UNLIMITED</span>
+              </Link>
+
+              {/* Purple Base: Enterprise Pack */}
+              <Link
+                href="/payment?plan=enterprise"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded border border-purple-400/80 bg-purple-950/80 text-purple-200 hover:bg-purple-600 hover:text-white transition-colors"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-purple-400 shrink-0" />
+                <span>ENTERPRISE PACK // UNLIMITED</span>
+              </Link>
+            </div>
+
+          </div>
+        </div>
+
+        {/* MAIN NAVBAR ROW */}
         <div className="max-w-7xl mx-auto px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
           
           {/* Brand & Nav links */}
@@ -140,40 +304,70 @@ export function GlobalNavbar() {
           {/* Right Action Bar: Quota Counter + Plans Button + User Profile / Auth */}
           <div className="flex items-center gap-2 flex-wrap">
             
-            {/* 1. Quota Limit Counter */}
-            {session?.user ? (
-              <Link
-                href={`/${encodeURIComponent((session.user as any)?.id || session.user.email?.split('@')[0] || 'profile')}`}
-                className="flex items-center gap-1.5 border-2 border-black bg-zinc-50 px-2 py-1 text-xs cursor-pointer hover:bg-[#ccff00] shadow-[1px_1px_0px_#000000] transition-colors"
-                title={`Authenticated Plan: ${usageStats.used}/${usageStats.limit} used. Click to view profile.`}
-              >
-                <span className="font-bold text-zinc-600 text-[11px]">QUOTA:</span>
-                <span
-                  className={`font-black text-xs ${
-                    usageStats.remaining === 0
-                      ? 'text-rose-600'
-                      : usageStats.remaining <= 1
-                      ? 'text-amber-600'
-                      : 'text-black'
-                  }`}
-                >
-                  {usageStats.used}/{usageStats.limit}
-                </span>
-              </Link>
-            ) : (
+            {/* 1. Quota Limit Counter Pill with Green / Yellow / Purple Color Tier Bases */}
+            {!session?.user && !isAdmin ? (
+              /* Guest: Green Base, 2 Initial Uses, NO used count */
               <div
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center gap-1.5 border-2 border-black bg-zinc-50 px-2 py-1 text-xs cursor-pointer hover:bg-zinc-100 shadow-[1px_1px_0px_#000000]"
-                title="Guest Limit: 2 used. Click to Sign In for 10!"
+                className="flex items-center gap-1.5 border-2 border-black bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors"
+                title="Guest Initial Quota: 2 free uses. Click to sign in and unlock 10!"
               >
-                <span className="font-bold text-zinc-600 text-[11px]">QUOTA:</span>
-                <span className="font-black text-xs text-black">
-                  {usageStats.used}/{usageStats.limit}
-                </span>
-                <span className="text-[9px] bg-black text-[#ccff00] px-1 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="font-bold text-emerald-900 text-[11px]">CREDITS:</span>
+                <span className="font-black text-xs text-emerald-950">2 INITIAL USES</span>
+                <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 font-black rounded-sm uppercase">
                   UNLOCK 10
                 </span>
               </div>
+            ) : isAdmin ? (
+              /* Admin: Purple Base, Unlimited */
+              <Link
+                href="/admin/dashboard"
+                className="flex items-center gap-1.5 border-2 border-black bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors"
+                title="Admin Master Privileges: Unlimited access to all tools"
+              >
+                <ShieldAlert className="w-3.5 h-3.5 text-purple-200" />
+                <span className="font-bold text-[11px] text-purple-200">ADMIN:</span>
+                <span className="font-black text-xs text-white">∞ UNLIMITED</span>
+              </Link>
+            ) : usageStats.plan === 'enterprise' ? (
+              /* Enterprise: Purple Base, Unlimited */
+              <Link
+                href={`/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`}
+                className="flex items-center gap-1.5 border-2 border-black bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors"
+                title="Enterprise Pack: Unlimited high-volume access"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-200" />
+                <span className="font-bold text-[11px] text-purple-200">ENTERPRISE:</span>
+                <span className="font-black text-xs text-white">∞ UNLIMITED</span>
+              </Link>
+            ) : usageStats.plan === 'pro' ? (
+              /* Pro: Yellow Base, Unlimited */
+              <Link
+                href={`/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`}
+                className="flex items-center gap-1.5 border-2 border-black bg-amber-400 hover:bg-amber-300 text-black px-2.5 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors"
+                title="Pro Studio: Unlimited 300 & 600 DPI access"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-black" />
+                <span className="font-bold text-[11px] text-zinc-900">PRO STUDIO:</span>
+                <span className="font-black text-xs text-black">∞ UNLIMITED</span>
+              </Link>
+            ) : (
+              /* Authenticated Free Tier: Green Base, 10 Uses (NO 99999!) */
+              <Link
+                href={`/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`}
+                className="flex items-center gap-1.5 border-2 border-black bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors"
+                title={`Authenticated Free Plan: ${usageStats.remaining} of 10 credits remaining. Click to view profile.`}
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="font-bold text-emerald-900 text-[11px]">CREDITS:</span>
+                <span className="font-black text-xs text-emerald-950">
+                  {usageStats.remaining} / 10
+                </span>
+                <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 font-black rounded-sm uppercase">
+                  FREE TIER
+                </span>
+              </Link>
             )}
 
             {/* PWA Install Button */}

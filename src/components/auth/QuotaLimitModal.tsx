@@ -182,25 +182,25 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
               </span>
             </div>
 
-            {/* Pro Plan Card ($9/mo or ₹499/mo) */}
-            <div className={`border-2 border-black p-4 space-y-3 relative ${
+            {/* Pro Plan Card (Yellow Base) */}
+            <div className={`border-2 border-black p-4 space-y-3 relative border-l-[6px] border-l-amber-500 ${
               lockedDetails?.requiredPlan === 'enterprise'
                 ? 'bg-zinc-50'
-                : 'bg-[#f0fde8] shadow-[4px_4px_0px_#000000]'
+                : 'bg-amber-50 shadow-[4px_4px_0px_#000000]'
             }`}>
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <Sparkles className="w-3.5 h-3.5 text-emerald-600 fill-emerald-600" />
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600 fill-amber-400" />
                     <span className="font-black text-sm uppercase text-black">
                       NEDJECT PRO STUDIO
                     </span>
-                    <span className="text-[10px] bg-black text-[#ccff00] px-1.5 py-0.2 font-black">
-                      MOST POPULAR
+                    <span className="text-[10px] bg-amber-400 text-black px-1.5 py-0.2 font-black border border-black">
+                      YELLOW BASE // MOST POPULAR
                     </span>
                   </div>
                   <p className="text-[11px] text-zinc-600 font-bold mt-0.5">
-                    For creators, print operators &amp; designers
+                    For creators, print operators &amp; designers · Unlimited quota
                   </p>
                 </div>
                 <div className="text-right">
@@ -240,29 +240,29 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
                   }
                   handleClose();
                 }}
-                className="w-full py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 border-2 border-black bg-amber-400 text-black hover:bg-black hover:text-amber-300 font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
               >
                 <Zap className="w-3.5 h-3.5" />
-                <span>UPGRADE TO PRO STUDIO ($9/MO)</span>
+                <span>UPGRADE TO PRO STUDIO (YELLOW BASE)</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>
 
-            {/* Enterprise Plan Card ($29/mo or ₹1,999/mo) */}
-            <div className={`border-2 border-black p-4 space-y-3 relative ${
+            {/* Enterprise Plan Card (Purple Base) */}
+            <div className={`border-2 border-black p-4 space-y-3 relative border-l-[6px] border-l-purple-600 ${
               lockedDetails?.requiredPlan === 'enterprise'
-                ? 'bg-[#fffde6] shadow-[4px_4px_0px_#000000]'
-                : 'bg-white'
+                ? 'bg-purple-100 shadow-[4px_4px_0px_#000000]'
+                : 'bg-purple-50'
             }`}>
               <div className="flex justify-between items-start">
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="font-black text-sm uppercase text-black">
-                      NEDJECT ENTERPRISE MATRIX
+                    <ShieldCheck className="w-3.5 h-3.5 text-purple-600" />
+                    <span className="font-black text-sm uppercase text-purple-950">
+                      NEDJECT ENTERPRISE PACK
                     </span>
-                    <span className="text-[10px] bg-blue-600 text-white px-1.5 py-0.2 font-black">
-                      POWER USERS
+                    <span className="text-[10px] bg-purple-600 text-white px-1.5 py-0.2 font-black border border-purple-700">
+                      PURPLE BASE // UNLIMITED
                     </span>
                   </div>
                   <p className="text-[11px] text-zinc-600 font-bold mt-0.5">
@@ -281,19 +281,19 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-[11px] text-zinc-800 font-bold">
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-3 h-3 text-blue-700 shrink-0" />
+                  <Check className="w-3 h-3 text-purple-700 shrink-0" />
                   <span>Everything in Pro Included</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-3 h-3 text-blue-700 shrink-0" />
+                  <Check className="w-3 h-3 text-purple-700 shrink-0" />
                   <span>1200 DPI Micro-Screening Output</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-3 h-3 text-blue-700 shrink-0" />
+                  <Check className="w-3 h-3 text-purple-700 shrink-0" />
                   <span>60s+ Cinematic Reels &amp; 4K Renders</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Check className="w-3 h-3 text-blue-700 shrink-0" />
+                  <Check className="w-3 h-3 text-purple-700 shrink-0" />
                   <span>Unlimited Batch Processing (1,000+ items)</span>
                 </div>
               </div>
@@ -306,10 +306,10 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
                   }
                   handleClose();
                 }}
-                className="w-full py-2.5 border-2 border-black bg-white hover:bg-black hover:text-white font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 border-2 border-black bg-purple-600 text-white hover:bg-black hover:text-purple-300 font-black text-xs uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer flex items-center justify-center gap-2"
               >
-                <CreditCard className="w-3.5 h-3.5" />
-                <span>UPGRADE TO ENTERPRISE ($29/MO)</span>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>UPGRADE TO ENTERPRISE PACK (PURPLE BASE)</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Link>
             </div>

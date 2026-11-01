@@ -724,29 +724,31 @@ function PaymentContent() {
               </h2>
             </div>
 
-            {/* Plan switcher tabs */}
+            {/* Plan switcher tabs with Yellow / Purple tier color bases */}
             <div className="flex items-center border-2 border-black bg-white shadow-[3px_3px_0px_#000000]">
               <button
                 type="button"
                 onClick={() => setSelectedPlanId('pro')}
-                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors cursor-pointer ${
+                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors cursor-pointer flex items-center gap-1.5 ${
                   selectedPlanId === 'pro'
-                    ? 'bg-black text-[#ccff00]'
-                    : 'text-black hover:bg-zinc-100'
+                    ? 'bg-amber-400 text-black border-r-2 border-black'
+                    : 'text-black hover:bg-zinc-100 border-r-2 border-black'
                 }`}
               >
-                PRO STUDIO
+                <span className="w-2 h-2 rounded-full bg-amber-600 shrink-0" />
+                <span>PRO STUDIO (YELLOW BASE)</span>
               </button>
               <button
                 type="button"
                 onClick={() => setSelectedPlanId('enterprise')}
-                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors border-l-2 border-black cursor-pointer ${
+                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors cursor-pointer flex items-center gap-1.5 ${
                   selectedPlanId === 'enterprise'
-                    ? 'bg-black text-[#ccff00]'
+                    ? 'bg-purple-600 text-white'
                     : 'text-black hover:bg-zinc-100'
                 }`}
               >
-                ENTERPRISE MATRIX
+                <span className="w-2 h-2 rounded-full bg-purple-300 shrink-0" />
+                <span>ENTERPRISE PACK (PURPLE BASE)</span>
               </button>
             </div>
           </div>
@@ -1142,33 +1144,43 @@ function PaymentContent() {
           </div>
         )}
 
-        {/* 3. 3-TIER PRICING MATRIX CARDS */}
+        {/* 3. 3-TIER PRICING MATRIX CARDS WITH GREEN / YELLOW / PURPLE TIER BASES */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
-          {/* TIER 1: FREE FOREVER */}
-          <div className="border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6">
+          {/* TIER 1: FREE TIER (GREEN BASE) */}
+          <div className="border-4 border-black bg-[#f0fbf0] p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6 border-l-[8px] border-l-emerald-600">
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b-2 border-black pb-3">
-                <span className="font-black text-sm uppercase text-black">FREE TIER</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded-full bg-emerald-500 border border-black shrink-0" />
+                  <span className="font-black text-sm uppercase text-emerald-950">
+                    FREE TIER // STARTER
+                  </span>
+                </div>
                 <span className="text-2xl font-black text-black">
                   {CURRENCY_SYMBOLS[currency]}0
                 </span>
               </div>
 
-              <p className="text-xs text-zinc-600 font-sans leading-relaxed">
+              {/* Green Base Quota Badge */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-100 text-emerald-900 border border-emerald-600 font-black text-[11px] uppercase">
+                <span>QUOTA: 2 GUEST / 10 AUTH USES</span>
+              </div>
+
+              <p className="text-xs text-zinc-700 font-sans leading-relaxed">
                 {(dynamicPlans.find(p => p.id === 'free') || DEFAULT_PLANS[0]).description}
               </p>
 
               <div className="border-t border-black/20 pt-3 space-y-2.5">
-                <div className="text-[11px] font-black uppercase text-zinc-500">
+                <div className="text-[11px] font-black uppercase text-emerald-900">
                   INCLUDED CAPABILITIES:
                 </div>
                 <ul className="space-y-2 text-xs font-bold text-zinc-800">
                   {(dynamicPlans.find(p => p.id === 'free') || DEFAULT_PLANS[0]).features.map((f, i) => (
                     <li key={i} className="flex items-start gap-2">
                       {f.included ? (
-                        <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                        <Check className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
                       ) : (
-                        <XIcon className="w-4 h-4 text-zinc-300 shrink-0 mt-0.5" />
+                        <XIcon className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5" />
                       )}
                       <span className={f.included ? 'text-zinc-900' : 'text-zinc-400 line-through'}>
                         {f.text}
@@ -1180,26 +1192,26 @@ function PaymentContent() {
             </div>
 
             <div>
-              <div className="p-3 border-2 border-black bg-zinc-100 text-center font-black text-xs uppercase text-zinc-600">
+              <div className="p-3 border-2 border-black bg-emerald-100 text-center font-black text-xs uppercase text-emerald-900">
                 {activePlan === 'free' ? 'CURRENT ACTIVE PLAN' : 'DEFAULT BASE TIER'}
               </div>
             </div>
           </div>
 
-          {/* TIER 2: PRO STUDIO (FEATURED) */}
+          {/* TIER 2: PRO STUDIO (YELLOW BASE) */}
           <div
-            className={`border-4 border-black bg-[#f4fde8] p-6 sm:p-7 shadow-[10px_10px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all ${
-              selectedPlanId === 'pro' ? 'ring-4 ring-[#ccff00]' : ''
+            className={`border-4 border-black bg-[#fffde6] p-6 sm:p-7 shadow-[10px_10px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all border-l-[8px] border-l-amber-400 ${
+              selectedPlanId === 'pro' ? 'ring-4 ring-amber-400' : ''
             }`}
           >
-            <div className="absolute -top-3.5 right-6 bg-black text-[#ccff00] text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
+            <div className="absolute -top-3.5 right-6 bg-amber-400 text-black text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
               {selectedPlanId === 'pro' ? 'CHOSEN PLAN // ACTIVE' : 'MOST POPULAR // CREATORS'}
             </div>
 
             <div className="space-y-4">
               <div className="flex items-baseline justify-between border-b-2 border-black pb-3">
                 <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  <Sparkles className="w-4 h-4 text-amber-600 fill-amber-400" />
                   <span className="font-black text-base uppercase text-black">
                     PRO STUDIO
                   </span>
@@ -1214,19 +1226,25 @@ function PaymentContent() {
                 </div>
               </div>
 
+              {/* Yellow Base Quota Badge */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-200 text-amber-950 border border-amber-500 font-black text-[11px] uppercase">
+                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                <span>QUOTA: ∞ UNLIMITED GENERATIONS</span>
+              </div>
+
               <p className="text-xs text-zinc-700 font-sans leading-relaxed">
                 {(dynamicPlans.find(p => p.id === 'pro') || DEFAULT_PLANS[1]).description}
               </p>
 
               <div className="border-t border-black/30 pt-3 space-y-2.5">
-                <div className="text-[11px] font-black uppercase text-zinc-800">
+                <div className="text-[11px] font-black uppercase text-amber-900">
                   ALL PRO ADVANTAGES:
                 </div>
                 <ul className="space-y-2 text-xs font-bold text-zinc-900">
                   {(dynamicPlans.find(p => p.id === 'pro') || DEFAULT_PLANS[1]).features.map((f, i) => (
                     <li key={i} className="flex items-start gap-2">
                       <Check className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                      <span className={f.highlight ? 'text-black font-black bg-[#ccff00]/40 px-1' : ''}>
+                      <span className={f.highlight ? 'text-black font-black bg-amber-300/80 px-1' : ''}>
                         {f.text}
                       </span>
                     </li>
@@ -1244,8 +1262,8 @@ function PaymentContent() {
                 }}
                 className={`w-full py-3.5 border-2 border-black font-black text-xs sm:text-sm uppercase transition-all shadow-[4px_4px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
                   selectedPlanId === 'pro'
-                    ? 'bg-[#ccff00] text-black'
-                    : 'bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black'
+                    ? 'bg-amber-400 text-black ring-2 ring-black'
+                    : 'bg-black text-[#ccff00] hover:bg-amber-400 hover:text-black'
                 }`}
               >
                 <CheckSquare className="w-4 h-4" />
@@ -1260,21 +1278,24 @@ function PaymentContent() {
             </div>
           </div>
 
-          {/* TIER 3: ENTERPRISE MATRIX */}
+          {/* TIER 3: ENTERPRISE PACK / MATRIX (PURPLE BASE) */}
           <div
-            className={`border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all ${
-              selectedPlanId === 'enterprise' ? 'ring-4 ring-black bg-zinc-50' : ''
+            className={`border-4 border-black bg-[#faf5ff] p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all border-l-[8px] border-l-purple-600 ${
+              selectedPlanId === 'enterprise' ? 'ring-4 ring-purple-600 bg-purple-50/50' : ''
             }`}
           >
-            {selectedPlanId === 'enterprise' && (
-              <div className="absolute -top-3.5 right-6 bg-black text-[#ccff00] text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
-                CHOSEN PLAN // ACTIVE
-              </div>
-            )}
+            <div className="absolute -top-3.5 right-6 bg-purple-600 text-white text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
+              {selectedPlanId === 'enterprise' ? 'CHOSEN PLAN // ACTIVE' : 'ENTERPRISE PACK // POWER'}
+            </div>
 
             <div className="space-y-4">
               <div className="flex items-baseline justify-between border-b-2 border-black pb-3">
-                <span className="font-black text-sm uppercase text-black">ENTERPRISE MATRIX</span>
+                <div className="flex items-center gap-1.5">
+                  <ShieldAlert className="w-4 h-4 text-purple-600" />
+                  <span className="font-black text-sm uppercase text-purple-950">
+                    ENTERPRISE PACK
+                  </span>
+                </div>
                 <div className="text-right">
                   <span className="text-2xl font-black text-black">
                     {getPlanPrice('enterprise').origDisplay}
@@ -1285,18 +1306,24 @@ function PaymentContent() {
                 </div>
               </div>
 
-              <p className="text-xs text-zinc-600 font-sans leading-relaxed">
+              {/* Purple Base Quota Badge */}
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-200 text-purple-950 border border-purple-500 font-black text-[11px] uppercase">
+                <Sparkles className="w-3.5 h-3.5 text-purple-700" />
+                <span>QUOTA: ∞ UNLIMITED + MAX THROUGHPUT</span>
+              </div>
+
+              <p className="text-xs text-zinc-700 font-sans leading-relaxed">
                 {NEDJECT_PLANS.enterprise.description}
               </p>
 
               <div className="border-t border-black/20 pt-3 space-y-2.5">
-                <div className="text-[11px] font-black uppercase text-zinc-500">
+                <div className="text-[11px] font-black uppercase text-purple-900">
                   ENTERPRISE CAPABILITIES:
                 </div>
                 <ul className="space-y-2 text-xs font-bold text-zinc-800">
                   {NEDJECT_PLANS.enterprise.features.map((f, i) => (
                     <li key={i} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                      <Check className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
                       <span>{f.text}</span>
                     </li>
                   ))}
@@ -1311,21 +1338,21 @@ function PaymentContent() {
                   setSelectedPlanId('enterprise');
                   window.scrollTo({ top: 300, behavior: 'smooth' });
                 }}
-                className={`w-full py-3 border-2 border-black font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
+                className={`w-full py-3.5 border-2 border-black font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
                   selectedPlanId === 'enterprise'
-                    ? 'bg-[#ccff00] text-black'
-                    : 'bg-white hover:bg-black hover:text-[#ccff00] text-black'
+                    ? 'bg-purple-600 text-white ring-2 ring-black'
+                    : 'bg-white hover:bg-purple-600 hover:text-white text-black'
                 }`}
               >
                 <Zap className="w-4 h-4" />
                 <span>
                   {selectedPlanId === 'enterprise'
                     ? 'CHOSEN PLAN (CHECKOUT ABOVE)'
-                    : 'SELECT ENTERPRISE'}
+                    : 'SELECT ENTERPRISE PACK'}
                 </span>
               </button>
-              <div className="text-[10px] text-zinc-500 font-bold text-center">
-                Includes REST API key &amp; direct support by neerajrekwar
+              <div className="text-[10px] text-zinc-600 font-bold text-center">
+                Includes REST API key &amp; direct technical account manager
               </div>
             </div>
           </div>
