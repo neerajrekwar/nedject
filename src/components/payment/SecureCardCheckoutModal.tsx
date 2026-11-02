@@ -207,6 +207,8 @@ export function SecureCardCheckoutModal({
           planId: orderData.planId,
           paymentMethod: 'card',
           couponCode: orderData.couponCode,
+          currency: orderData.currency,
+          displayAmount: orderData.displayAmount,
           cardDetails: {
             cardNumber: rawCard,
             cardholderName,

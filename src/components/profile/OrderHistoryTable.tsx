@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import QRCode from 'qrcode';
 import { PurchaseRecord } from '@/lib/purchases';
+import { formatCurrencyAmount, getCurrencySymbol } from '@/lib/plans-types';
 
 interface OrderHistoryTableProps {
   userEmail: string;
@@ -143,6 +144,11 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
   }, [purchases, searchQuery, statusFilter]);
 
   // Calculations for quick metrics
+  const primaryCurrency = useMemo(() => {
+    const found = purchases.find((p) => p.currency);
+    return (found?.currency || 'INR').toUpperCase();
+  }, [purchases]);
+
   const totalSpent = useMemo(() => {
     return purchases.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
   }, [purchases]);
@@ -154,9 +160,17 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
   };
 
   return (
-    <div className="border-4 border-black bg-white p-6 sm:p-8 shadow-[8px_8px_0px_#000000] space-y-6">
-      {/* 1. SECTION TITLE & METRICS BAR */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-black pb-5">
+    <div
+      className={`border-4 border-black bg-white p-6 sm:p-8 shadow-[8px_8px_0px_#000000] space-y-6 ${
+        selectedInvoice
+          ? 'print:border-none print:shadow-none print:p-0 print:m-0 print:space-y-0 print:bg-white'
+          : ''
+      }`}
+    >
+      {/* 1-5. WRAPPER FOR TABLE CONTENT: COMPLETELY HIDDEN IN PRINT WHEN INVOICE MODAL IS OPEN */}
+      <div className={`space-y-6 ${selectedInvoice ? 'print:hidden' : ''}`}>
+        {/* 1. SECTION TITLE & METRICS BAR */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b-2 border-black pb-5">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-black text-[#ccff00] font-black text-[10px] uppercase tracking-wider font-mono">
             <Receipt className="w-3.5 h-3.5" />
@@ -207,7 +221,7 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
         <div className="border-2 border-black bg-[#fbfbfa] p-3 shadow-[2px_2px_0px_#000000]">
           <span className="text-[10px] font-black text-zinc-500 uppercase block">TOTAL EXPENDITURE</span>
           <span className="text-lg font-black text-emerald-700 block mt-0.5 font-mono">
-            ${totalSpent.toFixed(2)}
+            {formatCurrencyAmount(totalSpent, primaryCurrency)}
           </span>
         </div>
 
@@ -432,9 +446,14 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
 
                     {/* Amount */}
                     <td className="p-3 border-r-2 border-black whitespace-nowrap">
-                      <span className="font-black text-xs px-2 py-0.5 bg-black text-[#ccff00] border border-black inline-block">
-                        {purchase.amountFormatted}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className="font-black text-xs px-2 py-0.5 bg-black text-[#ccff00] border border-black inline-block">
+                          {purchase.amountFormatted}
+                        </span>
+                        <span className="text-[9px] font-bold text-zinc-600 font-mono uppercase bg-zinc-100 px-1 border border-zinc-300">
+                          {purchase.currency || 'INR'}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Status */}
@@ -487,11 +506,12 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
           </table>
         </div>
       )}
+      </div>
 
       {/* 6. INTERACTIVE INVOICE MODAL & PRINTABLE DOCUMENT */}
       {selectedInvoice && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 overflow-y-auto animate-fade-in backdrop-blur-sm print:p-0 print:bg-white print:fixed print:inset-0">
-          <div className="relative w-full max-w-2xl bg-white border-4 border-black p-6 sm:p-8 shadow-[12px_12px_0px_#ccff00] print:border-none print:shadow-none print:p-0 text-black font-mono space-y-6 max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 overflow-y-auto animate-fade-in backdrop-blur-sm print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible invoice-print-container">
+          <div className="relative w-full max-w-2xl bg-white border-4 border-black p-6 sm:p-8 shadow-[12px_12px_0px_#ccff00] print:border-none print:shadow-none print:p-0 print:m-0 print:max-h-none print:max-w-none print:overflow-visible text-black font-mono space-y-6 print:space-y-3 max-h-[92vh] overflow-y-auto invoice-print-card">
             {/* Modal Controls (Hidden in print) */}
             <div className="flex items-center justify-between border-b-2 border-black pb-4 print:hidden">
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-[#ccff00] text-black font-black text-xs border border-black uppercase">
@@ -520,30 +540,30 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
             </div>
 
             {/* INVOICE CONTENT (What gets printed / saved) */}
-            <div className="space-y-6 bg-white p-2" id="printable-invoice">
+            <div className="space-y-5 print:space-y-3 bg-white p-2 print:p-3 print:border-2 print:border-black print:max-w-[700px] print:mx-auto invoice-print-card" id="printable-invoice">
               {/* Header */}
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b-4 border-black pb-6">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 print:gap-2 border-b-4 print:border-b-2 border-black pb-5 print:pb-2.5">
                 <div>
-                  <div className="text-2xl font-black uppercase tracking-tight text-black flex items-center gap-2">
-                    <span className="w-5 h-5 bg-[#ccff00] border-2 border-black inline-block" />
+                  <div className="text-2xl print:text-xl font-black uppercase tracking-tight text-black flex items-center gap-2">
+                    <span className="w-5 h-5 print:w-4 print:h-4 bg-[#ccff00] border-2 border-black inline-block" />
                     <span>NEDJECT SYSTEMS</span>
                   </div>
-                  <div className="text-[11px] text-zinc-600 font-bold uppercase mt-1">
+                  <div className="text-[11px] print:text-[10px] text-zinc-600 font-bold uppercase mt-1">
                     Industrial Optical Matrix &amp; High-DPI Calibration Lab
                   </div>
-                  <div className="text-[10px] text-zinc-500 font-sans mt-0.5">
+                  <div className="text-[10px] print:text-[9px] text-zinc-500 font-sans mt-0.5">
                     Operated by neerajrekwar • GST/Tax Reg: IND-OPT-2026-NDJ
                   </div>
                 </div>
 
                 <div className="text-left sm:text-right space-y-1">
-                  <div className="inline-block border-2 border-black bg-[#ccff00] px-3 py-1 font-black text-xs uppercase shadow-[2px_2px_0px_#000000]">
+                  <div className="inline-block border-2 border-black bg-[#ccff00] px-3 py-1 print:px-2 print:py-0.5 font-black text-xs print:text-[11px] uppercase shadow-[2px_2px_0px_#000000] print:shadow-none">
                     TAX INVOICE
                   </div>
-                  <div className="text-xs font-black text-black">
+                  <div className="text-xs print:text-[11px] font-black text-black">
                     INVOICE #: <span className="font-mono">{selectedInvoice.invoiceId}</span>
                   </div>
-                  <div className="text-[11px] text-zinc-600">
+                  <div className="text-[11px] print:text-[10px] text-zinc-600">
                     DATE: {new Date(selectedInvoice.date).toLocaleDateString('en-US', {
                       year: 'numeric',
                       month: 'long',
@@ -554,31 +574,31 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
               </div>
 
               {/* Billed To / Billed By */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-2 border-black bg-zinc-50 p-4">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-black uppercase text-zinc-500 block">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 print:gap-2 border-2 border-black bg-zinc-50 print:bg-white p-4 print:p-2.5">
+                <div className="space-y-1 print:space-y-0.5">
+                  <span className="text-[10px] print:text-[9px] font-black uppercase text-zinc-500 block">
                     BILLED TO (SUBSCRIBER):
                   </span>
-                  <div className="text-sm font-black text-black uppercase">
+                  <div className="text-sm print:text-xs font-black text-black uppercase">
                     {selectedInvoice.userName || userEmail}
                   </div>
-                  <div className="text-xs text-zinc-700 font-bold">{selectedInvoice.userEmail}</div>
+                  <div className="text-xs print:text-[11px] text-zinc-700 font-bold">{selectedInvoice.userEmail}</div>
                   {selectedInvoice.userId && (
-                    <div className="text-[10px] text-zinc-500">ID: {selectedInvoice.userId}</div>
+                    <div className="text-[10px] print:text-[9px] text-zinc-500">ID: {selectedInvoice.userId}</div>
                   )}
                 </div>
 
-                <div className="space-y-1 sm:text-right">
-                  <span className="text-[10px] font-black uppercase text-zinc-500 block">
+                <div className="space-y-1 print:space-y-0.5 sm:text-right">
+                  <span className="text-[10px] print:text-[9px] font-black uppercase text-zinc-500 block">
                     PAYMENT &amp; GATEWAY DETAILS:
                   </span>
-                  <div className="text-xs font-bold text-black uppercase">
+                  <div className="text-xs print:text-[11px] font-bold text-black uppercase">
                     GATEWAY: {selectedInvoice.gateway}
                   </div>
-                  <div className="text-[11px] text-zinc-600">
+                  <div className="text-[11px] print:text-[10px] text-zinc-600">
                     PAYMENT ID: {selectedInvoice.paymentId || 'AUTHORIZED'}
                   </div>
-                  <div className="text-[11px] text-emerald-800 font-black uppercase flex sm:justify-end items-center gap-1">
+                  <div className="text-[11px] print:text-[10px] text-emerald-800 font-black uppercase flex sm:justify-end items-center gap-1">
                     <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block" />
                     <span>STATUS: {selectedInvoice.status.toUpperCase()}</span>
                   </div>
@@ -586,14 +606,14 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
               </div>
 
               {/* Line Items Table */}
-              <div className="border-2 border-black overflow-hidden">
-                <table className="w-full text-left border-collapse text-xs">
+              <div className="border-2 border-black overflow-hidden print:overflow-visible">
+                <table className="w-full text-left border-collapse text-xs print:text-[11px]">
                   <thead>
                     <tr className="bg-black text-[#ccff00] font-black uppercase">
-                      <th className="p-2.5 border-r border-zinc-800">ITEM DESCRIPTION</th>
-                      <th className="p-2.5 border-r border-zinc-800 text-center w-16">QTY</th>
-                      <th className="p-2.5 border-r border-zinc-800 text-right w-24">RATE</th>
-                      <th className="p-2.5 text-right w-28">TOTAL</th>
+                      <th className="p-2.5 print:p-1.5 border-r border-zinc-800">ITEM DESCRIPTION</th>
+                      <th className="p-2.5 print:p-1.5 border-r border-zinc-800 text-center w-16">QTY</th>
+                      <th className="p-2.5 print:p-1.5 border-r border-zinc-800 text-right w-24">RATE</th>
+                      <th className="p-2.5 print:p-1.5 text-right w-28">TOTAL</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y border-black font-mono">
@@ -609,20 +629,20 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
                         ]
                     ).map((item, idx) => (
                       <tr key={idx} className="bg-white">
-                        <td className="p-2.5 border-r-2 border-black font-bold">
+                        <td className="p-2.5 print:p-1.5 border-r-2 border-black font-bold">
                           {item.description}
-                          <div className="text-[10px] text-zinc-500 font-normal">
+                          <div className="text-[10px] print:text-[9px] text-zinc-500 font-normal">
                             Period: {selectedInvoice.billingCycle.toUpperCase()} • Hardware calibration matrix included
                           </div>
                         </td>
-                        <td className="p-2.5 border-r-2 border-black text-center font-bold">
+                        <td className="p-2.5 print:p-1.5 border-r-2 border-black text-center font-bold">
                           {item.quantity}
                         </td>
-                        <td className="p-2.5 border-r-2 border-black text-right font-bold">
-                          ${item.unitPrice.toFixed(2)}
+                        <td className="p-2.5 print:p-1.5 border-r-2 border-black text-right font-bold">
+                          {formatCurrencyAmount(item.unitPrice, selectedInvoice.currency)}
                         </td>
-                        <td className="p-2.5 text-right font-black text-black">
-                          ${item.total.toFixed(2)}
+                        <td className="p-2.5 print:p-1.5 text-right font-black text-black">
+                          {formatCurrencyAmount(item.total, selectedInvoice.currency)}
                         </td>
                       </tr>
                     ))}
@@ -631,32 +651,32 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
               </div>
 
               {/* Totals & QR Verification Barcode */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 border-t-2 border-black pt-4">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6 print:gap-3 border-t-2 border-black pt-4 print:pt-2">
                 <div className="flex items-center gap-3">
                   {invoiceQrUrl && (
-                    <div className="border-2 border-black p-1 bg-white shadow-[2px_2px_0px_#000000]">
+                    <div className="border-2 border-black p-1 bg-white shadow-[2px_2px_0px_#000000] print:shadow-none">
                       <img
                         src={invoiceQrUrl}
                         alt="Invoice Verification Matrix"
-                        className="w-20 h-20"
+                        className="w-20 h-20 print:w-14 print:h-14"
                       />
                     </div>
                   )}
-                  <div className="space-y-0.5 text-[10px] text-zinc-600 font-mono">
+                  <div className="space-y-0.5 text-[10px] print:text-[9px] text-zinc-600 font-mono">
                     <div className="font-black text-black uppercase">AUTHENTICITY MATRIX</div>
                     <div>Scan with smartphone camera to verify cryptographic signature.</div>
                     <div className="text-emerald-700 font-bold uppercase">DIGITALLY SEALED &amp; SIGNED</div>
                   </div>
                 </div>
 
-                <div className="w-full sm:w-64 space-y-1.5 font-mono text-xs text-right">
+                <div className="w-full sm:w-64 space-y-1.5 print:space-y-0.5 font-mono text-xs print:text-[11px] text-right">
                   <div className="flex justify-between text-zinc-600 font-bold">
                     <span>SUBTOTAL:</span>
-                    <span>${selectedInvoice.amount.toFixed(2)}</span>
+                    <span>{formatCurrencyAmount(selectedInvoice.amount, selectedInvoice.currency)}</span>
                   </div>
                   <div className="flex justify-between text-zinc-600 font-bold">
                     <span>ESTIMATED TAX (0%):</span>
-                    <span>$0.00</span>
+                    <span>{formatCurrencyAmount(0, selectedInvoice.currency)}</span>
                   </div>
                   {selectedInvoice.couponCode && (
                     <div className="flex justify-between text-emerald-700 font-black">
@@ -664,8 +684,8 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
                       <span>{selectedInvoice.couponCode}</span>
                     </div>
                   )}
-                  <div className="flex justify-between border-t-2 border-black pt-1.5 text-sm font-black text-black">
-                    <span>TOTAL AMOUNT PAID:</span>
+                  <div className="flex justify-between border-t-2 border-black pt-1.5 print:pt-1 text-sm print:text-xs font-black text-black">
+                    <span>TOTAL AMOUNT PAID ({selectedInvoice.currency || 'INR'}):</span>
                     <span className="bg-[#ccff00] px-2 py-0.5 border border-black">
                       {selectedInvoice.amountFormatted}
                     </span>
@@ -674,7 +694,7 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
               </div>
 
               {/* Footer Stamp */}
-              <div className="border-t border-zinc-200 pt-3 text-[10px] text-zinc-500 text-center font-sans">
+              <div className="border-t border-zinc-200 print:border-black pt-3 print:pt-1.5 text-[10px] print:text-[9px] text-zinc-500 print:text-zinc-700 text-center font-sans">
                 Thank you for powering your high-precision optical barcode and physical print passes with Nedject. This is a computer-generated tax invoice that requires no physical signature.
               </div>
             </div>

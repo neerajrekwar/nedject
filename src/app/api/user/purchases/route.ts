@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { getPurchasesForUser, createPurchaseRecord } from '@/lib/purchases';
 import { findUserByEmail } from '@/lib/db-users';
+import { formatCurrencyAmount } from '@/lib/plans-types';
 
 const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || 'Nedject-super-secret-nextauth-key-2026';
 
@@ -108,14 +109,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const currency = (body.currency || (userEmail.includes('neerajrekwar') || userEmail.endsWith('.in') ? 'INR' : 'USD')).toUpperCase();
+    const amount = Number(body.amount) || (currency === 'INR' ? 499 : 9.99);
+    const amountFormatted = body.amountFormatted && !body.amountFormatted.startsWith('$') && currency === 'INR'
+      ? body.amountFormatted
+      : formatCurrencyAmount(amount, currency);
+
     const newPurchase = await createPurchaseRecord({
       userEmail,
       userName: body.userName || (nextAuthToken?.name as string) || 'Subscriber',
       plan: body.plan || 'pro',
       planName: body.planName || 'Pro Athlete Pass',
-      amount: Number(body.amount) || 9.99,
-      amountFormatted: body.amountFormatted || `$${(Number(body.amount) || 9.99).toFixed(2)}`,
-      currency: body.currency || 'USD',
+      amount,
+      amountFormatted,
+      currency,
       billingCycle: body.billingCycle || 'monthly',
       gateway: body.gateway || 'Razorpay',
       status: 'Paid',

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import fs from 'fs';
 import path from 'path';
+import { formatCurrencyAmount } from '@/lib/plans-types';
 
 export const dynamic = 'force-dynamic';
 
@@ -108,6 +109,7 @@ export async function GET() {
     const purchases = paidUsersDocs.map((pu, idx) => {
       const isEnt = pu.plan === 'enterprise';
       const isAnnual = pu.subscriptionBillingCycle === 'annual';
+      const isINR = pu.currency === 'INR' || pu.email?.toLowerCase().includes('neerajrekwar') || pu.email?.toLowerCase().endsWith('.in');
 
       let planName = isEnt
         ? isAnnual
@@ -117,7 +119,15 @@ export async function GET() {
         ? 'Pro Athlete (Annual)'
         : 'Pro Athlete (Monthly)';
 
-      let amountStr = isEnt
+      let amountStr = isINR
+        ? isEnt
+          ? isAnnual
+            ? '₹14,999 / yr'
+            : '₹1,999 / mo'
+          : isAnnual
+          ? '₹3,999 / yr'
+          : '₹499 / mo'
+        : isEnt
         ? isAnnual
           ? '$249.00 / yr'
           : '$29.00 / mo'
@@ -157,12 +167,18 @@ export async function GET() {
           // Avoid duplicate display if user already mapped
           const alreadyExists = purchases.some(p => p.invoiceId === ep.invoiceId || (ep.paymentId && p.id === ep.paymentId));
           if (!alreadyExists) {
+            const epCurrency = (ep.currency || (ep.userEmail?.toLowerCase().includes('neerajrekwar') ? 'INR' : 'USD')).toUpperCase();
+            let formattedAmount = ep.amountFormatted;
+            if (!formattedAmount || (epCurrency === 'INR' && formattedAmount.startsWith('$'))) {
+              formattedAmount = formatCurrencyAmount(Number(ep.amount) || 0, epCurrency);
+            }
+
             purchases.unshift({
               id: ep.id || `pur_${ep._id?.toString().slice(-6)}`,
               name: ep.userName || ep.name || 'Subscriber',
               email: ep.userEmail || ep.email || '',
               plan: ep.planName || ep.plan,
-              amount: ep.amountFormatted || `$${(Number(ep.amount) || 0).toFixed(2)}`,
+              amount: formattedAmount,
               gateway: ep.gateway || 'Razorpay',
               date: ep.date ? new Date(ep.date).toLocaleDateString() : 'Recent',
               status: ep.status || 'Paid',

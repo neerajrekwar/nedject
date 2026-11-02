@@ -1,6 +1,7 @@
 import { getDb } from './mongodb';
 import fs from 'fs';
 import path from 'path';
+import { formatCurrencyAmount, getCurrencySymbol, SupportedCurrency } from './plans-types';
 
 export interface PurchaseItem {
   description: string;
@@ -94,6 +95,7 @@ export async function getPurchasesForUser(
 ): Promise<PurchaseRecord[]> {
   if (!userEmail && !userId) return [];
   const normalizedEmail = (userEmail || '').trim().toLowerCase();
+  const isIndianUser = normalizedEmail.includes('neerajrekwar') || normalizedEmail.endsWith('.in');
 
   try {
     const db = await getDb();
@@ -116,41 +118,54 @@ export async function getPurchasesForUser(
         .toArray();
 
       if (docs && docs.length > 0) {
-        return docs.map((doc: any) => ({
-          _id: doc._id?.toString(),
-          id: doc.id || `pur_${doc._id?.toString().slice(-8)}`,
-          userId: doc.userId,
-          userEmail: doc.userEmail || doc.email || normalizedEmail,
-          userName: doc.userName || doc.name || 'User',
-          plan: doc.plan || 'pro',
-          planName: doc.planName || (doc.plan === 'enterprise' ? 'Enterprise Studio' : 'Pro Athlete Pass'),
-          amount: Number(doc.amount) || 0,
-          amountFormatted: doc.amountFormatted || `$${(Number(doc.amount) || 0).toFixed(2)}`,
-          currency: doc.currency || 'USD',
-          billingCycle: doc.billingCycle || 'monthly',
-          gateway: doc.gateway || 'Razorpay',
-          paymentId: doc.paymentId || doc.razorpay_payment_id || 'pay_verified',
-          orderId: doc.orderId || doc.razorpay_order_id,
-          status: doc.status || 'Paid',
-          invoiceId: doc.invoiceId || generateInvoiceId(),
-          date: doc.date || doc.createdAt || new Date().toISOString(),
-          createdAt: doc.createdAt || doc.date || new Date().toISOString(),
-          taxAmount: doc.taxAmount || 0,
-          discountAmount: doc.discountAmount || 0,
-          couponCode: doc.couponCode,
-          items: doc.items || [
-            {
-              description: `${doc.planName || 'Nedject Subscription'} - 300/600 DPI Calibrated Matrix`,
-              quantity: 1,
-              unitPrice: Number(doc.amount) || 0,
-              total: Number(doc.amount) || 0,
+        return docs.map((doc: any) => {
+          let currency = (doc.currency || (isIndianUser ? 'INR' : 'USD')).toUpperCase();
+          if (doc.amountFormatted && doc.amountFormatted.includes('₹')) {
+            currency = 'INR';
+          }
+          const amount = Number(doc.amount) || 0;
+          let amountFormatted = doc.amountFormatted;
+          // If stored formatted amount has dollar sign but user bought in INR, reformat with INR symbol ₹
+          if (!amountFormatted || (currency === 'INR' && amountFormatted.startsWith('$'))) {
+            amountFormatted = formatCurrencyAmount(amount, currency);
+          }
+
+          return {
+            _id: doc._id?.toString(),
+            id: doc.id || `pur_${doc._id?.toString().slice(-8)}`,
+            userId: doc.userId,
+            userEmail: doc.userEmail || doc.email || normalizedEmail,
+            userName: doc.userName || doc.name || 'User',
+            plan: doc.plan || 'pro',
+            planName: doc.planName || (doc.plan === 'enterprise' ? 'Enterprise Studio Pass' : 'Pro Athlete Pass'),
+            amount,
+            amountFormatted,
+            currency,
+            billingCycle: doc.billingCycle || 'monthly',
+            gateway: doc.gateway || 'Razorpay',
+            paymentId: doc.paymentId || doc.razorpay_payment_id || 'pay_verified',
+            orderId: doc.orderId || doc.razorpay_order_id,
+            status: doc.status || 'Paid',
+            invoiceId: doc.invoiceId || generateInvoiceId(),
+            date: doc.date || doc.createdAt || new Date().toISOString(),
+            createdAt: doc.createdAt || doc.date || new Date().toISOString(),
+            taxAmount: doc.taxAmount || 0,
+            discountAmount: doc.discountAmount || 0,
+            couponCode: doc.couponCode,
+            items: doc.items || [
+              {
+                description: `${doc.planName || 'Nedject Subscription'} - 300/600 DPI Calibrated Matrix`,
+                quantity: 1,
+                unitPrice: amount,
+                total: amount,
+              },
+            ],
+            customerDetails: doc.customerDetails || {
+              name: doc.userName || doc.name,
+              email: normalizedEmail,
             },
-          ],
-          customerDetails: doc.customerDetails || {
-            name: doc.userName || doc.name,
-            email: normalizedEmail,
-          },
-        }));
+          };
+        });
       }
 
       // If user currently has an upgraded plan (pro or enterprise) in the users collection,
@@ -161,10 +176,19 @@ export async function getPurchasesForUser(
 
       if (userDoc && (userDoc.plan === 'pro' || userDoc.plan === 'enterprise')) {
         const isEnt = userDoc.plan === 'enterprise';
-        const initialPlanName = isEnt ? 'Enterprise Studio (Annual)' : 'Pro Athlete Pass (Monthly)';
-        const initialAmount = isEnt ? 249.0 : 9.99;
+        const initialPlanName = isEnt ? 'Enterprise Studio Pass (Annual)' : 'Pro Athlete Pass (Monthly)';
+        const initialCurrency = (userDoc.currency || (isIndianUser ? 'INR' : 'USD')).toUpperCase();
+        
+        let initialAmount = 0;
+        if (initialCurrency === 'INR') {
+          initialAmount = isEnt ? 14999 : 499;
+        } else {
+          initialAmount = isEnt ? 249.0 : 9.99;
+        }
+
         const initialInvoiceId = generateInvoiceId();
         const initialDate = userDoc.updatedAt || userDoc.createdAt || new Date().toISOString();
+        const formattedAmount = formatCurrencyAmount(initialAmount, initialCurrency);
 
         const seedRecord: PurchaseRecord = {
           id: `pur_init_${userDoc._id?.toString().slice(-6) || Date.now().toString(36)}`,
@@ -174,8 +198,8 @@ export async function getPurchasesForUser(
           plan: userDoc.plan,
           planName: initialPlanName,
           amount: initialAmount,
-          amountFormatted: `$${initialAmount.toFixed(2)}`,
-          currency: 'USD',
+          amountFormatted: formattedAmount,
+          currency: initialCurrency,
           billingCycle: isEnt ? 'annual' : 'monthly',
           gateway: userDoc.planAssignedBy === 'admin' ? 'Admin Override' : 'Razorpay',
           paymentId: 'pay_sub_verified_01',
@@ -236,6 +260,12 @@ export async function createPurchaseRecord(
   const amount = Number(data.amount) || 0;
   const isEnt = data.plan === 'enterprise';
   const planName = data.planName || (isEnt ? 'Enterprise Studio Pass' : 'Pro Athlete Pass');
+  const currency = (data.currency || (data.userEmail.toLowerCase().includes('neerajrekwar') ? 'INR' : 'USD')).toUpperCase();
+
+  let amountFormatted = data.amountFormatted;
+  if (!amountFormatted || (currency === 'INR' && amountFormatted.startsWith('$'))) {
+    amountFormatted = formatCurrencyAmount(amount, currency);
+  }
 
   const record: PurchaseRecord = {
     id: data.id || `pur_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
@@ -245,8 +275,8 @@ export async function createPurchaseRecord(
     plan: data.plan,
     planName,
     amount,
-    amountFormatted: data.amountFormatted || `$${amount.toFixed(2)}`,
-    currency: data.currency || 'USD',
+    amountFormatted,
+    currency,
     billingCycle: data.billingCycle || (data.plan.includes('annual') ? 'annual' : 'monthly'),
     gateway: data.gateway || 'Razorpay',
     paymentId: data.paymentId || `pay_${Date.now()}`,

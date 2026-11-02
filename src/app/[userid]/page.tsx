@@ -238,7 +238,7 @@ export default function UserProfilePage() {
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-mono selection:bg-[#ccff00] selection:text-black flex flex-col">
       {/* 1. TOP HEADER / BREADCRUMBS */}
-      <header className="border-b-4 border-black bg-white sticky top-0 z-20">
+      <header className="border-b-4 border-black bg-white sticky top-0 z-20 print:hidden">
         <div className="max-w-6xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-3">
             <Link
@@ -275,9 +275,10 @@ export default function UserProfilePage() {
       </header>
 
       {/* 2. MAIN USER DASHBOARD */}
-      <main className="max-w-6xl mx-auto w-full px-4 py-8 flex-1 space-y-8">
-        {/* HERO USER IDENTIFICATION CARD */}
-        <div className="border-4 border-black bg-white p-6 sm:p-8 shadow-[8px_8px_0px_#000000] space-y-6">
+      <main className="max-w-6xl mx-auto w-full px-4 py-8 flex-1 space-y-8 print:p-0 print:m-0 print:max-w-none print:w-full print:space-y-0">
+        <div className="space-y-8 print:hidden">
+          {/* HERO USER IDENTIFICATION CARD */}
+          <div className="border-4 border-black bg-white p-6 sm:p-8 shadow-[8px_8px_0px_#000000] space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b-2 border-black pb-6">
             <div className="flex items-start sm:items-center gap-4">
               <div className="w-16 h-16 border-4 border-black bg-[#ccff00] text-black flex items-center justify-center font-black text-2xl shadow-[4px_4px_0px_#000000] shrink-0">
@@ -548,9 +549,10 @@ export default function UserProfilePage() {
             </div>
           </form>
         </div>
+        </div>
 
         {/* 5. ORDER HISTORY & INVOICES TABLE (FETCHING DATA FROM MONGODB PURCHASES COLLECTION) */}
-        <div id="order-history" className="scroll-mt-20">
+        <div id="order-history" className="scroll-mt-20 print:m-0 print:p-0">
           <OrderHistoryTable
             userEmail={email}
             userId={userId}
@@ -559,7 +561,7 @@ export default function UserProfilePage() {
         </div>
 
         {/* 6. QUICK ACTIONS & STUDIO TOOLS */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 print:hidden">
           <Link
             href="/"
             className="border-4 border-black bg-white p-5 hover:bg-[#ccff00] transition-colors shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-3"
@@ -611,7 +613,7 @@ export default function UserProfilePage() {
       </main>
 
       {/* 6. FOOTER */}
-      <footer className="border-t-2 border-black bg-white py-4 px-4 font-mono text-xs text-center text-zinc-600">
+      <footer className="border-t-2 border-black bg-white py-4 px-4 font-mono text-xs text-center text-zinc-600 print:hidden">
         Nedject // Developed by neerajrekwar • Industrial Optical Matrix &amp; User Profile Engine
       </footer>
     </div>

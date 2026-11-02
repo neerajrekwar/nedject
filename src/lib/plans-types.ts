@@ -16,6 +16,31 @@ export const CURRENCY_NAMES: Record<SupportedCurrency, string> = {
   RUB: 'Russian Ruble (₽)',
 };
 
+export function getCurrencySymbol(currency?: string): string {
+  if (!currency) return '₹';
+  const c = currency.trim().toUpperCase();
+  if (c === 'INR') return '₹';
+  if (c === 'USD') return '$';
+  if (c === 'EUR') return '€';
+  if (c === 'GBP') return '£';
+  if (c === 'RUB') return '₽';
+  return (CURRENCY_SYMBOLS as any)[c] || (c.includes('INR') ? '₹' : '$');
+}
+
+export function formatCurrencyAmount(amount: number, currency: string = 'INR'): string {
+  const symbol = getCurrencySymbol(currency);
+  const c = (currency || 'INR').trim().toUpperCase();
+  const num = Number(amount) || 0;
+  if (num === 0) return `FREE (${symbol}0)`;
+  if (c === 'INR') {
+    return `${symbol}${num.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
+  }
+  if (c === 'RUB') {
+    return `${symbol}${num.toLocaleString('ru-RU', { maximumFractionDigits: 2 })}`;
+  }
+  return `${symbol}${num.toFixed(2)}`;
+}
+
 export interface PlanFeature {
   text: string;
   included: boolean;

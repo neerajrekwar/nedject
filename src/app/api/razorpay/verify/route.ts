@@ -9,6 +9,7 @@ import {
 import { updateUserProfile } from '@/lib/db-users';
 import { recordCouponRedemption, validateCouponForPlan } from '@/lib/coupons';
 import { createPurchaseRecord } from '@/lib/purchases';
+import { formatCurrencyAmount } from '@/lib/plans-types';
 import {
   verifySignedOrderToken,
   isKnownTestCard,
@@ -296,9 +297,32 @@ export async function POST(req: NextRequest) {
     // 9. INSERT ORDER & INVOICE INTO 'purchases' COLLECTION
     let recordedInvoiceId = '';
     try {
-      const finalAmount = orderPayload?.amount !== undefined
-        ? Number(orderPayload.amount)
-        : (planDetails.monthlyUsd || 9.99);
+      const targetCurrency = (
+        orderPayload?.currency ||
+        body?.currency ||
+        (userEmail.includes('neerajrekwar') || userEmail.endsWith('.in') ? 'INR' : 'USD')
+      ).toUpperCase();
+
+      let finalAmount = 0;
+      if (orderPayload?.amount !== undefined) {
+        // orderPayload.amount was saved in smallest units (cents or paise) by order/route.ts
+        const rawAmount = Number(orderPayload.amount);
+        if (rawAmount === 0) {
+          finalAmount = 0;
+        } else if (rawAmount >= 100) {
+          finalAmount = rawAmount / 100;
+        } else {
+          finalAmount = rawAmount;
+        }
+      } else if (body?.amount !== undefined) {
+        finalAmount = Number(body.amount);
+      } else {
+        finalAmount = targetCurrency === 'INR'
+          ? (assignedPlan === 'enterprise' ? 14999 : 499)
+          : (planDetails.monthlyUsd || 9.99);
+      }
+
+      const formattedAmount = body?.displayAmount || formatCurrencyAmount(finalAmount, targetCurrency);
 
       const purchaseRecord = await createPurchaseRecord({
         userId: (session?.user as any)?.id,
@@ -307,8 +331,8 @@ export async function POST(req: NextRequest) {
         plan: assignedPlan,
         planName: planDetails.name,
         amount: finalAmount,
-        amountFormatted: finalAmount === 0 ? 'FREE ($0.00)' : `$${finalAmount.toFixed(2)}`,
-        currency: 'USD',
+        amountFormatted: formattedAmount,
+        currency: targetCurrency,
         billingCycle: assignedPlan === 'enterprise' ? 'annual' : 'monthly',
         gateway: paymentMethod === 'coupon_free' ? 'Coupon Promo' : paymentMethod === 'card' ? 'Credit Card' : 'Razorpay',
         paymentId: razorpay_payment_id,

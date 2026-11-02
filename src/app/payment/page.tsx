@@ -485,6 +485,8 @@ function PaymentContent() {
           paymentMethod,
           couponCode,
           email: session?.user?.email,
+          currency,
+          displayAmount,
         }),
       });
 
