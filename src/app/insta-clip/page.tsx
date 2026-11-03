@@ -14,7 +14,6 @@ import {
   Sparkles,
   SlidersHorizontal,
   Eye,
-  ArrowLeft,
   Film,
   Camera,
   Layers,
@@ -564,47 +563,29 @@ export default function InstaClipPage() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-sans selection:bg-[#ccff00] selection:text-black flex flex-col">
-      {/* 1. TOP NAVIGATION HEADER */}
-      <header className="relative z-20 w-full bg-[#f5f5f0] border-b-2 border-black">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="flex items-center justify-center w-12 h-12 border-2 border-black bg-white shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors font-mono font-black text-xl"
-            >
-              NR
-            </Link>
-            <div>
-              <div className="font-mono text-xs font-black tracking-widest text-black flex items-center gap-1.5">
-                <span>INSTA CLIP STUDIO // CINEMATIC REELS ENGINE</span>
-                <span className="w-1.5 h-1.5 bg-[#ccff00] border border-black inline-block animate-pulse" />
-              </div>
-              <div className="font-mono text-[10px] text-zinc-600 tracking-wider">
-                VIDEO &amp; PHOTO · 17 SHADER EFFECTS · FONT CAPTIONS · CUSTOM AUDIO · 9:16 REELS
-              </div>
-            </div>
+      {/* 1. STUDIO RUNTIME SUB-BAR */}
+      <div className="w-full bg-[#ebebe5] border-b-2 border-black py-2.5 px-4 sm:px-6 select-none font-mono">
+        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+            <span className="text-xs font-black tracking-wider text-black">
+              INSTA CLIP STUDIO // CINEMATIC REELS ENGINE
+            </span>
+            <span className="hidden md:inline text-[10px] text-zinc-600">
+              · 17 SHADER EFFECTS · FONT CAPTIONS · DUAL AUDIO BLENDING
+            </span>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 font-mono text-xs">
-              <span className="border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
-                {options.aspectRatio} · {options.width}×{options.height} PX
-              </span>
-              <span className="border-2 border-black bg-black text-[#ccff00] px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
-                {options.fps} FPS · {options.durationSeconds}S REEL
-              </span>
-            </div>
-
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 border-2 border-black bg-white hover:bg-black hover:text-white px-3.5 py-2 font-mono text-xs font-black shadow-[3px_3px_0px_#000000] transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>RETURN TO QR STUDIO</span>
-            </Link>
+          <div className="flex items-center gap-2 text-xs">
+            <span className="border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
+              {options.aspectRatio} · {options.width}×{options.height} PX
+            </span>
+            <span className="border-2 border-black bg-black text-[#ccff00] px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
+              {options.fps} FPS · {options.durationSeconds}S REEL
+            </span>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* 2. MAIN WORKSPACE */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">

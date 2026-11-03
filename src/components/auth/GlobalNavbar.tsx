@@ -7,18 +7,24 @@ import { useSession } from 'next-auth/react';
 import {
   User,
   LogIn,
-  Zap,
-  Layers,
   Sparkles,
   QrCode,
-  Dumbbell,
+  Printer,
   Barcode as BarcodeIcon,
+  Flame,
+  Video,
+  Layers,
   ShieldAlert,
-  Image as ImageIcon,
+  Menu,
+  X,
+  CreditCard,
+  FileText,
+  Activity,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { getUsageStats, UsageStats } from '@/lib/usage-limits';
 import { getAdminSession } from '@/lib/admin-auth';
+import { SocialCardsModal } from '@/components/portfolio/SocialCardsModal';
 import { PWAInstallButton } from '@/components/pwa/PWAInstallButton';
 import { StoryShareButton } from '@/components/story/StoryShareButton';
 
@@ -28,7 +34,8 @@ export function GlobalNavbar() {
 
   const [isAdmin, setIsAdmin] = useState<boolean>(false);
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
-  const [monetizationMode, setMonetizationMode] = useState<1 | 0>(1);
+  const [showSocialCardsModal, setShowSocialCardsModal] = useState<boolean>(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
   const [usageStats, setUsageStats] = useState<UsageStats>(() => getUsageStats(false, 'guest', false));
   const [isVisible, setIsVisible] = useState<boolean>(true);
   const lastScrollY = useRef<number>(0);
@@ -51,6 +58,7 @@ export function GlobalNavbar() {
       if (diff > 8) {
         // Scrolling down -> hide
         setIsVisible(false);
+        setIsMobileMenuOpen(false);
       } else if (diff < -8) {
         // Scrolling up -> show
         setIsVisible(true);
@@ -65,22 +73,11 @@ export function GlobalNavbar() {
     };
   }, []);
 
-  // Ensure navbar is immediately visible on route changes
+  // Ensure navbar is immediately visible on route changes & close mobile menu
   useEffect(() => {
     setIsVisible(true);
+    setIsMobileMenuOpen(false);
   }, [pathname]);
-
-  // Load feature flag from API
-  useEffect(() => {
-    fetch('/api/feature-flags')
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => {
-        if (data?.monetizationMode === 0 || data?.monetizationMode === 1) {
-          setMonetizationMode(data.monetizationMode);
-        }
-      })
-      .catch((e) => console.warn('Failed to load feature flags:', e));
-  }, []);
 
   // Check admin privileges
   const checkAdminStatus = () => {
@@ -110,13 +107,16 @@ export function GlobalNavbar() {
 
     const handleUsageUpdated = () => refreshUsage();
     const handleAdminChanged = () => refreshUsage();
+    const handleOpenOG = () => setShowSocialCardsModal(true);
 
     window.addEventListener('Nedject_usage_updated', handleUsageUpdated);
     window.addEventListener('nedject_admin_auth_changed', handleAdminChanged);
+    window.addEventListener('nedject_open_og_cards', handleOpenOG);
 
     return () => {
       window.removeEventListener('Nedject_usage_updated', handleUsageUpdated);
       window.removeEventListener('nedject_admin_auth_changed', handleAdminChanged);
+      window.removeEventListener('nedject_open_og_cards', handleOpenOG);
     };
   }, [session]);
 
@@ -129,32 +129,24 @@ export function GlobalNavbar() {
     }
   }, [session]);
 
-  const handleToggleMonetizationMode = async (newMode: 1 | 0) => {
-    setMonetizationMode(newMode);
-    try {
-      await fetch('/api/feature-flags', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ monetizationMode: newMode }),
-      });
-    } catch (e) {
-      console.warn('Failed to update feature flag in database:', e);
-    }
-  };
-
-  const navLinks = [
-    { href: '/', label: '300 DPI Photo QR' },
-    { href: '/insta-clip', label: 'Insta Clip Studio' },
-    { href: '/normal-dpi-photo', label: 'Normal DPI' },
-    { href: '/barcode-pick', label: 'Barcode Pick' },
-    { href: '/mochup', label: 'Mockup Studio' },
-    { href: '/fitness-glass/winter-arc-2026', label: 'Winter Arc 2026' },
-    { href: '/fitness-glass', label: 'Fitness Glass' },
-    { href: '/blog', label: 'Blog' },
-    { href: '/payment', label: 'Plans & Pricing' },
+  // Primary navigation tools
+  const navTools = [
+    { href: '/', label: '300 DPI QR', icon: QrCode },
+    { href: '/insta-clip', label: 'INSTA CLIP', icon: Video },
+    { href: '/mochup', label: 'MOCKUPS', icon: Layers },
+    { href: '/normal-dpi-photo', label: 'PHOTO DPI', icon: Printer },
+    { href: '/barcode-pick', label: 'BARCODES', icon: BarcodeIcon },
+    { href: '/fitness-glass/winter-arc-2026', label: 'WINTER ARC', icon: Flame, isHighlight: true },
   ];
 
-  // Do not render global navbar inside the admin portal or on standalone login page (only form shown)
+  // Secondary tools for mobile drawer
+  const extraLinks = [
+    { href: '/fitness-glass', label: 'FITNESS GLASS HUB', icon: Activity },
+    { href: '/payment', label: 'PRICING & PLANS', icon: CreditCard },
+    { href: '/blog', label: 'ENGINEERING BLOG', icon: FileText },
+  ];
+
+  // Do not render global navbar inside the admin portal or standalone auth pages
   if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/auth/signin') {
     return null;
   }
@@ -162,145 +154,166 @@ export function GlobalNavbar() {
   return (
     <>
       <header
-        className={`border-b-4 border-black bg-white sticky top-0 z-30 print:hidden select-none font-mono transition-transform duration-300 ease-in-out ${
-          isVisible ? 'translate-y-0 shadow-sm' : '-translate-y-full pointer-events-none'
+        className={`sticky top-0 z-40 w-full bg-[#f5f5f0] border-b-2 border-black transition-transform duration-300 ease-in-out print:hidden select-none font-mono ${
+          isVisible ? 'translate-y-0' : '-translate-y-full pointer-events-none'
         }`}
       >
-        {/* MAIN NAVBAR ROW: STRICTLY INLINE SINGLE ROW ON DESKTOP */}
-        <div className="w-full max-w-[100rem] mx-auto px-2 sm:px-4 py-1.5 flex items-center justify-between gap-2 lg:gap-3 flex-nowrap">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-2 lg:gap-4">
           
-          {/* Brand & Nav links inline side-by-side */}
-          <div className="flex items-center gap-2 xl:gap-3 flex-nowrap min-w-0 shrink">
+          {/* ================================================================= */}
+          {/* LEFT: SQUARE FRAMED BRAND MARK BOX + SUBTITLE                     */}
+          {/* ================================================================= */}
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
             <Link
               href="/"
-              className="shrink-0 flex items-center gap-1.5 bg-black text-[#ccff00] px-2.5 py-1 border-2 border-black font-black text-xs sm:text-sm tracking-tight hover:bg-[#ccff00] hover:text-black transition-colors whitespace-nowrap"
+              className="flex items-center justify-center px-3 sm:px-3.5 h-10 sm:h-12 border-2 border-black bg-white shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_#000000] transition-all font-mono font-black text-sm sm:text-base tracking-tighter"
             >
-              <QrCode className="w-4 h-4 shrink-0" />
-              <span className="whitespace-nowrap">Nedject // genQRstudio</span>
+              NEDJECT
             </Link>
-
-            {/* Nav links inline with brand */}
-            <nav className="hidden md:flex items-center gap-1 xl:gap-1.5 text-xs flex-nowrap overflow-x-auto no-scrollbar py-0.5 whitespace-nowrap min-w-0">
-              {navLinks.map((link) => {
-                const isActive = pathname === link.href;
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`shrink-0 px-2 py-1 border border-black font-bold uppercase text-[11px] xl:text-xs transition-all whitespace-nowrap ${
-                      isActive
-                        ? 'bg-black text-[#ccff00] shadow-[1px_1px_0px_#000000]'
-                        : 'bg-zinc-50 text-black hover:bg-zinc-200'
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </nav>
+            <div className="hidden sm:block">
+              <div className="font-mono text-xs font-black tracking-widest text-black flex items-center gap-1.5">
+                <span>GENQR_STUDIO</span>
+                <span className="w-1.5 h-1.5 bg-[#ccff00] border border-black inline-block animate-pulse" />
+              </div>
+              <div className="font-mono text-[10px] text-zinc-600 tracking-wider">
+                DEVELOPED BY NEERAJREKWAR
+              </div>
+            </div>
           </div>
 
-          {/* Right Action Bar: Quota Counter + Plans Button + User Profile / Auth */}
-          <div className="shrink-0 flex items-center gap-1.5 xl:gap-2 flex-nowrap">
+          {/* ================================================================= */}
+          {/* CENTER: SEGMENTED NEO-BRUTALIST TOOLS NAV (DESKTOP)               */}
+          {/* ================================================================= */}
+          <nav className="hidden lg:flex items-center border-2 border-black bg-white p-1 shadow-[4px_4px_0px_#000000]">
+            {navTools.map((tool, idx) => {
+              const isActive = pathname === tool.href;
+              const Icon = tool.icon;
+              return (
+                <Link
+                  key={tool.href}
+                  href={tool.href}
+                  className={`px-2.5 xl:px-3 py-1.5 font-mono text-xs font-black tracking-wider transition-colors flex items-center gap-1.5 ${
+                    idx > 0 ? 'border-l-2 border-black' : ''
+                  } ${
+                    tool.isHighlight && !isActive
+                      ? 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00]'
+                      : isActive
+                      ? 'bg-black text-[#ccff00]'
+                      : 'text-black hover:bg-black hover:text-[#ccff00]'
+                  }`}
+                >
+                  <Icon className={`w-3.5 h-3.5 ${tool.isHighlight && !isActive ? 'text-orange-600 fill-orange-500' : ''}`} />
+                  <span className="whitespace-nowrap">{tool.label}</span>
+                </Link>
+              );
+            })}
+
+            {/* OG Cards Action Button */}
+            <button
+              type="button"
+              onClick={() => setShowSocialCardsModal(true)}
+              className="px-2.5 xl:px-3 py-1.5 font-mono text-xs font-black tracking-wider text-black hover:bg-black hover:text-[#ccff00] transition-colors flex items-center gap-1 border-l-2 border-black cursor-pointer bg-white"
+              title="Preview all page Twitter & OpenGraph Cards"
+            >
+              <span className="text-amber-500">★</span>
+              <span className="whitespace-nowrap">OG CARDS</span>
+            </button>
+          </nav>
+
+          {/* ================================================================= */}
+          {/* RIGHT: SYSTEM STATUS / CREDITS CAPSULE + UPGRADE + AUTH           */}
+          {/* ================================================================= */}
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             
-            {/* 1. Quota Limit Counter Pill with Green / Yellow / Purple Color Tier Bases */}
+            {/* System Status / Credits Indicator */}
             {!session?.user && !isAdmin ? (
-              /* Guest: Green Base, 2 Initial Uses, NO used count */
-              <div
+              <button
+                type="button"
                 onClick={() => setShowAuthModal(true)}
-                className="flex items-center gap-1.5 border-2 border-black bg-emerald-50 hover:bg-emerald-100 px-2 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors shrink-0 whitespace-nowrap"
+                className="hidden md:flex items-center gap-2 border-2 border-black bg-white hover:bg-[#ccff00] px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-[3px_3px_0px_#000000] hover:shadow-[2px_2px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] transition-all cursor-pointer"
                 title="Guest Initial Quota: 2 free uses. Click to sign in and unlock 10!"
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="font-bold text-emerald-900 text-[11px]">CREDITS:</span>
-                <span className="font-black text-xs text-emerald-950">2 USES</span>
-                <span className="text-[9px] bg-emerald-600 text-white px-1.5 py-0.2 font-black rounded-sm uppercase hidden sm:inline">
-                  UNLOCK 10
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full bg-[#22c55e] opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 bg-[#16a34a] border border-black" />
                 </span>
-              </div>
+                <span className="font-mono text-[11px] font-black tracking-widest text-black whitespace-nowrap">
+                  SYS_OK // 2 CREDITS
+                </span>
+              </button>
             ) : isAdmin ? (
-              /* Admin: Purple Base, Unlimited */
               <Link
                 href="/admin/dashboard"
-                className="flex items-center gap-1.5 border-2 border-black bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors shrink-0 whitespace-nowrap"
+                className="hidden md:flex items-center gap-2 border-2 border-black bg-purple-600 hover:bg-purple-700 text-white px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-[3px_3px_0px_#000000] transition-all whitespace-nowrap"
                 title="Admin Master Privileges: Unlimited access to all tools"
               >
                 <ShieldAlert className="w-3.5 h-3.5 text-purple-200 shrink-0" />
-                <span className="font-bold text-[11px] text-purple-200">ADMIN:</span>
-                <span className="font-black text-xs text-white">∞ UNLIMITED</span>
+                <span className="font-mono text-[11px] font-black tracking-widest text-white">
+                  ADMIN // ∞
+                </span>
               </Link>
-            ) : usageStats.plan === 'enterprise' ? (
-              /* Enterprise: Purple Base, Unlimited */
+            ) : usageStats.plan === 'pro' || usageStats.plan === 'enterprise' ? (
               <Link
                 href={`/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`}
-                className="flex items-center gap-1.5 border-2 border-black bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors shrink-0 whitespace-nowrap"
-                title="Enterprise Pack: Unlimited high-volume access"
-              >
-                <Sparkles className="w-3.5 h-3.5 text-purple-200 shrink-0" />
-                <span className="font-bold text-[11px] text-purple-200">ENTERPRISE:</span>
-                <span className="font-black text-xs text-white">∞ UNLIMITED</span>
-              </Link>
-            ) : usageStats.plan === 'pro' ? (
-              /* Pro: Yellow Base, Unlimited */
-              <Link
-                href={`/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`}
-                className="flex items-center gap-1.5 border-2 border-black bg-amber-400 hover:bg-amber-300 text-black px-2 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors shrink-0 whitespace-nowrap"
+                className="hidden md:flex items-center gap-2 border-2 border-black bg-amber-400 hover:bg-amber-300 text-black px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-[3px_3px_0px_#000000] transition-all whitespace-nowrap"
                 title="Pro Studio: Unlimited 300 & 600 DPI access"
               >
                 <Sparkles className="w-3.5 h-3.5 text-black shrink-0" />
-                <span className="font-bold text-[11px] text-zinc-900">PRO:</span>
-                <span className="font-black text-xs text-black">∞ UNLIMITED</span>
+                <span className="font-mono text-[11px] font-black tracking-widest text-black">
+                  PRO // ∞
+                </span>
               </Link>
             ) : (
-              /* Authenticated Free Tier: Green Base, 10 Uses (NO 99999!) */
               <Link
                 href={`/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`}
-                className="flex items-center gap-1.5 border-2 border-black bg-emerald-50 hover:bg-emerald-100 px-2 py-1 text-xs cursor-pointer shadow-[1px_1px_0px_#000000] transition-colors shrink-0 whitespace-nowrap"
-                title={`Authenticated Free Plan: ${usageStats.remaining} of 10 credits remaining. Click to view profile.`}
+                className="hidden md:flex items-center gap-2 border-2 border-black bg-white hover:bg-[#ccff00] text-black px-2.5 py-1.5 sm:px-3 sm:py-2 shadow-[3px_3px_0px_#000000] transition-all whitespace-nowrap"
+                title={`Free Plan: ${usageStats.remaining} of 10 credits remaining`}
               >
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="font-bold text-emerald-900 text-[11px]">CREDITS:</span>
-                <span className="font-black text-xs text-emerald-950">
-                  {usageStats.remaining} / 10
+                <span className="relative flex h-2.5 w-2.5 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full bg-[#22c55e] opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 bg-[#16a34a] border border-black" />
+                </span>
+                <span className="font-mono text-[11px] font-black tracking-widest text-black">
+                  CREDITS: {usageStats.remaining}/10
                 </span>
               </Link>
             )}
 
             {/* PWA Install Button */}
-            <PWAInstallButton className="px-2 py-1 text-xs shrink-0 whitespace-nowrap shadow-[1px_1px_0px_#000000]" />
+            <PWAInstallButton className="hidden xl:inline-flex px-2 py-1.5 text-xs shrink-0 whitespace-nowrap shadow-[2px_2px_0px_#000000] border-2 border-black bg-white font-mono font-bold hover:bg-zinc-100" />
 
-            {/* Story Share Button (Instagram / Web Story) */}
-            <StoryShareButton
-              variant="pill"
-              label="STORY"
-            />
+            {/* Story Share Button */}
+            <div className="hidden xl:block">
+              <StoryShareButton variant="pill" label="STORY" />
+            </div>
 
-            {/* 2. Upgrade Pro Action Link */}
+            {/* Plans Link Button */}
             <Link
               href="/payment"
-              className="border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-2 py-1 text-xs font-black flex items-center gap-1 transition-all shadow-[1px_1px_0px_#000000] cursor-pointer shrink-0 whitespace-nowrap"
+              className="hidden sm:flex items-center gap-1.5 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black px-2.5 py-1.5 sm:px-3 sm:py-2 font-mono text-xs font-black shadow-[3px_3px_0px_#000000] hover:shadow-[2px_2px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] transition-all shrink-0"
+              title="View Plans & Pricing"
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#ccff00] shrink-0" />
-              <span className="text-[11px]">UPGRADE</span>
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span>PLANS</span>
             </Link>
 
-            {/* 3. User Authentication Button / Direct Link to /[userid] */}
+            {/* User Profile or Sign In Button */}
             {session?.user ? (
               <Link
                 href={`/${encodeURIComponent((session.user as any)?.id || session.user.email?.split('@')[0] || 'profile')}`}
-                className="border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-2 py-1 text-xs font-black flex items-center gap-1.5 transition-all shadow-[2px_2px_0px_#000000] cursor-pointer shrink-0 whitespace-nowrap"
+                className="flex items-center gap-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-2.5 py-1.5 sm:px-3 sm:py-2 font-mono text-xs font-black shadow-[3px_3px_0px_#000000] hover:shadow-[2px_2px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] transition-all shrink-0"
                 title="Open User Profile & Entitlements"
               >
                 <User className="w-3.5 h-3.5 shrink-0" />
-                <span className="truncate max-w-[80px] xl:max-w-[110px]">
-                  {session.user.name?.split(' ')[0] || 'Profile'}
+                <span className="max-w-[70px] sm:max-w-[100px] truncate">
+                  {session.user.name?.split(' ')[0] || 'PROFILE'}
                 </span>
               </Link>
             ) : (
               <button
                 type="button"
                 onClick={() => setShowAuthModal(true)}
-                className="border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black px-2.5 py-1 text-xs font-black flex items-center gap-1 transition-all shadow-[2px_2px_0px_#000000] cursor-pointer shrink-0 whitespace-nowrap"
+                className="flex items-center gap-1.5 border-2 border-black bg-white hover:bg-black hover:text-[#ccff00] text-black px-2.5 py-1.5 sm:px-3 sm:py-2 font-mono text-xs font-black shadow-[3px_3px_0px_#000000] hover:shadow-[2px_2px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] transition-all cursor-pointer shrink-0"
               >
                 <LogIn className="w-3.5 h-3.5 shrink-0" />
                 <span className="hidden sm:inline">SIGN IN</span>
@@ -308,29 +321,103 @@ export function GlobalNavbar() {
               </button>
             )}
 
+            {/* Mobile Menu Hamburger Toggle */}
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="lg:hidden flex items-center justify-center w-10 h-10 border-2 border-black bg-white hover:bg-[#ccff00] shadow-[2px_2px_0px_#000000] transition-all cursor-pointer font-mono font-black"
+              aria-label="Toggle navigation tools menu"
+            >
+              {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+
           </div>
 
         </div>
 
-        {/* Mobile Navigation Strip (ONLY visible on small mobile screens <md) */}
-        <div className="md:hidden flex items-center gap-1 overflow-x-auto no-scrollbar px-3 py-1 border-t border-black bg-zinc-100 text-[11px]">
-          {navLinks.map((link) => {
-            const isActive = pathname === link.href;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={`px-2 py-0.5 border border-black font-bold uppercase whitespace-nowrap shrink-0 transition-all ${
-                  isActive
-                    ? 'bg-black text-[#ccff00]'
-                    : 'bg-white text-black hover:bg-zinc-200'
-                }`}
+        {/* ================================================================= */}
+        {/* MOBILE NAVIGATION DRAWER (SLIDES DOWN ON LG:HIDDEN SCREENS)       */}
+        {/* ================================================================= */}
+        {isMobileMenuOpen && (
+          <div className="lg:hidden border-t-2 border-black bg-[#f5f5f0] px-4 py-3 shadow-[0_8px_0px_#000000] animate-in slide-in-from-top-2 duration-150">
+            {/* Quick Status Pill on Mobile */}
+            <div className="mb-3 flex items-center justify-between border-2 border-black bg-white p-2 shadow-[2px_2px_0px_#000000]">
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full bg-[#22c55e] opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 bg-[#16a34a] border border-black" />
+                </span>
+                <span className="font-mono text-xs font-black text-black">
+                  {!session?.user && !isAdmin
+                    ? 'GUEST // 2 FREE USES'
+                    : isAdmin
+                    ? 'ADMIN // ∞ UNLIMITED'
+                    : usageStats.plan === 'pro' || usageStats.plan === 'enterprise'
+                    ? 'PRO STUDIO // ∞'
+                    : `FREE PLAN // ${usageStats.remaining}/10 CREDITS`}
+                </span>
+              </div>
+              {!session?.user && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setShowAuthModal(true);
+                  }}
+                  className="px-2 py-0.5 bg-[#ccff00] border border-black font-black text-[10px] uppercase shadow-[1px_1px_0px_#000000]"
+                >
+                  UNLOCK 10
+                </button>
+              )}
+            </div>
+
+            {/* Tools Grid */}
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              {navTools.map((tool) => {
+                const isActive = pathname === tool.href;
+                const Icon = tool.icon;
+                return (
+                  <Link
+                    key={tool.href}
+                    href={tool.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center gap-2 p-2 border-2 border-black font-mono text-xs font-black transition-all ${
+                      tool.isHighlight && !isActive
+                        ? 'bg-[#ccff00] text-black shadow-[2px_2px_0px_#000000]'
+                        : isActive
+                        ? 'bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
+                        : 'bg-white text-black hover:bg-zinc-100 shadow-[2px_2px_0px_#000000]'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 shrink-0" />
+                    <span className="truncate">{tool.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Extra Links & Actions */}
+            <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-black/20">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  setShowSocialCardsModal(true);
+                }}
+                className="flex-1 py-1.5 px-2 border-2 border-black bg-white hover:bg-black hover:text-[#ccff00] font-mono text-xs font-black shadow-[2px_2px_0px_#000000] text-center"
               >
-                {link.label}
+                ★ OG CARDS (1200×630)
+              </button>
+              <Link
+                href="/payment"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex-1 py-1.5 px-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] font-mono text-xs font-black shadow-[2px_2px_0px_#000000] text-center"
+              >
+                UPGRADE / PLANS
               </Link>
-            );
-          })}
-        </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Auth Modal */}
@@ -343,6 +430,12 @@ export function GlobalNavbar() {
         onSuccess={() => {
           refreshUsage();
         }}
+      />
+
+      {/* Social Cards Modal */}
+      <SocialCardsModal
+        isOpen={showSocialCardsModal}
+        onClose={() => setShowSocialCardsModal(false)}
       />
     </>
   );

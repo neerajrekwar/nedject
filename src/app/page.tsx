@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Navbar } from '@/components/portfolio/Navbar';
 import { UniversalHeroSection } from '@/components/portfolio/UniversalHeroSection';
 import { HeroSection } from '@/components/portfolio/HeroSection';
 import { MarqueeBanner } from '@/components/portfolio/MarqueeBanner';
@@ -45,13 +44,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-sans selection:bg-[#ccff00] selection:text-black relative flex flex-col">
-      
-      {/* 1. TOP NAVIGATION BAR */}
-      <Navbar
-        onOpenContact={handleOpenContact}
-        onOpenSocialCards={() => setIsSocialModalOpen(true)}
-      />
-
       {/* MAIN CONTENT RUNTIME - PURE TOOLS FOCUS UNDER BRAND "NEDJECT" */}
       <main className="flex-1 w-full">
         {/* 2. TOP HERO SECTION FOR UNIVERSAL USE FOR WHOLE INTERPRET WEBSITE (h-70vh) */}
@@ -88,11 +80,6 @@ export default function Home() {
         onClose={() => setIsSocialModalOpen(false)}
       />
 
-      {/* 9. INTERACTIVE SOCIAL CARDS & OPENGRAPH STUDIO (CANVAS 1200×630) */}
-      <SocialCardsModal
-        isOpen={isSocialModalOpen}
-        onClose={() => setIsSocialModalOpen(false)}
-      />
 
     </div>
   );
