@@ -144,6 +144,7 @@ export function GlobalNavbar() {
   const userProfileUrl = `/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`;
   const isAdmin = (session?.user as any)?.role === 'admin' || (session?.user as any)?.email === 'neerajrekwar413@gmail.com';
   const remainingCredits = Math.max(0, usageStats.remaining);
+  const isUnlimited = activePlan === 'enterprise' || activePlan === 'pro' || isAdmin || Boolean(usageStats.isUnlimited);
 
   // Dynamic context for mobile brand indicator
   const mobileBrandContext = isBarcodePick
