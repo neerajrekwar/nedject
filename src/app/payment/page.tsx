@@ -529,42 +529,6 @@ function PaymentContent() {
 
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-mono selection:bg-[#ccff00] selection:text-black flex flex-col">
-      {/* 1. TOP HEADER / BREADCRUMBS */}
-      <header className="border-b-4 border-black bg-white sticky top-0 z-20">
-        <div className="max-w-6xl mx-auto px-4 py-3.5 flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="flex items-center gap-2 font-black text-xs uppercase hover:bg-black hover:text-[#ccff00] px-3.5 py-2 border-2 border-black transition-colors shadow-[2px_2px_0px_#000000]"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span>BACK TO STUDIO</span>
-            </Link>
-
-            {session?.user && (
-              <Link
-                href={`/${encodeURIComponent(userSlug)}`}
-                className="flex items-center gap-1.5 font-black text-xs uppercase bg-white hover:bg-[#ccff00] px-3 py-2 border-2 border-black transition-colors shadow-[2px_2px_0px_#000000]"
-              >
-                <span>MY PROFILE</span>
-              </Link>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="border-2 border-black bg-[#fafaf5] px-3 py-1.5 text-xs font-black flex items-center gap-2 shadow-[2px_2px_0px_#000000]">
-              <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black inline-block" />
-              <span>STATUS: {activePlan.toUpperCase()}</span>
-              <span className="text-zinc-400">|</span>
-              <span className="text-zinc-600">
-                {activePlan === 'pro' || activePlan === 'enterprise'
-                  ? 'UNLIMITED GENERATIONS'
-                  : `${usageStats.used}/${usageStats.limit} USED`}
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
 
       {/* 2. MAIN CONTENT AREA */}
       <main className="max-w-6xl mx-auto w-full px-4 py-8 flex-1 space-y-8">

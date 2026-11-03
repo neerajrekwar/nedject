@@ -367,39 +367,6 @@ export default function QRCrushSecretPage() {
         </div>
       )}
 
-      {/* 1. TOP SECRET CLASSIFIED HEADER BAR */}
-      <header className="border-b-2 border-black bg-black text-[#ccff00] px-4 py-3 sticky top-0 z-40 shadow-[0_4px_0px_#ccff00]">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 border-2 border-[#ccff00] bg-zinc-950 text-[#ccff00] flex items-center justify-center font-mono font-black text-sm shadow-[2px_2px_0px_#ccff00]">
-              <Cpu className="w-4 h-4 animate-pulse" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm font-black tracking-wider uppercase text-white">
-                  QR-CRUSH // FORENSIC DECODER & PATTERN ANALYZER
-                </span>
-                <span className="bg-[#ccff00] text-black text-[9px] font-mono font-black px-1.5 py-0.2 rounded-xs uppercase">
-                  CONFIDENTIAL LAB
-                </span>
-              </div>
-              <div className="font-mono text-[10px] text-zinc-400">
-                URL DIRECT ACCESS ONLY · MATRIX DECOMPILER · PATTERN REVERSE-ENGINEERING · CRYPTO INTEL
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Link
-              href="/"
-              className="border border-[#ccff00] bg-black hover:bg-[#ccff00] hover:text-black text-[#ccff00] px-3 py-1 font-mono text-xs font-bold transition-all flex items-center gap-1 shadow-[2px_2px_0px_#ccff00]"
-            >
-              <span>RETURN TO MAIN STUDIO</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </Link>
-          </div>
-        </div>
-      </header>
 
       {/* 2. SECRET BANNER NOTICE */}
       <div className="border-b border-zinc-800 bg-zinc-950 px-4 py-2 font-mono text-[11px] text-zinc-400 flex flex-wrap items-center justify-between gap-2">

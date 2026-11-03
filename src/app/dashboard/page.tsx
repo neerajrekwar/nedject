@@ -458,19 +458,11 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-sans pb-20 selection:bg-[#ccff00] selection:text-black">
       {/* ==================================================================== */}
-      {/* 1. TOP HEADER & TELEMETRY STATUS BAR                                 */}
-      {/* ==================================================================== */}
-      <header className="border-b-2 border-black bg-white sticky top-0 z-30 shadow-[0_2px_0px_#000000]">
+      {/* 1. TOP TELEMETRY STATUS BAR */}
+      <div className="border-b-2 border-black bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
           {/* Brand & Title */}
           <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="w-10 h-10 border-2 border-black bg-[#ccff00] flex items-center justify-center font-mono font-black text-lg shadow-[2px_2px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-none transition-all"
-              title="Return to Home"
-            >
-              <Home className="w-5 h-5 text-black" />
-            </Link>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-mono text-[10px] font-black uppercase px-2 py-0.5 bg-black text-[#ccff00]">
@@ -612,7 +604,7 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
-      </header>
+      </div>
 
       {/* ==================================================================== */}
       {/* 2. ALERTS & NOTIFICATIONS                                            */}

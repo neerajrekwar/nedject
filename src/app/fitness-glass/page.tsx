@@ -451,30 +451,23 @@ export default function FitnessGlassPage() {
         }
       `}</style>
 
-      {/* 1. TOP NAVIGATION HEADER (Hidden on Print) */}
-      <header className="sticky top-0 z-50 w-full bg-[#f5f5f0] border-b-2 border-black print:hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="flex items-center justify-center w-12 h-12 border-2 border-black bg-white shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors font-mono font-black text-xl"
-              title="Return to Home"
-            >
-              <Activity className="w-6 h-6 text-black" />
-            </Link>
-            <div>
-              <div className="font-mono text-xs font-black tracking-widest text-black flex items-center gap-1.5">
-                <span>FITNESS GLASS</span>
-                <span className="w-1.5 h-1.5 bg-[#ccff00] border border-black inline-block" />
-              </div>
-              <div className="font-mono text-[10px] text-zinc-600 tracking-wider">
-                DUAL SYSTEM · DIGITAL ON WEB &amp; PRINT PAPER (BLACK BALL PEN)
-              </div>
-            </div>
-          </div>
+      {/* Hidden canvas for high-DPI A4 PNG generation */}
+      <canvas ref={hiddenCanvasRef} className="hidden" />
 
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="hidden sm:flex items-center gap-2 font-mono text-xs">
+      {/* MAIN APPLICATION WORKSPACE */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 print:p-0 print:m-0 print:max-w-none">
+        
+        {/* Banner Section */}
+        <div className="space-y-3 print:hidden">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 shadow-[3px_3px_0px_#000000]">
+              <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black animate-pulse" />
+              <span className="font-mono text-xs font-black tracking-widest text-black uppercase">
+                {'// SYSTEM ENGINE: DIGITAL WEB TRACKING + MANUAL BLACK BALL PEN PRINT PAPER'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 font-mono text-xs">
               <span className={`border-2 border-black px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000] ${
                 adherence.isPassing80 ? 'bg-[#ccff00] text-black' : 'bg-white text-zinc-800'
               }`}>
@@ -484,46 +477,6 @@ export default function FitnessGlassPage() {
                 {isLandscape ? 'A4 HORIZONTAL (LANDSCAPE)' : 'A4 VERTICAL (PORTRAIT)'}
               </span>
             </div>
-
-            <Link
-              href="/fitness-glass/winter-arc-2026"
-              className="flex items-center gap-1.5 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] px-3 py-2 font-mono text-xs font-black shadow-[2px_2px_0px_#000000] transition-all cursor-pointer"
-            >
-              <span>🔥 WINTER ARC 2026 (90D / 24H)</span>
-            </Link>
-
-            <Link
-              href="/barcode-pick"
-              className="hidden lg:flex items-center gap-1.5 border-2 border-black bg-white hover:bg-zinc-100 px-3 py-2 font-mono text-xs font-black shadow-[2px_2px_0px_#000000] transition-all cursor-pointer"
-            >
-              <BarcodeIcon className="w-3.5 h-3.5" />
-              <span>BARCODES</span>
-            </Link>
-
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 border-2 border-black bg-white hover:bg-black hover:text-white px-3.5 py-2 font-mono text-xs font-black shadow-[3px_3px_0px_#000000] transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>QR STUDIO</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* Hidden canvas for high-DPI A4 PNG generation */}
-      <canvas ref={hiddenCanvasRef} className="hidden" />
-
-      {/* 2. MAIN APPLICATION WORKSPACE */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 print:p-0 print:m-0 print:max-w-none">
-        
-        {/* Banner Section */}
-        <div className="space-y-3 print:hidden">
-          <div className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 shadow-[3px_3px_0px_#000000]">
-            <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black animate-pulse" />
-            <span className="font-mono text-xs font-black tracking-widest text-black uppercase">
-              {'// SYSTEM ENGINE: DIGITAL WEB TRACKING + MANUAL BLACK BALL PEN PRINT PAPER'}
-            </span>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">

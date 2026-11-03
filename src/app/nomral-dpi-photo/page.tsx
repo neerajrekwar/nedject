@@ -765,29 +765,20 @@ export default function NormalDPIPhotoPage() {
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-sans selection:bg-[#ccff00] selection:text-black flex flex-col">
       
-      {/* 1. TOP NAVIGATION HEADER */}
-      <header className="relative z-20 w-full bg-[#f5f5f0] border-b-2 border-black">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="flex items-center justify-center w-12 h-12 border-2 border-black bg-white shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors font-mono font-black text-xl"
-            >
-              NR
-            </Link>
-            <div>
-              <div className="font-mono text-xs font-black tracking-widest text-black flex items-center gap-1.5">
-                <span>PHOTO DPI MAKER &amp; AM HALFTONE STUDIO</span>
-                <span className="w-1.5 h-1.5 bg-[#ccff00] border border-black inline-block" />
-              </div>
-              <div className="font-mono text-[10px] text-zinc-600 tracking-wider">
-                RATIOS · OPTIONAL CANVAS FRAMES · 600-1200 DPI · 45-65 LPI · 45° AM SCREENING
-              </div>
+      {/* MAIN APPLICATION WORKSPACE */}
+      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+        
+        {/* Dossier Banner */}
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 shadow-[3px_3px_0px_#000000]">
+              <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black animate-pulse" />
+              <span className="font-mono text-xs font-black tracking-widest text-black uppercase">
+                {'// ENGINE: AMPLITUDE MODULATED (AM) HALFTONE SCREENING & OPTIONAL CANVAS FRAMES'}
+              </span>
             </div>
-          </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 font-mono text-xs">
+            <div className="flex items-center gap-2 font-mono text-xs">
               <span className="border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
                 {options.dpi} DPI · {options.lpi} LPI
               </span>
@@ -795,28 +786,6 @@ export default function NormalDPIPhotoPage() {
                 FRAME: {hasFrame ? options.frameStyle.toUpperCase() : 'OFF (BORDERLESS)'}
               </span>
             </div>
-
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 border-2 border-black bg-white hover:bg-black hover:text-white px-3.5 py-2 font-mono text-xs font-black shadow-[3px_3px_0px_#000000] transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>RETURN TO QR STUDIO</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* 2. MAIN APPLICATION WORKSPACE */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
-        
-        {/* Dossier Banner */}
-        <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 shadow-[3px_3px_0px_#000000]">
-            <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black animate-pulse" />
-            <span className="font-mono text-xs font-black tracking-widest text-black uppercase">
-              {'// ENGINE: AMPLITUDE MODULATED (AM) HALFTONE SCREENING & OPTIONAL CANVAS FRAMES'}
-            </span>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">

@@ -233,58 +233,7 @@ export default function BarcodePickPage() {
   return (
     <div className="min-h-screen bg-[#f5f5f0] text-black font-sans selection:bg-[#ccff00] selection:text-black flex flex-col">
       
-      {/* 1. TOP NAVIGATION HEADER */}
-      <header className="sticky top-0 z-50 w-full bg-[#f5f5f0] border-b-2 border-black">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="flex items-center justify-center w-12 h-12 border-2 border-black bg-white shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors"
-              title="Return to Home"
-            >
-              <BarcodeIcon className="w-6 h-6 text-black" />
-            </Link>
-            <div>
-              <div className="font-mono text-xs font-black tracking-widest text-black flex items-center gap-1.5">
-                <span>BARCODE PICK & STUDIO</span>
-                <span className="w-1.5 h-1.5 bg-[#ccff00] border border-black inline-block" />
-              </div>
-              <div className="font-mono text-[10px] text-zinc-600 tracking-wider">
-                INDUSTRIAL LINEAR & 2D BARCODE GENERATOR
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex items-center gap-2 font-mono text-xs">
-              <span className="border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
-                {options.format}
-              </span>
-              <span className="border-2 border-black bg-black text-[#ccff00] px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
-                {options.dpi} DPI PRINT
-              </span>
-            </div>
-
-            <Link
-              href="/nomral-dpi-photo"
-              className="hidden md:flex items-center gap-1.5 border-2 border-black bg-white hover:bg-zinc-100 px-3 py-2 font-mono text-xs font-black shadow-[2px_2px_0px_#000000] transition-all cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>PHOTO DPI MAKER</span>
-            </Link>
-
-            <Link
-              href="/"
-              className="flex items-center gap-1.5 border-2 border-black bg-white hover:bg-black hover:text-white px-3.5 py-2 font-mono text-xs font-black shadow-[3px_3px_0px_#000000] transition-all cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>QR STUDIO</span>
-            </Link>
-          </div>
-        </div>
-      </header>
-
-      {/* 2. MAIN APPLICATION WORKSPACE */}
+      {/* MAIN APPLICATION WORKSPACE */}
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         
         {/* QUOTA & FEATURE FLAG MONETIZATION BANNER */}
@@ -292,11 +241,22 @@ export default function BarcodePickPage() {
 
         {/* Dossier Banner */}
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 shadow-[3px_3px_0px_#000000]">
-            <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black animate-pulse" />
-            <span className="font-mono text-xs font-black tracking-widest text-black uppercase">
-              {'// ENGINE: INDUSTRIAL-GRADE LINEAR BARCODE PICKER & VERIFIER'}
-            </span>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 shadow-[3px_3px_0px_#000000]">
+              <span className="w-2.5 h-2.5 bg-[#ccff00] border border-black animate-pulse" />
+              <span className="font-mono text-xs font-black tracking-widest text-black uppercase">
+                {'// ENGINE: INDUSTRIAL-GRADE LINEAR BARCODE PICKER & VERIFIER'}
+              </span>
+            </div>
+
+            <div className="flex items-center gap-2 font-mono text-xs">
+              <span className="border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
+                {options.format}
+              </span>
+              <span className="border-2 border-black bg-black text-[#ccff00] px-2.5 py-1 font-black shadow-[2px_2px_0px_#000000]">
+                {options.dpi} DPI PRINT
+              </span>
+            </div>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4">

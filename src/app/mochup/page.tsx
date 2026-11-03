@@ -1110,14 +1110,6 @@ export default function MochupPage() {
         <div className="w-full max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-3">
           
           <div className="flex items-center gap-3">
-            <Link
-              href="/"
-              className="bg-black text-[#ccff00] px-2.5 py-1 border-2 border-black font-black text-xs flex items-center gap-1.5 hover:bg-[#ccff00] hover:text-black transition-colors"
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>NEDJECT</span>
-            </Link>
-
             <div className="flex items-center gap-2">
               <span className="text-sm font-black tracking-tight text-white uppercase">
                 Website Mockup Studio
