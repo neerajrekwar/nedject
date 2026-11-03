@@ -9,6 +9,27 @@ export interface AdminUser {
   lastLogin: string;
 }
 
+export interface AdminAuthResult {
+  success: boolean;
+  user?: AdminUser;
+  error?: string;
+  isLocked?: boolean;
+  remainingAttempts?: number;
+  retryAfterMinutes?: number;
+  retryAfterSeconds?: number;
+}
+
+export interface RateLimitStatus {
+  allowed: boolean;
+  isLocked: boolean;
+  totalAttempts: number;
+  remainingAttempts: number;
+  maxAttempts: number;
+  windowHours: number;
+  retryAfterMinutes: number;
+  retryAfterSeconds: number;
+}
+
 const ADMIN_STORAGE_KEY = 'nedject_admin_session_v1';
 
 export function getAdminSession(): AdminUser | null {
@@ -46,12 +67,29 @@ export function clearAdminSession(): void {
 }
 
 /**
+ * Checks the current rate limit status without consuming an attempt
+ */
+export async function fetchAdminRateLimitStatus(email?: string): Promise<RateLimitStatus | null> {
+  try {
+    const url = email
+      ? `/api/admin/auth/login?email=${encodeURIComponent(email)}`
+      : '/api/admin/auth/login';
+    const res = await fetch(url, { method: 'GET' });
+    if (!res.ok) return null;
+    return (await res.json()) as RateLimitStatus;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Authenticates exclusively against the terminal-configured credentials via server API
+ * Enforces strict 3-attempts-per-hour rate limiting
  */
 export async function authenticateAdmin(
   email: string,
   password: string
-): Promise<{ success: boolean; user?: AdminUser; error?: string }> {
+): Promise<AdminAuthResult> {
   try {
     const res = await fetch('/api/admin/auth/login', {
       method: 'POST',
@@ -63,12 +101,26 @@ export async function authenticateAdmin(
 
     if (res.ok && data.success && data.user) {
       setAdminSession(data.user);
-      return { success: true, user: data.user };
+      return {
+        success: true,
+        user: data.user,
+        remainingAttempts: data.remainingAttempts ?? 3,
+      };
     }
+
+    const isLocked = res.status === 429 || Boolean(data.isLocked);
 
     return {
       success: false,
-      error: data.error || 'Authentication failed. Check terminal credentials.',
+      error:
+        data.error ||
+        (isLocked
+          ? 'Too many login attempts. Locked for 1 hour.'
+          : 'Authentication failed. Check terminal credentials.'),
+      isLocked,
+      remainingAttempts: data.remainingAttempts,
+      retryAfterMinutes: data.retryAfterMinutes,
+      retryAfterSeconds: data.retryAfterSeconds,
     };
   } catch (e: any) {
     return {

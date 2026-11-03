@@ -3,6 +3,7 @@ import { getDb } from '@/lib/mongodb';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import { verifyAdminApiRequest, unauthorizedAdminResponse } from '@/lib/admin-auth-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,7 +39,12 @@ function saveStoredAdmins(admins: any[]) {
   fs.writeFileSync(CREDS_FILE, JSON.stringify(payload, null, 2), 'utf-8');
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const auth = verifyAdminApiRequest(req);
+  if (!auth.authorized) {
+    return unauthorizedAdminResponse();
+  }
+
   try {
     const db = await getDb();
     let mongoAdmins: any[] = [];
@@ -78,6 +84,15 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
+  const localAdmins = getStoredAdmins();
+  // Only bypass auth check if 0 admins exist (initial bootstrapping)
+  if (localAdmins.length > 0) {
+    const auth = verifyAdminApiRequest(req);
+    if (!auth.authorized) {
+      return unauthorizedAdminResponse();
+    }
+  }
+
   try {
     const body = await req.json();
     const email = (body.email || '').trim().toLowerCase();
@@ -107,7 +122,7 @@ export async function POST(req: NextRequest) {
       updatedAt: now,
     };
 
-    const current = getStoredAdmins().filter((a: any) => a.email.toLowerCase() !== email);
+    const current = localAdmins.filter((a: any) => a.email.toLowerCase() !== email);
     current.push(newAdmin);
     saveStoredAdmins(current);
 
@@ -131,6 +146,11 @@ export async function POST(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const auth = verifyAdminApiRequest(req);
+  if (!auth.authorized) {
+    return unauthorizedAdminResponse();
+  }
+
   try {
     const body = await req.json();
     const email = (body.email || '').trim().toLowerCase();
@@ -183,6 +203,11 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = verifyAdminApiRequest(req);
+  if (!auth.authorized) {
+    return unauthorizedAdminResponse();
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const email = (searchParams.get('email') || '').trim().toLowerCase();

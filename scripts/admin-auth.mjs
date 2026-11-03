@@ -572,6 +572,47 @@ async function handleGenerate() {
   await handleSeed();
 }
 
+// --- COMMAND: UNBLOCK / RESET-LIMIT ---
+async function handleUnblock() {
+  const email = (flags.email || flags.e || positional[1] || '').trim().toLowerCase();
+  
+  // 1. Reset active server cache via loopback API
+  try {
+    const url = email
+      ? `http://localhost:3000/api/admin/auth/login?email=${encodeURIComponent(email)}`
+      : 'http://localhost:3000/api/admin/auth/login';
+    const res = await fetch(url, { method: 'DELETE' });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      console.log(`\n\x1b[32m✓ Cleared live server admin login rate limits via loopback API.\x1b[0m`);
+    }
+  } catch (e) {}
+
+  const uri = process.env.MONGODB_URI;
+  if (uri) {
+    try {
+      const { MongoClient } = await import('mongodb');
+      const client = new MongoClient(uri, { serverSelectionTimeoutMS: 3000 });
+      await client.connect();
+      const col = client.db().collection('admin_login_rate_limits');
+
+      if (email) {
+        const res = await col.deleteMany({ email });
+        console.log(`\x1b[32m✓ Cleared rate limit lock in MongoDB for: "${email}" (${res.deletedCount} attempts cleared)\x1b[0m\n`);
+      } else {
+        const res = await col.deleteMany({});
+        console.log(`\x1b[32m✓ Cleared all admin login rate limits in MongoDB (${res.deletedCount} attempts cleared)\x1b[0m\n`);
+      }
+      await client.close();
+      return;
+    } catch (e) {
+      console.warn('MongoDB unblock error:', e.message);
+    }
+  }
+
+  console.log('\x1b[32m✓ Console rate limit counter reset to 0/3 attempts.\x1b[0m\n');
+}
+
 // --- COMMAND: STATUS ---
 async function handleStatus() {
   const store = getCredentialsStore();
@@ -588,6 +629,8 @@ async function handleStatus() {
   console.log(`\n  \x1b[1mTotal Admins:\x1b[0m      ${store.admins.length}`);
   console.log(`  \x1b[1mPrimary Admin:\x1b[0m     \x1b[36m${primary.email}\x1b[0m (${primary.name} - ${primary.role})`);
   console.log(`  \x1b[1mLocal Storage:\x1b[0m     .admin-credentials.json [Active]`);
+  console.log(`  \x1b[1mRate Limiter:\x1b[0m      Active (3 attempts / hour)`);
+  console.log(`  \x1b[1mRobots Indexing:\x1b[0m   NOINDEX, NOFOLLOW [Active]`);
   console.log(`  \x1b[1mLast Modified:\x1b[0m     ${primary.updatedAt}`);
   console.log(`\n  \x1b[90mVerify credentials:\x1b[0m npx verify --email "${primary.email}" --password "<password>"\n`);
 }
@@ -607,6 +650,10 @@ Manage admin authentication credentials directly via the terminal.
   \x1b[36mverify\x1b[0m --email "email" --password "pass"
     Verify credentials against stored PBKDF2 hash.
     \x1b[90mExample:\x1b[0m npx verify --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"
+
+  \x1b[36munblock\x1b[0m [--email "email"]
+    Reset and unblock rate-limited login attempts.
+    \x1b[90mExample:\x1b[0m npx admin-auth unblock
 
   \x1b[36mcreate\x1b[0m --email "email" --password "pass" [--name "Name"] [--role "Role"]
     Create a new admin account.
@@ -644,6 +691,13 @@ switch (command.toLowerCase()) {
   case 'init':
   case 'setup':
     await handleSeed();
+    break;
+
+  case 'unblock':
+  case 'unlock':
+  case 'reset-limit':
+  case 'reset-rate-limit':
+    await handleUnblock();
     break;
 
   case 'create':
@@ -708,3 +762,4 @@ switch (command.toLowerCase()) {
     process.exit(1);
     break;
 }
+

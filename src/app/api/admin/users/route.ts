@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
+import { verifyAdminApiRequest, unauthorizedAdminResponse } from '@/lib/admin-auth-guard';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  const auth = verifyAdminApiRequest(req);
+  if (!auth.authorized) {
+    return unauthorizedAdminResponse();
+  }
+
   try {
     const db = await getDb();
     if (!db) {
@@ -62,6 +68,11 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PUT(req: NextRequest) {
+  const auth = verifyAdminApiRequest(req);
+  if (!auth.authorized) {
+    return unauthorizedAdminResponse();
+  }
+
   try {
     const db = await getDb();
     if (!db) {
@@ -170,6 +181,11 @@ export async function PUT(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const auth = verifyAdminApiRequest(req);
+  if (!auth.authorized) {
+    return unauthorizedAdminResponse();
+  }
+
   try {
     const db = await getDb();
     if (!db) {

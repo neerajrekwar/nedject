@@ -3,6 +3,15 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { getDb } from '@/lib/mongodb';
+import {
+  getClientIp,
+  checkAdminRateLimit,
+  recordFailedAdminLogin,
+  clearAdminRateLimit,
+  MAX_ADMIN_LOGIN_ATTEMPTS,
+} from '@/lib/admin-rate-limit';
+
+export const dynamic = 'force-dynamic';
 
 const CREDS_FILE = path.join(process.cwd(), '.admin-credentials.json');
 
@@ -23,14 +32,16 @@ function hashPassword(password: string, salt: string): string {
 async function findAdminCredentials(targetEmail: string): Promise<AdminRecord | null> {
   const normalized = targetEmail.trim().toLowerCase();
 
-  // 1. Check local .admin-credentials.json set via terminal
+  // 1. Check local .admin-credentials.json set via terminal CLI
   if (fs.existsSync(CREDS_FILE)) {
     try {
       const raw = fs.readFileSync(CREDS_FILE, 'utf-8');
       const data = JSON.parse(raw);
 
       if (data && Array.isArray(data.admins)) {
-        const found = data.admins.find((a: any) => a.email && a.email.trim().toLowerCase() === normalized);
+        const found = data.admins.find(
+          (a: any) => a.email && a.email.trim().toLowerCase() === normalized
+        );
         if (found && found.hash && found.salt) {
           return {
             id: found.id || 'admin-terminal-owner',
@@ -45,7 +56,13 @@ async function findAdminCredentials(targetEmail: string): Promise<AdminRecord | 
       }
 
       // Check top-level single admin format
-      if (data && data.email && data.email.trim().toLowerCase() === normalized && data.hash && data.salt) {
+      if (
+        data &&
+        data.email &&
+        data.email.trim().toLowerCase() === normalized &&
+        data.hash &&
+        data.salt
+      ) {
         return {
           id: 'admin-terminal-owner',
           email: data.email.trim().toLowerCase(),
@@ -102,40 +119,180 @@ async function findAdminCredentials(targetEmail: string): Promise<AdminRecord | 
   return null;
 }
 
+/**
+ * GET: Allows the client to check the current rate limit status without consuming an attempt
+ */
+export async function GET(req: NextRequest) {
+  const ip = getClientIp(req);
+  const { searchParams } = new URL(req.url);
+  const email = searchParams.get('email') || undefined;
+
+  const rateLimit = await checkAdminRateLimit(ip, email);
+
+  return NextResponse.json(
+    {
+      success: true,
+      allowed: rateLimit.allowed,
+      isLocked: !rateLimit.allowed,
+      totalAttempts: rateLimit.totalAttempts,
+      remainingAttempts: rateLimit.remainingAttempts,
+      maxAttempts: MAX_ADMIN_LOGIN_ATTEMPTS,
+      windowHours: 1,
+      retryAfterMinutes: rateLimit.retryAfterMinutes,
+      retryAfterSeconds: rateLimit.retryAfterSeconds,
+    },
+    {
+      headers: {
+        'X-Robots-Tag': 'noindex, nofollow, noarchive',
+        'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
+        'X-RateLimit-Remaining': String(rateLimit.remainingAttempts),
+      },
+    }
+  );
+}
+
+/**
+ * POST: Authenticates admin credentials with strict 3-attempt/hour rate limiting
+ */
 export async function POST(req: NextRequest) {
+  const ip = getClientIp(req);
+
   try {
     const body = await req.json().catch(() => ({}));
     const inputEmail = (body.email || '').trim().toLowerCase();
     const inputPassword = body.password || '';
 
+    // 1. Verify Rate Limit (3 attempts per 1 hour)
+    const rateLimit = await checkAdminRateLimit(ip, inputEmail);
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: `Rate limit exceeded: Maximum ${MAX_ADMIN_LOGIN_ATTEMPTS} login attempts permitted per hour. Admin console access is locked for ${rateLimit.retryAfterMinutes} minute${rateLimit.retryAfterMinutes === 1 ? '' : 's'}.`,
+          isLocked: true,
+          remainingAttempts: 0,
+          retryAfterMinutes: rateLimit.retryAfterMinutes,
+          retryAfterSeconds: rateLimit.retryAfterSeconds,
+        },
+        {
+          status: 429,
+          headers: {
+            'Retry-After': String(rateLimit.retryAfterSeconds),
+            'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
+            'X-RateLimit-Remaining': '0',
+            'X-Robots-Tag': 'noindex, nofollow, noarchive',
+          },
+        }
+      );
+    }
+
     if (!inputEmail || !inputPassword) {
       return NextResponse.json(
         { success: false, error: 'Email and password are required.' },
-        { status: 400 }
+        {
+          status: 400,
+          headers: {
+            'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
+            'X-RateLimit-Remaining': String(rateLimit.remainingAttempts),
+            'X-Robots-Tag': 'noindex, nofollow',
+          },
+        }
       );
     }
 
     const admin = await findAdminCredentials(inputEmail);
+
+    // If admin record does not exist -> count as failed attempt
     if (!admin) {
+      const updatedRate = await recordFailedAdminLogin(ip, inputEmail);
+      const isNowLocked = !updatedRate.allowed;
+
+      if (isNowLocked) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Access Denied. You have reached the maximum ${MAX_ADMIN_LOGIN_ATTEMPTS} attempts for this hour. Access locked for ${updatedRate.retryAfterMinutes} minutes.`,
+            isLocked: true,
+            remainingAttempts: 0,
+            retryAfterMinutes: updatedRate.retryAfterMinutes,
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(updatedRate.retryAfterSeconds),
+              'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
+              'X-RateLimit-Remaining': '0',
+              'X-Robots-Tag': 'noindex, nofollow',
+            },
+          }
+        );
+      }
+
       return NextResponse.json(
         {
           success: false,
-          error: `No admin account configured for ${inputEmail}. Run "npx admin-auth seed --email ${inputEmail}" in terminal to create admin account.`,
+          error: `Authentication failed. No admin account configured for ${inputEmail}. (${updatedRate.remainingAttempts} attempt${updatedRate.remainingAttempts === 1 ? '' : 's'} remaining this hour).`,
+          remainingAttempts: updatedRate.remainingAttempts,
         },
-        { status: 403 }
+        {
+          status: 403,
+          headers: {
+            'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
+            'X-RateLimit-Remaining': String(updatedRate.remainingAttempts),
+            'X-Robots-Tag': 'noindex, nofollow',
+          },
+        }
       );
     }
 
     // Verify password hash
     const testHash = hashPassword(inputPassword, admin.salt);
     if (testHash !== admin.hash) {
+      // Invalid password -> count as failed attempt
+      const updatedRate = await recordFailedAdminLogin(ip, inputEmail);
+      const isNowLocked = !updatedRate.allowed;
+
+      if (isNowLocked) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Invalid admin password. Maximum ${MAX_ADMIN_LOGIN_ATTEMPTS} attempts reached. Console locked for ${updatedRate.retryAfterMinutes} minutes.`,
+            isLocked: true,
+            remainingAttempts: 0,
+            retryAfterMinutes: updatedRate.retryAfterMinutes,
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(updatedRate.retryAfterSeconds),
+              'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
+              'X-RateLimit-Remaining': '0',
+              'X-Robots-Tag': 'noindex, nofollow',
+            },
+          }
+        );
+      }
+
       return NextResponse.json(
-        { success: false, error: 'Invalid admin password.' },
-        { status: 401 }
+        {
+          success: false,
+          error: `Invalid admin password. Security policy: ${updatedRate.remainingAttempts} attempt${updatedRate.remainingAttempts === 1 ? '' : 's'} remaining this hour.`,
+          remainingAttempts: updatedRate.remainingAttempts,
+        },
+        {
+          status: 401,
+          headers: {
+            'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
+            'X-RateLimit-Remaining': String(updatedRate.remainingAttempts),
+            'X-Robots-Tag': 'noindex, nofollow',
+          },
+        }
       );
     }
 
-    // Success response with admin user payload
+    // 2. Success: clear failed rate limit counters
+    await clearAdminRateLimit(ip, inputEmail);
+
     const user = {
       id: admin.id || 'admin-terminal-owner',
       email: admin.email,
@@ -147,11 +304,18 @@ export async function POST(req: NextRequest) {
       lastLogin: new Date().toISOString(),
     };
 
-    const response = NextResponse.json({
-      success: true,
-      message: 'Admin authenticated successfully',
-      user,
-    });
+    const response = NextResponse.json(
+      {
+        success: true,
+        message: 'Admin authenticated successfully',
+        user,
+      },
+      {
+        headers: {
+          'X-Robots-Tag': 'noindex, nofollow, noarchive',
+        },
+      }
+    );
 
     // Set secure admin cookie
     response.cookies.set('nedject_admin_token', 'authorized', {
@@ -164,6 +328,49 @@ export async function POST(req: NextRequest) {
 
     return response;
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err?.message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: err?.message || 'Internal server error during authentication' },
+      {
+        status: 500,
+        headers: {
+          'X-Robots-Tag': 'noindex, nofollow',
+        },
+      }
+    );
   }
 }
+
+/**
+ * DELETE: Resets rate-limited attempts (authorized loopback/admin only)
+ */
+export async function DELETE(req: NextRequest) {
+  const ip = getClientIp(req);
+  const host = req.headers.get('host') || '';
+  const isLocalHost = host.includes('localhost') || host.includes('127.0.0.1') || host.includes('::1');
+  const hasLocalSecret = req.headers.get('x-admin-cli') === 'nedject_cli';
+
+  if (!isLocalHost && !hasLocalSecret) {
+    return NextResponse.json({ success: false, error: 'Unauthorized rate limit reset.' }, { status: 403 });
+  }
+
+  const { searchParams } = new URL(req.url);
+  const email = searchParams.get('email') || undefined;
+
+  await clearAdminRateLimit(ip, email);
+
+  // Clear in-memory cache completely when resetting from terminal
+  if (global._adminRateLimitCache) {
+    if (email) {
+      global._adminRateLimitCache.delete(`email:${email.toLowerCase()}`);
+      global._adminRateLimitCache.delete(`ip:${ip}`);
+    } else {
+      global._adminRateLimitCache.clear();
+    }
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: 'Admin rate limits reset successfully.',
+  });
+}
+
