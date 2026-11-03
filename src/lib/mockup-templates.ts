@@ -148,6 +148,19 @@ export const MOCKUP_DEVICES: MockupDevice[] = [
     aspectRatio: '21:9',
     description: 'Panoramic multi-column widescreen display (2560 × 1080)',
   },
+  {
+    id: 'dark-ambient-display',
+    name: 'Web Showcase Screen (Dark Fluid)',
+    category: 'desktop',
+    width: 1440,
+    height: 900,
+    dpr: 2,
+    radius: 20,
+    bezel: 16,
+    notchType: 'none',
+    aspectRatio: '16:10',
+    description: 'Dark ambient glow web showcase display with fluid neon waves (1440 × 900 pt)',
+  },
 ];
 
 export interface WebsiteTemplate {
@@ -161,6 +174,16 @@ export interface WebsiteTemplate {
 }
 
 export const WEBSITE_TEMPLATES: WebsiteTemplate[] = [
+  {
+    id: 'dark-ambient-showcase',
+    name: 'Dark Ambient Fluid Landing',
+    category: 'Web Showcase',
+    tagline: 'Luminescent Neon Waves & Minimal Editorial Hero',
+    description:
+      'Dark ambient showcase landing page with glowing violet-blue fluid waves, sleek top navigation, and responsive hero card.',
+    badge: 'Dark Ambient Widescreen',
+    themeColor: '#8b5cf6',
+  },
   {
     id: 'industrial-studio',
     name: 'Nedject 300 DPI QR Studio',

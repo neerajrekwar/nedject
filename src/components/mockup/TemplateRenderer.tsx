@@ -37,6 +37,8 @@ export function TemplateRenderer({ templateId, viewportWidth }: Props) {
   const isDesktop = viewportWidth >= 1024;
 
   switch (templateId) {
+    case 'dark-ambient-showcase':
+      return <DarkAmbientShowcaseTemplate isMobile={isMobile} isTablet={isTablet} />;
     case 'apex-logistics':
       return <ApexLogisticsTemplate isMobile={isMobile} isTablet={isTablet} />;
     case 'titan-forensics':
@@ -49,6 +51,67 @@ export function TemplateRenderer({ templateId, viewportWidth }: Props) {
     default:
       return <IndustrialStudioTemplate isMobile={isMobile} isTablet={isTablet} />;
   }
+}
+
+/* -------------------------------------------------------------------------- */
+/* 0. DARK AMBIENT SHOWCASE TEMPLATE (Matched to User Image Attachment)       */
+/* -------------------------------------------------------------------------- */
+function DarkAmbientShowcaseTemplate({ isMobile, isTablet }: { isMobile: boolean; isTablet: boolean }) {
+  return (
+    <div className="relative w-full h-full min-h-[380px] bg-[#0d0b16] text-white font-sans flex flex-col justify-between overflow-hidden select-none">
+      {/* Background Neon Fluid Waves matching user attached asset */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <img
+          src="/assets/aistudio/image_2d17a67a.png"
+          alt="Dark Ambient Fluid Waves"
+          className="w-full h-full object-cover object-center opacity-90 scale-100"
+        />
+        {/* Subtle luminous vignette & depth enhancement */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#0d0b16]/60 via-transparent to-[#0d0b16]/40" />
+      </div>
+
+      {/* Top Navbar */}
+      <header className="relative z-10 px-4 sm:px-10 py-3 sm:py-5 flex items-center justify-between">
+        <div className="text-xs sm:text-sm font-black tracking-widest text-white uppercase font-sans">
+          LOGO
+        </div>
+        <nav className="flex items-center gap-3 sm:gap-6 text-[9px] sm:text-xs font-semibold tracking-wider text-zinc-300 font-mono">
+          <span className="hover:text-white transition-colors cursor-pointer">HOME</span>
+          <span className="hover:text-white transition-colors cursor-pointer">GALLERY</span>
+          <span className="hover:text-white transition-colors cursor-pointer">FAQ</span>
+          <span className="hover:text-white transition-colors cursor-pointer">JOIN US</span>
+        </nav>
+      </header>
+
+      {/* Hero Body */}
+      <div className={`relative z-10 px-4 sm:px-10 py-4 sm:py-8 flex-1 flex flex-col justify-center ${isMobile ? 'max-w-full' : 'max-w-md sm:max-w-lg'}`}>
+        <div className="text-[10px] sm:text-xs font-black tracking-[0.2em] text-zinc-300 uppercase mb-1 sm:mb-2 font-mono">
+          LOREM IPSUM COMPANY
+        </div>
+        <h1 className={`${isMobile ? 'text-xl font-light' : 'text-3xl sm:text-4xl'} font-light text-white tracking-tight leading-tight mb-2 sm:mb-3`}>
+          Landing page
+        </h1>
+        <p className={`${isMobile ? 'text-[11px] leading-snug line-clamp-3' : 'text-xs sm:text-sm leading-relaxed'} text-zinc-300/90 font-sans mb-4 sm:mb-6`}>
+          Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy. Lorem ipsum dolor sit amet, consectetuer adipiscing elit, sed diam nonummy.
+        </p>
+
+        <div>
+          <button className="px-4 sm:px-6 py-1.5 sm:py-2 border border-white/80 hover:border-white text-white font-mono text-[10px] sm:text-xs tracking-wider uppercase rounded hover:bg-white/10 transition-all shadow-[0_0_15px_rgba(139,92,246,0.3)] cursor-pointer">
+            Ipsum
+          </button>
+        </div>
+      </div>
+
+      {/* Subtle Bottom Attribution / Status */}
+      <footer className="relative z-10 px-4 sm:px-10 py-2 sm:py-3 flex items-center justify-between text-[9px] sm:text-[10px] font-mono text-zinc-400">
+        <span className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
+          <span>DARK AMBIENT SHOWCASE</span>
+        </span>
+        <span className="opacity-75">1440 × 900 • 16:10 WIDESCREEN</span>
+      </footer>
+    </div>
+  );
 }
 
 /* -------------------------------------------------------------------------- */

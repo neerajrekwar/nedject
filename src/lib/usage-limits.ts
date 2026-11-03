@@ -81,6 +81,32 @@ export function setLocalUsageCount(count: number, toolKey?: ToolKey): void {
   }
 }
 
+export const STORAGE_PLAN_KEY = 'nedject_active_plan';
+
+export function getCachedActivePlan(): 'free' | 'pro' | 'enterprise' | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(STORAGE_PLAN_KEY);
+    if (raw === 'enterprise' || raw === 'pro' || raw === 'free') {
+      return raw as 'free' | 'pro' | 'enterprise';
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function setCachedActivePlan(plan: 'free' | 'pro' | 'enterprise'): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(STORAGE_PLAN_KEY, plan);
+    window.dispatchEvent(new CustomEvent('nedject_plan_updated', { detail: { plan } }));
+    window.dispatchEvent(new Event('Nedject_usage_updated'));
+  } catch (e) {
+    console.warn('Failed to cache plan:', e);
+  }
+}
+
 export function getUsageStats(
   isLoggedIn: boolean,
   plan: 'free' | 'pro' | 'enterprise' | string = 'free',
@@ -88,11 +114,17 @@ export function getUsageStats(
 ): UsageStats {
   const used = getLocalUsageCount();
   const isAdmin = isAdminOverride ?? isClientAdmin();
+  const cachedPlan = isLoggedIn ? getCachedActivePlan() : null;
+  const effectivePlan =
+    plan === 'enterprise' || plan === 'pro'
+      ? plan
+      : cachedPlan || plan;
+
   const normalizedPlan: 'guest' | 'free' | 'pro' | 'enterprise' = !isLoggedIn
     ? 'guest'
     : isAdmin
     ? 'enterprise'
-    : (plan === 'pro' || plan === 'enterprise' ? plan : 'free');
+    : (effectivePlan === 'pro' || effectivePlan === 'enterprise' ? effectivePlan : 'free');
 
   const isPaidPlan = normalizedPlan === 'pro' || normalizedPlan === 'enterprise';
   const isUnlimited = isAdmin || isPaidPlan;

@@ -18,7 +18,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
-import { getUsageStats, UsageStats } from '@/lib/usage-limits';
+import { getUsageStats, UsageStats, getCachedActivePlan } from '@/lib/usage-limits';
 import { StoryShareButton } from '@/components/story/StoryShareButton';
 import { SocialCardsModal } from '@/components/portfolio/SocialCardsModal';
 
@@ -29,6 +29,7 @@ export function GlobalNavbar() {
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showSocialCardsModal, setShowSocialCardsModal] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [activePlan, setActivePlan] = useState<'guest' | 'free' | 'pro' | 'enterprise'>('guest');
 
   const [usageStats, setUsageStats] = useState<UsageStats>({
     used: 0,
@@ -39,11 +40,54 @@ export function GlobalNavbar() {
     plan: 'guest',
   });
 
-  // Update usage stats on mount and session change
-  const refreshUsage = () => {
+  // Update usage stats and active plan on mount, session change, and storage events
+  const refreshUsage = async () => {
     const isLogged = Boolean(session?.user);
-    const plan = ((session?.user as any)?.plan || 'free') as 'free' | 'pro';
-    setUsageStats(getUsageStats(isLogged, plan));
+    const sessionPlan = (((session?.user as any)?.plan || '') as string).toLowerCase();
+    const isUserAdmin =
+      (session?.user as any)?.role === 'admin' ||
+      session?.user?.email === 'neerajrekwar413@gmail.com' ||
+      (typeof window !== 'undefined' && Boolean(localStorage.getItem('nedject_admin_session_v1')));
+
+    let plan: 'guest' | 'free' | 'pro' | 'enterprise' = 'guest';
+
+    if (!isLogged) {
+      plan = 'guest';
+    } else if (isUserAdmin) {
+      plan = 'enterprise';
+    } else if (sessionPlan === 'enterprise') {
+      plan = 'enterprise';
+    } else if (sessionPlan === 'pro') {
+      plan = 'pro';
+    } else {
+      const cached = getCachedActivePlan();
+      if (cached === 'enterprise' || cached === 'pro') {
+        plan = cached;
+      } else {
+        plan = 'free';
+      }
+    }
+
+    setActivePlan(plan);
+    setUsageStats(getUsageStats(isLogged, plan, isUserAdmin));
+
+    // Fetch live profile to sync latest purchased plan from DB
+    if (isLogged && session?.user?.email) {
+      try {
+        const res = await fetch(`/api/auth/profile?email=${encodeURIComponent(session.user.email)}`);
+        if (res.ok) {
+          const data = await res.json();
+          const dbPlan = data?.user?.plan;
+          if (dbPlan && (dbPlan === 'enterprise' || dbPlan === 'pro' || dbPlan === 'free')) {
+            const finalPlan = isUserAdmin ? 'enterprise' : dbPlan;
+            setActivePlan(finalPlan);
+            setUsageStats(getUsageStats(true, finalPlan, isUserAdmin));
+          }
+        }
+      } catch {
+        // Ignore background network error
+      }
+    }
   };
 
   useEffect(() => {
@@ -51,7 +95,13 @@ export function GlobalNavbar() {
 
     const handleUsageUpdated = () => refreshUsage();
     window.addEventListener('Nedject_usage_updated', handleUsageUpdated);
-    return () => window.removeEventListener('Nedject_usage_updated', handleUsageUpdated);
+    window.addEventListener('nedject_plan_updated', handleUsageUpdated as any);
+    window.addEventListener('storage', handleUsageUpdated);
+    return () => {
+      window.removeEventListener('Nedject_usage_updated', handleUsageUpdated);
+      window.removeEventListener('nedject_plan_updated', handleUsageUpdated as any);
+      window.removeEventListener('storage', handleUsageUpdated);
+    };
   }, [session]);
 
   // Intercept ?auth=signin query param
@@ -138,29 +188,67 @@ export function GlobalNavbar() {
 
                 {/* Right Action Bar */}
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  {/* Credits pill */}
+                  {/* MY CREDITS Navlink Item - Recreated with dynamic plan base color and unlimited support */}
                   {session?.user ? (
                     <Link
                       href={userProfileUrl}
-                      className="flex items-center gap-2 border-2 border-black bg-white px-3 py-1 text-xs font-black hover:bg-zinc-100 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000]"
-                      title="View Profile and Active Plan"
+                      className={`flex items-center gap-2 border-2 border-black px-3 py-1 text-xs font-black transition-colors cursor-pointer shadow-[2px_2px_0px_#000000] select-none ${
+                        activePlan === 'enterprise'
+                          ? 'bg-[#9333ea] text-white hover:bg-[#7e22ce]'
+                          : activePlan === 'pro'
+                          ? 'bg-[#ccff00] text-black hover:bg-[#b8e600]'
+                          : 'bg-white text-zinc-900 hover:bg-zinc-100'
+                      }`}
+                      title={
+                        activePlan === 'enterprise'
+                          ? 'Enterprise Plan Active • Unlimited Studio Generations & Industrial Print Tools'
+                          : activePlan === 'pro'
+                          ? 'Pro Studio Plan Active • Unlimited 300 & 600 DPI Generations'
+                          : `${remainingCredits} credits remaining. Click to view profile and upgrade.`
+                      }
                     >
-                      <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block animate-pulse" />
-                      <span className="text-zinc-800">CREDITS: {remainingCredits} AVAILABLE</span>
-                      <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-bold">
-                        PRO ACTIVE
+                      <span
+                        className={`w-2.5 h-2.5 rounded-full inline-block animate-pulse ${
+                          activePlan === 'enterprise'
+                            ? 'bg-white shadow-[0_0_8px_#ffffff]'
+                            : activePlan === 'pro'
+                            ? 'bg-black'
+                            : 'bg-emerald-500'
+                        }`}
+                      />
+                      <span className="tracking-tight">
+                        {isUnlimited
+                          ? 'MY CREDITS: ∞ UNLIMITED'
+                          : `MY CREDITS: ${remainingCredits} / 10 AVAILABLE`}
+                      </span>
+                      <span
+                        className={`px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black ${
+                          activePlan === 'enterprise'
+                            ? 'bg-white text-[#581c87]'
+                            : activePlan === 'pro'
+                            ? 'bg-black text-[#ccff00]'
+                            : 'bg-[#00875a] text-white'
+                        }`}
+                      >
+                        {activePlan === 'enterprise'
+                          ? 'ENTERPRISE'
+                          : activePlan === 'pro'
+                          ? 'PRO ACTIVE'
+                          : 'FREE TIER'}
                       </span>
                     </Link>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setShowAuthModal(true)}
-                      className="flex items-center gap-2 border-2 border-black bg-white px-3 py-1 text-xs font-black hover:bg-zinc-100 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000]"
-                      title="Guest initial uses. Sign in for 10!"
+                      className="flex items-center gap-2 border-2 border-black bg-white text-zinc-900 px-3 py-1 text-xs font-black hover:bg-zinc-100 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000] select-none"
+                      title="Guest initial uses. Sign in to unlock 10 authenticated credits!"
                     >
                       <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block" />
-                      <span className="text-zinc-800">CREDITS: {remainingCredits} INITIAL USES</span>
-                      <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-bold">
+                      <span className="tracking-tight">
+                        MY CREDITS: {remainingCredits} INITIAL USES
+                      </span>
+                      <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black hover:bg-black transition-colors">
                         UNLOCK 10
                       </span>
                     </button>
@@ -173,14 +261,35 @@ export function GlobalNavbar() {
                     className="border-2 border-black bg-white text-black px-3 py-1 text-xs font-black hover:bg-zinc-100 shadow-[2px_2px_0px_#000000] rounded-none"
                   />
 
-                  {/* Upgrade to Pro button */}
-                  <Link
-                    href="/payment"
-                    className="flex items-center gap-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-3 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
-                    <span>UPGRADE TO PRO</span>
-                  </Link>
+                  {/* Plan / Upgrade button */}
+                  {activePlan === 'enterprise' ? (
+                    <Link
+                      href="/payment"
+                      className="flex items-center gap-1.5 border-2 border-black bg-purple-950 text-[#f3e8ff] hover:bg-purple-900 px-3 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
+                      title="Enterprise Plan Active • View Plans & Capabilities"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
+                      <span>ENTERPRISE ACTIVE</span>
+                    </Link>
+                  ) : activePlan === 'pro' ? (
+                    <Link
+                      href="/payment?plan=enterprise"
+                      className="flex items-center gap-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-3 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
+                      title="Upgrade to Enterprise for 1200 DPI & Bulk Generations"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
+                      <span>UPGRADE ENTERPRISE</span>
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/payment"
+                      className="flex items-center gap-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-3 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
+                      title="Upgrade to Pro Studio for Unlimited Generations"
+                    >
+                      <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
+                      <span>UPGRADE TO PRO</span>
+                    </Link>
+                  )}
 
                   {/* Sign In / Register or User Profile */}
                   {session?.user ? (
@@ -746,11 +855,61 @@ export function GlobalNavbar() {
             {/* Right: Dynamic buttons depending on screen size */}
             <div className="flex items-center gap-1.5 sm:gap-2">
               
-              {/* Tablet only: SYS_OK // CREDITS */}
-              <div className="hidden md:flex items-center gap-1.5 border-2 border-black bg-white px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
-                <span className="w-2.5 h-2.5 bg-emerald-500 border border-black inline-block" />
-                <span>{remainingCredits} CREDITS</span>
-              </div>
+              {/* Tablet only: MY CREDITS Item */}
+              {session?.user ? (
+                <Link
+                  href={userProfileUrl}
+                  className={`hidden md:flex items-center gap-1.5 border-2 border-black px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap transition-colors ${
+                    activePlan === 'enterprise'
+                      ? 'bg-[#9333ea] text-white hover:bg-[#7e22ce]'
+                      : activePlan === 'pro'
+                      ? 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00]'
+                      : 'bg-white text-zinc-900 hover:bg-zinc-100'
+                  }`}
+                  title={
+                    activePlan === 'enterprise'
+                      ? 'Enterprise Plan Active • Unlimited Credits'
+                      : activePlan === 'pro'
+                      ? 'Pro Studio Active • Unlimited Credits'
+                      : `${remainingCredits} credits remaining. Click to view profile.`
+                  }
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full border border-black inline-block ${
+                      activePlan === 'enterprise'
+                        ? 'bg-white shadow-[0_0_6px_#ffffff] animate-pulse'
+                        : activePlan === 'pro'
+                        ? 'bg-black animate-pulse'
+                        : 'bg-emerald-500'
+                    }`}
+                  />
+                  <span>{isUnlimited ? 'MY CREDITS: ∞' : `MY CREDITS: ${remainingCredits}`}</span>
+                  <span
+                    className={`text-[9px] px-1 py-0.2 font-black uppercase border border-black ${
+                      activePlan === 'enterprise'
+                        ? 'bg-white text-purple-900'
+                        : activePlan === 'pro'
+                        ? 'bg-black text-[#ccff00]'
+                        : 'bg-[#00875a] text-white'
+                    }`}
+                  >
+                    {activePlan === 'enterprise' ? 'ENT' : activePlan === 'pro' ? 'PRO' : 'FREE'}
+                  </span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(true)}
+                  className="hidden md:flex items-center gap-1.5 border-2 border-black bg-white hover:bg-zinc-100 px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap transition-colors cursor-pointer"
+                  title="Guest initial uses. Sign in for 10 credits!"
+                >
+                  <span className="w-2 h-2 bg-emerald-500 border border-black inline-block" />
+                  <span>MY CREDITS: {remainingCredits}</span>
+                  <span className="bg-[#00875a] text-white text-[9px] px-1 py-0.2 font-black uppercase border border-black">
+                    UNLOCK 10
+                  </span>
+                </button>
+              )}
 
               {/* Standard Mobile & Tablet: ✨ PLANS (Neon #ccff00) */}
               <Link
@@ -819,10 +978,32 @@ export function GlobalNavbar() {
         {isMobileMenuOpen && (
           <div className="lg:hidden w-full bg-white border-b-4 border-black p-4 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
             {/* Quick Actions & Credits */}
-            <div className="flex items-center justify-between gap-2 p-2.5 border-2 border-black bg-zinc-50">
+            <div
+              className={`flex items-center justify-between gap-2 p-2.5 border-2 border-black shadow-[2px_2px_0px_#000000] ${
+                activePlan === 'enterprise'
+                  ? 'bg-[#9333ea] text-white'
+                  : activePlan === 'pro'
+                  ? 'bg-[#ccff00] text-black'
+                  : 'bg-zinc-50 text-black'
+              }`}
+            >
               <div className="flex items-center gap-2 text-xs font-black">
-                <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block" />
-                <span>CREDITS: {remainingCredits} AVAILABLE</span>
+                <span
+                  className={`w-2.5 h-2.5 rounded-full inline-block ${
+                    activePlan === 'enterprise'
+                      ? 'bg-white animate-pulse shadow-[0_0_6px_#ffffff]'
+                      : activePlan === 'pro'
+                      ? 'bg-black animate-pulse'
+                      : 'bg-emerald-500'
+                  }`}
+                />
+                <span>
+                  {isUnlimited
+                    ? 'MY CREDITS: ∞ UNLIMITED'
+                    : session?.user
+                    ? `MY CREDITS: ${remainingCredits} / 10 AVAILABLE`
+                    : `MY CREDITS: ${remainingCredits} INITIAL USES`}
+                </span>
               </div>
               {!session?.user ? (
                 <button
@@ -831,14 +1012,24 @@ export function GlobalNavbar() {
                     setIsMobileMenuOpen(false);
                     setShowAuthModal(true);
                   }}
-                  className="bg-[#00875a] text-white px-2 py-0.5 text-[10px] font-bold border border-black cursor-pointer"
+                  className="bg-[#00875a] text-white px-2 py-0.5 text-[10px] font-bold border border-black cursor-pointer hover:bg-black transition-colors"
                 >
                   UNLOCK 10
                 </button>
               ) : (
-                <span className="bg-[#00875a] text-white px-2 py-0.5 text-[10px] font-bold border border-black">
-                  PRO
-                </span>
+                <Link
+                  href={userProfileUrl}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className={`px-2 py-0.5 text-[10px] font-black uppercase border border-black ${
+                    activePlan === 'enterprise'
+                      ? 'bg-white text-purple-900'
+                      : activePlan === 'pro'
+                      ? 'bg-black text-[#ccff00]'
+                      : 'bg-[#00875a] text-white'
+                  }`}
+                >
+                  {activePlan === 'enterprise' ? 'ENTERPRISE' : activePlan === 'pro' ? 'PRO ACTIVE' : 'FREE TIER'}
+                </Link>
               )}
             </div>
 

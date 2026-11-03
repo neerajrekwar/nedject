@@ -26,6 +26,7 @@ import {
 import QRCode from 'qrcode';
 import { PurchaseRecord } from '@/lib/purchases';
 import { formatCurrencyAmount, getCurrencySymbol } from '@/lib/plans-types';
+import { downloadInvoiceA4Pdf } from '@/lib/invoice-pdf';
 
 interface OrderHistoryTableProps {
   userEmail: string;
@@ -51,6 +52,7 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
   const [selectedInvoice, setSelectedInvoice] = useState<PurchaseRecord | null>(null);
   const [invoiceQrUrl, setInvoiceQrUrl] = useState<string>('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [downloadingPdfId, setDownloadingPdfId] = useState<string | null>(null);
 
   // Fetch purchases from /api/user/purchases
   const fetchPurchases = async (isManualRefresh = false) => {
@@ -156,6 +158,19 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
   const handlePrint = () => {
     if (typeof window !== 'undefined') {
       window.print();
+    }
+  };
+
+  const handleDownloadA4 = async (purchase: PurchaseRecord) => {
+    try {
+      setDownloadingPdfId(purchase.invoiceId);
+      await downloadInvoiceA4Pdf(purchase);
+    } catch (err) {
+      console.error('[OrderHistoryTable] Error generating A4 PDF:', err);
+      // Fallback: browser print / save as PDF
+      handlePrint();
+    } finally {
+      setDownloadingPdfId(null);
     }
   };
 
@@ -476,14 +491,30 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
 
                     {/* Actions */}
                     <td className="p-3 text-right whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-2">
+                      <div className="flex items-center justify-end gap-1.5">
                         <button
                           type="button"
                           onClick={() => setSelectedInvoice(purchase)}
                           className="px-2.5 py-1.5 border-2 border-black bg-white hover:bg-black hover:text-[#ccff00] text-black text-[11px] font-black uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-1 cursor-pointer transition-all"
+                          title="View complete tax invoice modal"
                         >
                           <FileText className="w-3.5 h-3.5" />
-                          <span>VIEW INVOICE</span>
+                          <span>VIEW</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadA4(purchase)}
+                          disabled={downloadingPdfId === purchase.invoiceId}
+                          className="px-2.5 py-1.5 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black text-[11px] font-black uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-1 cursor-pointer transition-all disabled:opacity-50"
+                          title="Direct download A4 size paper PDF (210×297mm)"
+                        >
+                          {downloadingPdfId === purchase.invoiceId ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <Download className="w-3.5 h-3.5" />
+                          )}
+                          <span>A4 PDF</span>
                         </button>
 
                         <button
@@ -493,7 +524,7 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
                             setTimeout(() => handlePrint(), 250);
                           }}
                           className="p-1.5 border-2 border-black bg-zinc-100 hover:bg-[#ccff00] text-black shadow-[2px_2px_0px_#000000] cursor-pointer transition-all"
-                          title="Print or Save PDF"
+                          title="Open browser print / PDF dialog"
                         >
                           <Printer className="w-3.5 h-3.5" />
                         </button>
@@ -513,20 +544,40 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
         <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 overflow-y-auto animate-fade-in backdrop-blur-sm print:static print:inset-auto print:p-0 print:m-0 print:bg-white print:overflow-visible invoice-print-container">
           <div className="relative w-full max-w-2xl bg-white border-4 border-black p-6 sm:p-8 shadow-[12px_12px_0px_#ccff00] print:border-none print:shadow-none print:p-0 print:m-0 print:max-h-none print:max-w-none print:overflow-visible text-black font-mono space-y-6 print:space-y-3 max-h-[92vh] overflow-y-auto invoice-print-card">
             {/* Modal Controls (Hidden in print) */}
-            <div className="flex items-center justify-between border-b-2 border-black pb-4 print:hidden">
+            <div className="flex items-center justify-between border-b-2 border-black pb-4 print:hidden gap-3 flex-wrap">
               <div className="inline-flex items-center gap-2 px-2.5 py-0.5 bg-[#ccff00] text-black font-black text-xs border border-black uppercase">
                 <Receipt className="w-4 h-4" />
                 <span>OFFICIAL TAX INVOICE &amp; RECEIPT</span>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadA4(selectedInvoice)}
+                  disabled={downloadingPdfId === selectedInvoice.invoiceId}
+                  className="px-3 py-1.5 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] cursor-pointer transition-all disabled:opacity-50"
+                  title="Direct download A4 size paper PDF (210×297mm)"
+                >
+                  {downloadingPdfId === selectedInvoice.invoiceId ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>GENERATING A4 PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-3.5 h-3.5" />
+                      <span>DOWNLOAD A4 PDF</span>
+                    </>
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="px-3 py-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-zinc-800 text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] cursor-pointer"
+                  className="px-3 py-1.5 border-2 border-black bg-white hover:bg-zinc-100 text-black text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] cursor-pointer"
+                  title="Print or Browser PDF"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>PRINT / PDF</span>
+                  <span>PRINT / BROWSER</span>
                 </button>
                 <button
                   type="button"
@@ -558,7 +609,7 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
 
                 <div className="text-left sm:text-right space-y-1">
                   <div className="inline-block border-2 border-black bg-[#ccff00] px-3 py-1 print:px-2 print:py-0.5 font-black text-xs print:text-[11px] uppercase shadow-[2px_2px_0px_#000000] print:shadow-none">
-                    TAX INVOICE
+                    TAX INVOICE // A4 SIZE (210×297mm)
                   </div>
                   <div className="text-xs print:text-[11px] font-black text-black">
                     INVOICE #: <span className="font-mono">{selectedInvoice.invoiceId}</span>
@@ -695,27 +746,51 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
 
               {/* Footer Stamp */}
               <div className="border-t border-zinc-200 print:border-black pt-3 print:pt-1.5 text-[10px] print:text-[9px] text-zinc-500 print:text-zinc-700 text-center font-sans">
-                Thank you for powering your high-precision optical barcode and physical print passes with Nedject. This is a computer-generated tax invoice that requires no physical signature.
+                Thank you for powering your high-precision optical barcode and physical print passes with Nedject. Formatted for standard ISO 216 A4 Paper (210mm × 297mm) at 300 DPI optical calibration. This is a computer-generated tax invoice that requires no physical signature.
               </div>
             </div>
 
             {/* Bottom Modal Actions (Hidden in Print) */}
-            <div className="flex items-center justify-end gap-3 pt-4 border-t-2 border-black print:hidden">
-              <button
-                type="button"
-                onClick={() => setSelectedInvoice(null)}
-                className="px-4 py-2 border-2 border-black bg-white hover:bg-zinc-100 text-black text-xs font-black uppercase cursor-pointer"
-              >
-                CLOSE
-              </button>
-              <button
-                type="button"
-                onClick={handlePrint}
-                className="px-5 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] cursor-pointer transition-all"
-              >
-                <Printer className="w-4 h-4" />
-                <span>PRINT / DOWNLOAD PDF</span>
-              </button>
+            <div className="flex items-center justify-between gap-3 pt-4 border-t-2 border-black print:hidden flex-wrap">
+              <div className="text-[11px] text-zinc-600 font-bold flex items-center gap-1.5 font-mono">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block" />
+                <span>CALIBRATED FOR A4 STANDARD PAPER (210 × 297 mm)</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setSelectedInvoice(null)}
+                  className="px-4 py-2 border-2 border-black bg-white hover:bg-zinc-100 text-black text-xs font-black uppercase cursor-pointer"
+                >
+                  CLOSE
+                </button>
+                <button
+                  type="button"
+                  onClick={handlePrint}
+                  className="px-4 py-2 border-2 border-black bg-zinc-100 hover:bg-zinc-200 text-black text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] cursor-pointer transition-all"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>PRINT</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadA4(selectedInvoice)}
+                  disabled={downloadingPdfId === selectedInvoice.invoiceId}
+                  className="px-5 py-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black text-xs font-black uppercase flex items-center gap-1.5 shadow-[3px_3px_0px_#000000] cursor-pointer transition-all disabled:opacity-50"
+                >
+                  {downloadingPdfId === selectedInvoice.invoiceId ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>GENERATING A4 PDF...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Download className="w-4 h-4" />
+                      <span>DIRECT A4 PDF DOWNLOAD</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>

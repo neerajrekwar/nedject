@@ -31,7 +31,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
-import { getUsageStats, UsageStats } from '@/lib/usage-limits';
+import { getUsageStats, UsageStats, setCachedActivePlan } from '@/lib/usage-limits';
 import { AuthModal } from '@/components/auth/AuthModal';
 import { OrderHistoryTable } from '@/components/profile/OrderHistoryTable';
 
@@ -92,11 +92,15 @@ export default function UserProfilePage() {
             setEmail(data.user.email || emailToFetch);
             setDob(data.user.dob || '');
             setOccupation(data.user.occupation || '');
-            setUserPlan(data.user.plan || currentPlan);
+            const resolvedPlan = data.user.plan || currentPlan;
+            setUserPlan(resolvedPlan);
+            if (resolvedPlan === 'enterprise' || resolvedPlan === 'pro') {
+              setCachedActivePlan(resolvedPlan);
+            }
             setProvider(data.user.provider || 'credentials');
             setUserId(data.user.id || useridParam);
             setUpdatedAt(data.user.updatedAt || new Date().toISOString());
-            setUsageStats(getUsageStats(true, data.user.plan || currentPlan));
+            setUsageStats(getUsageStats(true, resolvedPlan));
           }
         })
         .catch((err) => console.warn('Could not load extra user details:', err))

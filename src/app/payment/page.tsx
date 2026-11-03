@@ -30,6 +30,7 @@ import {
   ShieldAlert,
   LogIn,
   Globe,
+  Download,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
 import {
@@ -38,13 +39,15 @@ import {
   DEFAULT_PLANS,
   ManagedPlan,
 } from '@/lib/plans-types';
-import { getUsageStats, UsageStats, setLocalUsageCount } from '@/lib/usage-limits';
+import { getUsageStats, UsageStats, setLocalUsageCount, setCachedActivePlan } from '@/lib/usage-limits';
 import { SecureCardCheckoutModal } from '@/components/payment/SecureCardCheckoutModal';
 import { AuthModal } from '@/components/auth/AuthModal';
 import {
   setClientRedirectDestination,
   clearClientRedirectDestination,
 } from '@/lib/auth-redirect';
+import { downloadInvoiceA4Pdf } from '@/lib/invoice-pdf';
+import { PurchaseRecord } from '@/lib/purchases';
 
 declare global {
   interface Window {
@@ -110,7 +113,11 @@ function PaymentContent() {
     orderId: string;
     amount: string;
     couponCode?: string;
+    invoiceId?: string;
+    currency?: string;
+    planId?: 'pro' | 'enterprise';
   } | null>(null);
+  const [downloadingSuccessInvoice, setDownloadingSuccessInvoice] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [secureModalOpen, setSecureModalOpen] = useState(false);
   const [activeOrderData, setActiveOrderData] = useState<{
@@ -497,6 +504,7 @@ function PaymentContent() {
 
       // Success! Reset usage counter to 0 and trigger reactive listeners
       setLocalUsageCount(0);
+      setCachedActivePlan(planId);
       window.dispatchEvent(new Event('Nedject_usage_updated'));
 
       // If session exists, trigger session reload
@@ -512,6 +520,9 @@ function PaymentContent() {
         orderId: razorpay_order_id,
         amount: displayAmount,
         couponCode,
+        invoiceId: verifyData.invoiceId || `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+        currency,
+        planId,
       });
 
       // Update local usage stats
@@ -521,6 +532,41 @@ function PaymentContent() {
       setErrorMessage(err.message || 'Payment verification failed');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDownloadSuccessInvoice = async () => {
+    if (!paymentSuccess) return;
+    try {
+      setDownloadingSuccessInvoice(true);
+      const invoiceNumber =
+        paymentSuccess.invoiceId ||
+        `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const cleanAmountNum =
+        parseFloat(paymentSuccess.amount.replace(/[^0-9.]/g, '')) || 0;
+      const rec: PurchaseRecord = {
+        id: paymentSuccess.paymentId,
+        invoiceId: invoiceNumber,
+        userEmail: session?.user?.email || 'subscriber@nedject.com',
+        userName: session?.user?.name || undefined,
+        plan: paymentSuccess.planId || selectedPlanId,
+        planName: paymentSuccess.planName,
+        amount: cleanAmountNum,
+        amountFormatted: paymentSuccess.amount,
+        currency: paymentSuccess.currency || currency,
+        billingCycle: billingCycle === 'yearly' ? 'annual' : 'monthly',
+        gateway: 'Razorpay / Card',
+        paymentId: paymentSuccess.paymentId,
+        orderId: paymentSuccess.orderId,
+        status: 'Paid',
+        date: new Date().toISOString(),
+        couponCode: paymentSuccess.couponCode,
+      };
+      await downloadInvoiceA4Pdf(rec);
+    } catch (e) {
+      console.error('[Payment] Invoice PDF download error:', e);
+    } finally {
+      setDownloadingSuccessInvoice(false);
     }
   };
 
@@ -1074,15 +1120,29 @@ function PaymentContent() {
             </div>
 
             <div className="pt-2 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleDownloadSuccessInvoice}
+                disabled={downloadingSuccessInvoice}
+                className="px-4 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-2 cursor-pointer transition-all disabled:opacity-50"
+                title="Download official A4 size tax invoice PDF (210×297mm)"
+              >
+                {downloadingSuccessInvoice ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#ccff00]" />
+                ) : (
+                  <Download className="w-3.5 h-3.5" />
+                )}
+                <span>DOWNLOAD A4 TAX INVOICE (PDF)</span>
+              </button>
               <Link
                 href={`/${encodeURIComponent(userSlug)}`}
-                className="px-4 py-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000]"
+                className="px-4 py-2 border-2 border-black bg-white hover:bg-zinc-100 text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000]"
               >
-                VIEW MY UPDATED PROFILE
+                VIEW MY INVOICES &amp; PROFILE
               </Link>
               <Link
                 href="/"
-                className="px-4 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-2"
+                className="px-4 py-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-2"
               >
                 <span>OPEN 300 DPI QR STUDIO</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -1449,6 +1509,9 @@ function PaymentContent() {
               orderId: result.orderId,
               amount: result.amount,
               couponCode: result.couponCode,
+              invoiceId: `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+              currency: activeOrderData.currency,
+              planId: activeOrderData.planId,
             });
             setUsageStats(getUsageStats(true, activeOrderData.planId));
           }}

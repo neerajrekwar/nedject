@@ -53,17 +53,18 @@ import {
   LongScrollLaptopScene,
   HandheldDuoScene,
   MobileStudioScene,
+  DarkAmbientShowcaseScene,
   MinimalInteriorTemplate,
 } from '@/components/mockup/MockupScenes';
 import { useSession } from 'next-auth/react';
 import { consumeToolQuota } from '@/lib/usage-limits';
 import { enforceFeatureAccess, PlanTier } from '@/lib/plan-capabilities';
 
-type SceneMode = 'mobile' | 'trio' | 'long-scroll' | 'handheld' | 'matrix' | 'single';
+type SceneMode = 'showcase' | 'mobile' | 'trio' | 'long-scroll' | 'handheld' | 'matrix' | 'single';
 type ExportTarget = 'scene' | 'desktop' | 'tablet' | 'mobile';
 type ExportFormat = 'png' | 'jpeg' | 'webp' | 'svg';
 type AspectRatioOption = 'free' | '16:9' | '4:3' | '1:1' | '9:16' | '4:5' | '3:2' | '21:9';
-type FramingMode = 'contain' | 'cover';
+type FramingMode = 'contain' | 'cover' | 'exact';
 
 interface PurposePreset {
   id: string;
@@ -598,6 +599,13 @@ export default function MochupPage() {
   const [uploadedScreenshot, setUploadedScreenshot] = useState<string | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<WebsiteTemplate>(WEBSITE_TEMPLATES[0]);
 
+  // Image Overlay Sizing & Alignment State (Prevents any clipping, cutting, or overflow)
+  const [imageFitMode, setImageFitMode] = useState<'contain' | 'cover' | 'fill' | 'custom'>('contain');
+  const [imageZoom, setImageZoom] = useState<number>(100);
+  const [imageOffsetX, setImageOffsetX] = useState<number>(0);
+  const [imageOffsetY, setImageOffsetY] = useState<number>(0);
+  const [imageBgFill, setImageBgFill] = useState<string>('#0a0b0e');
+
   // Preview Generation State
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [generationStep, setGenerationStep] = useState<string>('');
@@ -636,6 +644,11 @@ export default function MochupPage() {
     setSubmittedUrl('');
     setUploadedScreenshot(null);
     setRenderMode('snapshot');
+    setImageFitMode('contain');
+    setImageZoom(100);
+    setImageOffsetX(0);
+    setImageOffsetY(0);
+    setImageBgFill('#0a0b0e');
 
     setActiveScene('trio');
     setSelectedDevice(MOCKUP_DEVICES[0]);
@@ -809,7 +822,7 @@ export default function MochupPage() {
         targetId = 'mockup-isolated-mobile';
       }
     } else if (exportTarget === 'desktop') {
-      if (activeScene === 'long-scroll' || (activeScene === 'single' && selectedDevice.category === 'desktop')) {
+      if (activeScene === 'long-scroll' || activeScene === 'showcase' || (activeScene === 'single' && selectedDevice.category === 'desktop')) {
         targetId = 'mockup-export-target';
       } else {
         targetId = 'mockup-isolated-desktop';
@@ -900,7 +913,7 @@ export default function MochupPage() {
         ctx.fillRect(0, 0, targetWidth, targetHeight);
       }
 
-      // Framing: Contain or Cover
+      // Framing: Contain, Cover, or Exact Full Bleed
       if (framingMode === 'cover') {
         const scale = Math.max(targetWidth / sourceCanvas.width, targetHeight / sourceCanvas.height);
         const drawW = sourceCanvas.width * scale;
@@ -908,8 +921,16 @@ export default function MochupPage() {
         const offsetX = (targetWidth - drawW) / 2;
         const offsetY = (targetHeight - drawH) / 2;
         ctx.drawImage(sourceCanvas, offsetX, offsetY, drawW, drawH);
+      } else if (framingMode === 'exact') {
+        const scale = Math.min(targetWidth / sourceCanvas.width, targetHeight / sourceCanvas.height);
+        const drawW = sourceCanvas.width * scale;
+        const drawH = sourceCanvas.height * scale;
+        const offsetX = (targetWidth - drawW) / 2;
+        const offsetY = (targetHeight - drawH) / 2;
+        ctx.drawImage(sourceCanvas, offsetX, offsetY, drawW, drawH);
       } else {
-        const scale = Math.min((targetWidth * 0.92) / sourceCanvas.width, (targetHeight * 0.92) / sourceCanvas.height);
+        // contain with balanced 6% safe margin so no chassis shadow or 3D edge is ever clipped
+        const scale = Math.min((targetWidth * 0.94) / sourceCanvas.width, (targetHeight * 0.94) / sourceCanvas.height);
         const drawW = sourceCanvas.width * scale;
         const drawH = sourceCanvas.height * scale;
         const offsetX = (targetWidth - drawW) / 2;
@@ -992,12 +1013,71 @@ export default function MochupPage() {
   // Universal content renderer for device viewports
   const renderViewportContent = useCallback((viewport: 'desktop' | 'tablet' | 'mobile') => {
     if (sourceType === 'upload' && uploadedScreenshot) {
+      if (imageFitMode === 'contain') {
+        return (
+          <div
+            className="w-full h-full relative flex items-center justify-center overflow-hidden"
+            style={{ backgroundColor: imageBgFill }}
+          >
+            <img
+              src={uploadedScreenshot}
+              alt="Uploaded Graphic Preview"
+              className="max-w-full max-h-full object-contain block select-none pointer-events-none transition-transform duration-150"
+              style={{
+                transform: imageZoom !== 100 ? `scale(${imageZoom / 100})` : undefined,
+              }}
+            />
+          </div>
+        );
+      }
+
+      if (imageFitMode === 'cover') {
+        return (
+          <div
+            className="w-full h-full relative overflow-hidden flex items-center justify-center"
+            style={{ backgroundColor: imageBgFill }}
+          >
+            <img
+              src={uploadedScreenshot}
+              alt="Uploaded Graphic Preview"
+              className="w-full h-full object-cover object-center block select-none pointer-events-none transition-transform duration-150"
+              style={{
+                transform: imageZoom !== 100 ? `scale(${imageZoom / 100})` : undefined,
+              }}
+            />
+          </div>
+        );
+      }
+
+      if (imageFitMode === 'fill') {
+        return (
+          <div
+            className="w-full h-full relative overflow-hidden"
+            style={{ backgroundColor: imageBgFill }}
+          >
+            <img
+              src={uploadedScreenshot}
+              alt="Uploaded Graphic Preview"
+              className="w-full h-full block select-none pointer-events-none"
+            />
+          </div>
+        );
+      }
+
+      // Custom Fit with Pan & Zoom
       return (
-        <div className="w-full h-full relative bg-black overflow-y-auto flex flex-col items-center">
+        <div
+          className="w-full h-full relative overflow-hidden flex items-center justify-center"
+          style={{ backgroundColor: imageBgFill }}
+        >
           <img
             src={uploadedScreenshot}
-            alt="Uploaded Website Preview"
-            className="w-full object-cover object-top block"
+            alt="Uploaded Graphic Preview"
+            className="max-w-none block select-none pointer-events-none transition-transform duration-100"
+            style={{
+              transform: `translate(${imageOffsetX}%, ${imageOffsetY}%) scale(${imageZoom / 100})`,
+              transformOrigin: 'center center',
+            }}
           />
         </div>
       );
@@ -1078,7 +1158,20 @@ export default function MochupPage() {
         />
       </div>
     );
-  }, [sourceType, uploadedScreenshot, selectedTemplate, renderMode, submittedUrl, websiteUrl, isRasterizingExport]);
+  }, [
+    sourceType,
+    uploadedScreenshot,
+    selectedTemplate,
+    renderMode,
+    submittedUrl,
+    websiteUrl,
+    isRasterizingExport,
+    imageFitMode,
+    imageZoom,
+    imageOffsetX,
+    imageOffsetY,
+    imageBgFill,
+  ]);
 
   const activePurpose = getActivePurposeDimensions();
 
@@ -1554,6 +1647,148 @@ export default function MochupPage() {
             </div>
           </div>
         )}
+
+        {/* Uploaded Image Sizing & Alignment Control Bar (Eliminates cutting & overflow) */}
+        {sourceType === 'upload' && uploadedScreenshot && (
+          <div className="w-full max-w-7xl mx-auto mt-2 pt-2 border-t border-zinc-800/80 flex flex-wrap items-center justify-between gap-3 text-[11px] font-mono">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[#ccff00] font-bold flex items-center gap-1">
+                <Sliders className="w-3.5 h-3.5" />
+                IMAGE FIT:
+              </span>
+              <div className="flex items-center gap-1 bg-black border border-zinc-700 rounded-lg p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setImageFitMode('contain')}
+                  className={`px-2 py-1 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                    imageFitMode === 'contain'
+                      ? 'bg-[#ccff00] text-black font-black'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                  title="Fit whole image inside screen with zero cutting/clipping"
+                >
+                  FIT (ZERO CUT)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageFitMode('cover')}
+                  className={`px-2 py-1 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                    imageFitMode === 'cover'
+                      ? 'bg-[#ccff00] text-black font-black'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                  title="Fill screen bounds edge-to-edge"
+                >
+                  FILL (COVER)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageFitMode('fill')}
+                  className={`px-2 py-1 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                    imageFitMode === 'fill'
+                      ? 'bg-[#ccff00] text-black font-black'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                  title="Stretch to match frame exact dimensions"
+                >
+                  STRETCH
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setImageFitMode('custom')}
+                  className={`px-2 py-1 rounded text-[10px] font-bold transition-colors cursor-pointer ${
+                    imageFitMode === 'custom'
+                      ? 'bg-[#ccff00] text-black font-black'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                  title="Custom scale and pan alignment"
+                >
+                  CUSTOM PAN/ZOOM
+                </button>
+              </div>
+
+              {/* Background Color Fill for Letterboxed images */}
+              <div className="flex items-center gap-1.5 ml-2">
+                <span className="text-zinc-400 text-[10px]">LETTERBOX:</span>
+                {[
+                  { color: '#0a0b0e', label: 'Dark' },
+                  { color: '#0d0b16', label: 'Violet' },
+                  { color: '#ffffff', label: 'White' },
+                  { color: '#ccff00', label: 'Volt' },
+                ].map((bg) => (
+                  <button
+                    key={bg.color}
+                    type="button"
+                    onClick={() => setImageBgFill(bg.color)}
+                    className={`w-4 h-4 rounded border cursor-pointer transition-transform ${
+                      imageBgFill === bg.color ? 'scale-125 border-[#ccff00] ring-1 ring-[#ccff00]' : 'border-zinc-700'
+                    }`}
+                    style={{ backgroundColor: bg.color }}
+                    title={`Letterbox fill: ${bg.label}`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Zoom & Alignment Sliders */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-black border border-zinc-700 rounded-lg px-2 py-1">
+                <span className="text-zinc-400 text-[10px]">ZOOM:</span>
+                <input
+                  type="range"
+                  min="50"
+                  max="200"
+                  step="5"
+                  value={imageZoom}
+                  onChange={(e) => setImageZoom(Number(e.target.value))}
+                  className="w-16 accent-[#ccff00] cursor-pointer"
+                />
+                <span className="text-white text-[10px] font-bold w-9 text-right">{imageZoom}%</span>
+              </div>
+
+              {imageFitMode === 'custom' && (
+                <>
+                  <div className="flex items-center gap-1 bg-black border border-zinc-700 rounded-lg px-2 py-1">
+                    <span className="text-zinc-400 text-[10px]">X:</span>
+                    <input
+                      type="range"
+                      min="-50"
+                      max="50"
+                      value={imageOffsetX}
+                      onChange={(e) => setImageOffsetX(Number(e.target.value))}
+                      className="w-14 accent-[#ccff00] cursor-pointer"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1 bg-black border border-zinc-700 rounded-lg px-2 py-1">
+                    <span className="text-zinc-400 text-[10px]">Y:</span>
+                    <input
+                      type="range"
+                      min="-50"
+                      max="50"
+                      value={imageOffsetY}
+                      onChange={(e) => setImageOffsetY(Number(e.target.value))}
+                      className="w-14 accent-[#ccff00] cursor-pointer"
+                    />
+                  </div>
+                </>
+              )}
+
+              <button
+                type="button"
+                onClick={() => {
+                  setImageFitMode('contain');
+                  setImageZoom(100);
+                  setImageOffsetX(0);
+                  setImageOffsetY(0);
+                  setImageBgFill('#0a0b0e');
+                }}
+                className="text-[10px] text-[#ccff00] hover:underline font-bold cursor-pointer"
+              >
+                RESET FIT
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* =================================================================== */}
@@ -1565,6 +1800,22 @@ export default function MochupPage() {
           {/* Scene Selector Tabs */}
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-zinc-500 font-bold uppercase text-[11px] mr-1">SCENE:</span>
+
+            <button
+              onClick={() => {
+                setActiveScene('showcase');
+                setBackdropTheme('dark');
+                setExportTarget('desktop');
+              }}
+              className={`px-2.5 py-1 rounded-lg font-black flex items-center gap-1.5 transition-all border cursor-pointer ${
+                activeScene === 'showcase'
+                  ? 'bg-[#ccff00] text-black border-black shadow-[2px_2px_0px_#000000]'
+                  : 'bg-black text-zinc-400 border-zinc-800 hover:border-zinc-700 hover:text-white'
+              }`}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Web Showcase (Dark Glow)</span>
+            </button>
             
             <button
               onClick={() => {
@@ -1743,6 +1994,23 @@ export default function MochupPage() {
             </div>
           </div>
         
+        {/* SCENE: DARK AMBIENT WEB SHOWCASE (MATCHING USER ATTACHED SCREEN) */}
+        {activeScene === 'showcase' && (
+          <div className="w-full flex flex-col items-center">
+            <DarkAmbientShowcaseScene
+              backdropTheme={backdropTheme}
+              shadowIntensity={shadowIntensity}
+              reflectionEnabled={reflectionEnabled}
+              activeTemplate={selectedTemplate.id}
+              contentRenderer={renderViewportContent}
+            />
+            <div className="mt-4 text-xs font-mono text-zinc-400 text-center flex items-center justify-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-violet-400" />
+              <span>Web Showcase Screen • Dark Ambient Fluid Mesh • 16:10 / 16:9 Pristine Display Frame</span>
+            </div>
+          </div>
+        )}
+
         {/* SCENE: MOBILE STUDIO SCREEN (VALID 9:16 / 19.5:9 MOBILE LAYOUT) */}
         {activeScene === 'mobile' && (
           <div className="w-full flex flex-col items-center">
@@ -2355,7 +2623,7 @@ export default function MochupPage() {
                   <label className="text-[11px] font-bold text-zinc-300 uppercase block mb-1.5">
                     Framing within Target Resolution:
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-1.5">
                     <button
                       type="button"
                       onClick={() => setFramingMode('contain')}
@@ -2365,8 +2633,21 @@ export default function MochupPage() {
                           : 'bg-black text-zinc-400 border-zinc-800 hover:text-white'
                       }`}
                     >
-                      <div className="font-bold text-xs">Contain (Centered)</div>
-                      <div className="text-[10px] opacity-75">Full mockup visible with studio backdrop</div>
+                      <div className="font-bold text-[11px] leading-tight">Contain (Safe)</div>
+                      <div className="text-[9px] opacity-75">Full scene + shadows intact</div>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setFramingMode('exact')}
+                      className={`p-2 rounded-lg border text-left transition-colors cursor-pointer ${
+                        framingMode === 'exact'
+                          ? 'bg-[#ccff00] text-black border-black font-black'
+                          : 'bg-black text-zinc-400 border-zinc-800 hover:text-white'
+                      }`}
+                    >
+                      <div className="font-bold text-[11px] leading-tight">Exact (Bleed)</div>
+                      <div className="text-[9px] opacity-75">100% max fit, zero cut</div>
                     </button>
 
                     <button
@@ -2378,8 +2659,8 @@ export default function MochupPage() {
                           : 'bg-black text-zinc-400 border-zinc-800 hover:text-white'
                       }`}
                     >
-                      <div className="font-bold text-xs">Cover (Tight Crop)</div>
-                      <div className="text-[10px] opacity-75">Scales to fill entire download bounds</div>
+                      <div className="font-bold text-[11px] leading-tight">Cover (Crop)</div>
+                      <div className="text-[9px] opacity-75">Fills entire bounds</div>
                     </button>
                   </div>
                 </div>
@@ -2549,15 +2830,16 @@ export default function MochupPage() {
         id="offscreen-export-staging"
         style={{
           position: 'fixed',
-          left: '-99999px',
+          left: '0px',
           top: '0px',
+          transform: 'translateY(-250%)',
           width: '1600px',
           height: '2400px',
           opacity: 1,
           visibility: 'visible',
           pointerEvents: 'none',
           zIndex: -9999,
-          overflow: 'hidden',
+          overflow: 'visible',
         }}
         aria-hidden="true"
       >

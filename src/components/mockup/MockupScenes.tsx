@@ -54,7 +54,7 @@ export function TrioScene({
   return (
     <div
       id="mockup-export-target"
-      className={`relative w-full max-w-6xl mx-auto min-h-[640px] sm:min-h-[720px] rounded-2xl overflow-hidden p-6 sm:p-12 flex items-center justify-center select-none transition-colors duration-300 ${backdropBg}`}
+      className={`relative w-full max-w-6xl mx-auto min-h-[640px] sm:min-h-[720px] rounded-2xl p-6 sm:p-14 flex items-center justify-center select-none transition-colors duration-300 ${backdropBg}`}
       style={{
         perspective: '1400px',
       }}
@@ -543,6 +543,71 @@ export function MobileStudioScene({
       <div className="mt-4 text-xs font-mono text-zinc-400 text-center flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-[#ccff00]" />
         <span>Mobile Screen Studio • iPhone 16 Pro Flagship Frame • 9:16 / 19.5:9 True Mobile Aspect Ratio</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * SCENE 5: Dark Ambient Web Showcase (Matching User Attached Image)
+ * Features a dark ambient glowing background with radiant neon purple/cyan mesh glow,
+ * hosting a floating widescreen desktop frame with top navigation and hero showcase.
+ */
+export function DarkAmbientShowcaseScene({
+  contentRenderer,
+  backdropTheme,
+  shadowIntensity,
+  reflectionEnabled,
+}: SceneProps) {
+  const backdropBg =
+    backdropTheme === 'volt'
+      ? 'bg-[#0a0b0d] text-zinc-100 border-2 border-black'
+      : backdropTheme === 'concrete'
+      ? 'bg-[#e2e2dc] text-zinc-900'
+      : backdropTheme === 'white'
+      ? 'bg-[#f7f7f3] text-zinc-900'
+      : backdropTheme === 'transparent'
+      ? 'bg-transparent text-white'
+      : 'bg-[#0b0914] text-white'; // Deep midnight violet ambient
+
+  return (
+    <div
+      id="mockup-export-target"
+      className={`relative w-full max-w-6xl mx-auto min-h-[640px] sm:min-h-[720px] rounded-2xl overflow-visible p-6 sm:p-14 flex items-center justify-center select-none transition-colors duration-300 ${backdropBg}`}
+    >
+      {/* Radiant ambient glow layers behind the screen matching image_2d17a67a.png */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden rounded-2xl">
+        <div className="absolute -right-20 -bottom-20 w-[600px] h-[500px] bg-gradient-to-tl from-purple-600/30 via-indigo-600/20 to-transparent blur-3xl" />
+        <div className="absolute -left-20 -top-20 w-[500px] h-[400px] bg-gradient-to-br from-violet-800/25 via-blue-700/15 to-transparent blur-3xl" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-fuchsia-600/10 to-transparent blur-2xl" />
+      </div>
+
+      {/* Floating Desktop Showcase Screen Container */}
+      <div
+        id="mockup-target-desktop"
+        className="relative w-full max-w-4xl z-20 transition-all duration-300"
+        style={{
+          filter: `drop-shadow(0 ${28 * shadowIntensity}px ${50 * shadowIntensity}px rgba(0,0,0,0.7)) drop-shadow(0 0 35px rgba(139,92,246,0.25))`,
+        }}
+      >
+        {/* Chassis Frame */}
+        <div className="bg-[#151322] p-2.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-violet-500/30 shadow-2xl relative overflow-hidden">
+          {/* Subtle Top Ambient Accent */}
+          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400 opacity-60" />
+
+          {/* Screen Content Viewport (Exact 16:10 / 16:9 Display with zero cutting) */}
+          <div className="relative w-full aspect-[16/10] bg-[#0d0b16] rounded-xl sm:rounded-2xl overflow-hidden border border-zinc-800 shadow-inner flex flex-col">
+            {reflectionEnabled && (
+              <div className="absolute inset-0 z-20 pointer-events-none bg-gradient-to-tr from-transparent via-white/5 to-white/10" />
+            )}
+            <div className="w-full h-full overflow-y-auto">
+              {contentRenderer('desktop')}
+            </div>
+          </div>
+        </div>
+
+        {/* Minimal Metallic Desk Shadow Reflection */}
+        <div className="relative mx-auto mt-4 w-3/4 h-2 bg-gradient-to-r from-transparent via-violet-500/30 to-transparent blur-sm rounded-full" />
       </div>
     </div>
   );

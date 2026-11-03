@@ -22,7 +22,10 @@ import {
   ShieldCheck,
   Zap,
   AlertTriangle,
+  Download,
 } from 'lucide-react';
+import { downloadInvoiceA4Pdf } from '@/lib/invoice-pdf';
+import { PurchaseRecord } from '@/lib/purchases';
 
 interface RealMetrics {
   users: {
@@ -125,6 +128,36 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     fetchRealtimeMetrics();
   }, []);
+
+  const [downloadingInvoiceId, setDownloadingInvoiceId] = useState<string | null>(null);
+
+  const handleAdminDownloadInvoice = async (buyer: any) => {
+    try {
+      setDownloadingInvoiceId(buyer.id);
+      const cleanAmountNum = parseFloat(String(buyer.amount).replace(/[^0-9.]/g, '')) || 0;
+      const rec: PurchaseRecord = {
+        id: buyer.id,
+        invoiceId: buyer.invoiceId || `INV-${new Date().getFullYear()}-0001`,
+        userEmail: buyer.email,
+        userName: buyer.name,
+        plan: buyer.plan.toLowerCase().includes('enterprise') ? 'enterprise' : 'pro',
+        planName: buyer.plan,
+        amount: cleanAmountNum,
+        amountFormatted: buyer.amount,
+        currency: String(buyer.amount).includes('$') ? 'USD' : 'INR',
+        billingCycle: 'monthly',
+        gateway: buyer.gateway || 'Razorpay / Card',
+        paymentId: buyer.id,
+        status: (buyer.status === 'Active' ? 'Paid' : buyer.status) as any,
+        date: buyer.date || new Date().toISOString(),
+      };
+      await downloadInvoiceA4Pdf(rec);
+    } catch (e) {
+      console.error('[Admin] Error downloading invoice PDF:', e);
+    } finally {
+      setDownloadingInvoiceId(null);
+    }
+  };
 
   const purchases = metrics?.purchases || [];
   const filteredPurchases = purchases.filter(
@@ -434,8 +467,24 @@ export default function AdminDashboardPage() {
                         <span>{buyer.status}</span>
                       </span>
                     </td>
-                    <td className="p-3.5 text-right">
-                      <span className="text-zinc-600 text-[11px]">{buyer.invoiceId}</span>
+                    <td className="p-3.5 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        <span className="text-zinc-600 text-[11px] font-mono">{buyer.invoiceId}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleAdminDownloadInvoice(buyer)}
+                          disabled={downloadingInvoiceId === buyer.id}
+                          className="px-2 py-0.5 bg-[#ccff00] text-black border border-black text-[10px] font-black uppercase flex items-center gap-1 hover:bg-black hover:text-[#ccff00] cursor-pointer shadow-[1px_1px_0px_#000000] disabled:opacity-50 transition-colors"
+                          title="Direct download A4 size paper PDF (210×297mm)"
+                        >
+                          {downloadingInvoiceId === buyer.id ? (
+                            <RefreshCw className="w-2.5 h-2.5 animate-spin" />
+                          ) : (
+                            <Download className="w-2.5 h-2.5" />
+                          )}
+                          <span>A4 PDF</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
