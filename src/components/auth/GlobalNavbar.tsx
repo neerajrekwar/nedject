@@ -7,7 +7,6 @@ import { useSession } from 'next-auth/react';
 import {
   QrCode,
   Sparkles,
-  Camera,
   User,
   LogIn,
   Video,
@@ -17,11 +16,136 @@ import {
   Menu,
   X,
   ShieldAlert,
+  Monitor,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { getUsageStats, UsageStats } from '@/lib/usage-limits';
 import { StoryShareButton } from '@/components/story/StoryShareButton';
 import { SocialCardsModal } from '@/components/portfolio/SocialCardsModal';
+
+interface PageContext {
+  brandBox: string;
+  brandLink: string;
+  title: string;
+  subtitle: string;
+  statusText: string;
+}
+
+/**
+ * Returns dynamic context (brand box, title, subtitle, status text)
+ * based on the active route pathname.
+ */
+function getPageContext(pathname: string | null): PageContext {
+  const path = pathname || '/';
+
+  if (path === '/' || path === '/photo-qr') {
+    return {
+      brandBox: 'NEDJECT',
+      brandLink: '/',
+      title: 'GENQR_STUDIO',
+      subtitle: 'DEVELOPED BY NEERAJREKWAR',
+      statusText: 'SYS_OK // 300_DPI_READY',
+    };
+  }
+
+  if (path.startsWith('/barcode-pick')) {
+    return {
+      brandBox: '|||||',
+      brandLink: '/barcode-pick',
+      title: 'BARCODE PICK & STUDIO',
+      subtitle: 'INDUSTRIAL LINEAR & 2D BARCODE GENERATOR',
+      statusText: 'SYS_OK // 300_DPI_PRINT',
+    };
+  }
+
+  if (path.startsWith('/normal-dpi-photo') || path.startsWith('/nomral-dpi-photo')) {
+    return {
+      brandBox: 'NR',
+      brandLink: '/normal-dpi-photo',
+      title: 'PHOTO DPI MAKER & AM HALFTONE STUDIO',
+      subtitle: 'RATIOS · OPTIONAL CANVAS FRAMES · 600-1200 DPI · 45-65 LPI',
+      statusText: 'SYS_OK // 600_DPI_READY',
+    };
+  }
+
+  if (path.startsWith('/mochup') || path.startsWith('/mockup')) {
+    return {
+      brandBox: 'NEDJECT',
+      brandLink: '/mochup',
+      title: 'WEBSITE MOCKUP STUDIO',
+      subtitle: 'INTERACTIVE MULTI-DEVICE 9:16 & 16:9 4K ENGINE',
+      statusText: 'SYS_OK // 4K_MOCKUP_READY',
+    };
+  }
+
+  if (path.startsWith('/insta-clip')) {
+    return {
+      brandBox: 'NEDJECT',
+      brandLink: '/insta-clip',
+      title: 'INSTA CLIP STUDIO',
+      subtitle: 'REELS & STORY SOCIAL VIDEO EXPORTER',
+      statusText: 'SYS_OK // 1080x1920_READY',
+    };
+  }
+
+  if (path.startsWith('/fitness-glass/winter-arc-2026')) {
+    return {
+      brandBox: '🔥',
+      brandLink: '/fitness-glass/winter-arc-2026',
+      title: 'WINTER ARC 2026',
+      subtitle: 'ULTRA DISCIPLINE & BIO-CALIBRATION',
+      statusText: 'SYS_OK // PROTOCOL_ACTIVE',
+    };
+  }
+
+  if (path.startsWith('/fitness-glass')) {
+    return {
+      brandBox: '⚡',
+      brandLink: '/fitness-glass',
+      title: 'FITNESS GLASS',
+      subtitle: 'HEALTH BIOMETRICS & ACTIVITY DASHBOARD',
+      statusText: 'SYS_OK // BIOMETRICS_LIVE',
+    };
+  }
+
+  if (path.startsWith('/payment')) {
+    return {
+      brandBox: 'NEDJECT',
+      brandLink: '/payment',
+      title: 'PLANS & PRICING',
+      subtitle: 'PRO MEMBERSHIP & TOOL LICENSES',
+      statusText: 'SYS_OK // LIFETIME_PRO',
+    };
+  }
+
+  if (path.startsWith('/blog')) {
+    return {
+      brandBox: 'NEDJECT',
+      brandLink: '/blog',
+      title: 'ENGINEERING LOG & BLOG',
+      subtitle: 'TECHNICAL ARTICLES & PRINT STANDARDS',
+      statusText: 'SYS_OK // ARTICLES_READY',
+    };
+  }
+
+  if (path.startsWith('/dashboard') || path.startsWith('/qr-crush')) {
+    return {
+      brandBox: 'NEDJECT',
+      brandLink: path,
+      title: 'USER DASHBOARD',
+      subtitle: 'SAVED CODES, EXPORTS & CLOUD CREDITS',
+      statusText: 'SYS_OK // CLOUD_SYNC',
+    };
+  }
+
+  return {
+    brandBox: 'NEDJECT',
+    brandLink: '/',
+    title: 'GENQR_STUDIO',
+    subtitle: 'DEVELOPED BY NEERAJREKWAR',
+    statusText: 'SYS_OK // 300_DPI_READY',
+  };
+}
 
 export function GlobalNavbar() {
   const pathname = usePathname();
@@ -91,7 +215,17 @@ export function GlobalNavbar() {
     }
   }, [session]);
 
-  // Primary Tool navigation links (exact match to visual mockups across all screen sizes)
+  // Exclude navbar inside admin or standalone login
+  if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/auth/signin') {
+    return null;
+  }
+
+  const context = getPageContext(pathname);
+  const userProfileUrl = `/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`;
+  const isAdmin = (session?.user as any)?.role === 'admin' || (session?.user as any)?.email === 'neerajrekwar413@gmail.com';
+  const remainingCredits = Math.max(0, usageStats.remaining);
+
+  // Primary Tool navigation items for mobile drawer
   const navLinks = [
     { href: '/', label: '300 DPI PHOTO QR' },
     { href: '/insta-clip', label: 'INSTA CLIP STUDIO' },
@@ -104,15 +238,6 @@ export function GlobalNavbar() {
     { href: '/payment', label: 'PLANS & PRICING' },
   ];
 
-  // Exclude navbar inside admin or standalone login
-  if (pathname?.startsWith('/admin') || pathname === '/login' || pathname === '/auth/signin') {
-    return null;
-  }
-
-  const userProfileUrl = `/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`;
-  const isAdmin = (session?.user as any)?.role === 'admin' || (session?.user as any)?.email === 'neerajrekwar413@gmail.com';
-  const remainingCredits = Math.max(0, usageStats.remaining);
-
   return (
     <>
       <header
@@ -121,273 +246,265 @@ export function GlobalNavbar() {
         }`}
       >
         {/* ========================================================================================= */}
-        {/* 1. DESKTOP & LARGE SCREENS (lg & xl >= 1024px) - Images 1 & 3                             */}
+        {/* 1. DESKTOP & LARGE SCREENS (lg & xl >= 1024px): SINGLE UNIFIED CONTEXT NAVBAR             */}
         {/* ========================================================================================= */}
-        <div className="hidden lg:block w-full">
-          {/* TIER 1: Top White Header */}
-          <div className="w-full bg-white border-b-2 border-black">
-            <div className="w-full max-w-[1700px] mx-auto px-4 py-2 flex flex-col gap-2">
-              
-              {/* Row 1: Brand badge + Action Buttons */}
-              <div className="flex items-center justify-between gap-3">
-                {/* Brand box: Black with #ccff00 text */}
-                <Link
-                  href="/"
-                  className="bg-black text-[#ccff00] border-2 border-black font-black text-xs sm:text-sm px-3 py-1.5 flex items-center gap-2 hover:bg-[#ccff00] hover:text-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000]"
-                  title="Nedject // genQRstudio"
-                >
-                  <QrCode className="w-4 h-4 text-[#ccff00]" />
-                  <span>Nedject // genQRstudio</span>
-                </Link>
-
-                {/* Right Action Bar */}
-                <div className="flex items-center gap-2.5 flex-wrap">
-                  {/* Credits pill */}
-                  {session?.user ? (
-                    <Link
-                      href={userProfileUrl}
-                      className="flex items-center gap-2 border-2 border-black bg-white px-3 py-1 text-xs font-black hover:bg-zinc-100 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000]"
-                      title="View Profile and Active Plan"
-                    >
-                      <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block animate-pulse" />
-                      <span className="text-zinc-800">CREDITS: {remainingCredits} AVAILABLE</span>
-                      <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-bold">
-                        PRO ACTIVE
-                      </span>
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowAuthModal(true)}
-                      className="flex items-center gap-2 border-2 border-black bg-white px-3 py-1 text-xs font-black hover:bg-zinc-100 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000]"
-                      title="Guest initial uses. Sign in for 10!"
-                    >
-                      <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block" />
-                      <span className="text-zinc-800">CREDITS: {remainingCredits} INITIAL USES</span>
-                      <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-bold">
-                        UNLOCK 10
-                      </span>
-                    </button>
-                  )}
-
-                  {/* Story button */}
-                  <StoryShareButton
-                    variant="pill"
-                    label="STORY"
-                    className="border-2 border-black bg-white text-black px-3 py-1 text-xs font-black hover:bg-zinc-100 shadow-[2px_2px_0px_#000000] rounded-none"
-                  />
-
-                  {/* Upgrade to Pro button */}
-                  <Link
-                    href="/payment"
-                    className="flex items-center gap-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-3 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
-                  >
-                    <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
-                    <span>UPGRADE TO PRO</span>
-                  </Link>
-
-                  {/* Sign In / Register or User Profile */}
-                  {session?.user ? (
-                    <Link
-                      href={userProfileUrl}
-                      className="flex items-center gap-1.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] px-3.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-all whitespace-nowrap cursor-pointer"
-                      title="User Profile"
-                    >
-                      <User className="w-3.5 h-3.5" />
-                      <span className="uppercase truncate max-w-[120px]">
-                        {session.user.name?.split(' ')[0] || 'PROFILE'}
-                      </span>
-                    </Link>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setShowAuthModal(true)}
-                      className="flex items-center gap-1.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] px-3.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-all whitespace-nowrap cursor-pointer"
-                    >
-                      <LogIn className="w-3.5 h-3.5" />
-                      <span>SIGN IN / REGISTER</span>
-                    </button>
-                  )}
-
-                  {/* Admin badge if active */}
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      className="flex items-center gap-1 border-2 border-black bg-rose-500 text-white px-2 py-1 text-xs font-black hover:bg-black transition-colors shadow-[2px_2px_0px_#000000]"
-                    >
-                      <ShieldAlert className="w-3.5 h-3.5" />
-                      <span>ADMIN</span>
-                    </Link>
-                  )}
-                </div>
-              </div>
-
-              {/* Row 2: Full Tool Navigation Strip */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-                {navLinks.map((link) => {
-                  const isActive = pathname === link.href || (link.href === '/' && pathname === '/photo-qr');
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`border-2 border-black font-black text-xs px-2.5 py-1 uppercase transition-all whitespace-nowrap shadow-[1px_1px_0px_#000000] ${
-                        isActive
-                          ? 'bg-black text-[#ccff00]'
-                          : 'bg-white text-black hover:bg-zinc-100'
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              </div>
-
-            </div>
-          </div>
-
-          {/* TIER 2: Bottom Studio Bar (Cream/Off-White #f5f5f0) */}
-          <div className="w-full bg-[#f5f5f0] border-b-2 border-black">
-            <div className="w-full max-w-[1700px] mx-auto px-4 py-2 flex items-center justify-between gap-3">
-              
-              {/* Left: NEDJECT Box + GENQR_STUDIO title */}
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/"
-                  className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
-                >
-                  NEDJECT
-                </Link>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5 text-xs font-black text-black">
-                    <span>GENQR_STUDIO</span>
-                    <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
-                  </div>
-                  <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
-                    DEVELOPED BY NEERAJREKWAR
-                  </span>
-                </div>
-              </div>
-
-              {/* Center: Neo-Brutalist Segmented Bar (Divider-separated) */}
-              <div className="flex items-center border-2 border-black bg-white shadow-[3px_3px_0px_#000000] divide-x-2 divide-black text-xs font-black">
-                {/* OG CARDS (1200x630) */}
-                <button
-                  type="button"
-                  onClick={() => setShowSocialCardsModal(true)}
-                  className="px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap cursor-pointer"
-                  title="Launch OpenGraph 1200x630 Social Card Generator"
-                >
-                  <span className="text-amber-500 font-bold">★</span>
-                  <span>OG CARDS (1200×630)</span>
-                </button>
-
-                {/* MOCKUPS */}
-                <Link
-                  href="/mochup"
-                  className={`px-3 py-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap ${
-                    pathname === '/mochup' ? 'bg-black text-[#ccff00]' : ''
-                  }`}
-                >
-                  MOCKUPS
-                </Link>
-
-                {/* PHOTO DPI */}
-                <Link
-                  href="/normal-dpi-photo"
-                  className={`px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap ${
-                    pathname === '/normal-dpi-photo' ? 'bg-black text-[#ccff00]' : ''
-                  }`}
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>PHOTO DPI</span>
-                </Link>
-
-                {/* BARCODES */}
-                <Link
-                  href="/barcode-pick"
-                  className={`px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap ${
-                    pathname === '/barcode-pick' ? 'bg-black text-[#ccff00]' : ''
-                  }`}
-                >
-                  <BarcodeIcon className="w-3.5 h-3.5" />
-                  <span>BARCODES</span>
-                </Link>
-
-                {/* WINTER ARC 2026 - Highlighted with bright neon #ccff00 */}
-                <Link
-                  href="/fitness-glass/winter-arc-2026"
-                  className="px-3 py-1.5 flex items-center gap-1.5 bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] transition-colors whitespace-nowrap"
-                >
-                  <Flame className="w-3.5 h-3.5 fill-black" />
-                  <span>WINTER ARC 2026</span>
-                </Link>
-              </div>
-
-              {/* Right: Status badge & Quick Action pills (as in Image 1) */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
-                  <span className="w-2.5 h-2.5 bg-emerald-500 border border-black inline-block" />
-                  <span>SYS_OK // 300_DPI_READY</span>
-                </div>
-
-                <Link
-                  href="/fitness-glass/winter-arc-2026"
-                  className="hidden 2xl:flex items-center gap-1.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap"
-                >
-                  <Flame className="w-3.5 h-3.5 fill-black" />
-                  <span>WINTER ARC</span>
-                </Link>
-
-                <button
-                  type="button"
-                  onClick={() => setShowSocialCardsModal(true)}
-                  className="hidden 2xl:flex items-center gap-1.5 border-2 border-black bg-white text-black hover:bg-zinc-100 px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap"
-                >
-                  <span>OG CARDS</span>
-                </button>
-              </div>
-
-            </div>
-          </div>
-        </div>
-
-        {/* ========================================================================================= */}
-        {/* 2. TABLET & MOBILE NAVBAR (< lg: md, sm, xs) - Images 2, 4, 5                             */}
-        {/* ========================================================================================= */}
-        <div className="lg:hidden w-full bg-[#f5f5f0] border-b-2 border-black">
-          <div className="w-full px-3 py-2 flex items-center justify-between gap-2">
+        <div className="hidden lg:block w-full bg-[#f5f5f0] border-b-2 border-black">
+          <div className="w-full max-w-[1750px] mx-auto px-4 py-2.5 flex items-center justify-between gap-3">
             
-            {/* Left: Brand Box & optional subtitle (hidden on smallest screens as in Image 4) */}
-            <div className="flex items-center gap-2.5">
+            {/* LEFT: Dynamic Brand Box + Dynamic Title & Subtitle */}
+            <div className="flex items-center gap-3 shrink-0">
               <Link
-                href="/"
-                className="border-2 border-black bg-white px-2.5 py-1 text-xs sm:text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                href={context.brandLink}
+                className="border-2 border-black bg-white px-3 py-1.5 text-sm xl:text-base font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                title={`${context.brandBox} - ${context.title}`}
               >
-                NEDJECT
+                {context.brandBox}
               </Link>
-
-              {/* Subtitle: visible on sm & md (Images 2 & 5), hidden on xs < 480px (Image 4) */}
-              <div className="hidden sm:flex flex-col">
-                <div className="flex items-center gap-1.5 text-xs font-black text-black">
-                  <span>GENQR_STUDIO</span>
-                  <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+              <div className="flex flex-col justify-center min-w-0">
+                <div className="flex items-center gap-1.5 text-xs xl:text-sm font-black text-black tracking-tight whitespace-nowrap">
+                  <span>{context.title}</span>
+                  <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse shrink-0" />
                 </div>
-                <span className="text-[9px] text-zinc-500 tracking-wider uppercase leading-none">
-                  DEVELOPED BY NEERAJREKWAR
+                <span className="text-[10px] text-zinc-500 tracking-wider uppercase font-semibold leading-none truncate max-w-[220px] xl:max-w-[340px]">
+                  {context.subtitle}
                 </span>
               </div>
             </div>
 
-            {/* Right: Dynamic buttons depending on screen size (Images 2, 4, 5) */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* CENTER: Neo-Brutalist Segmented Navigation Bar */}
+            <div className="flex items-center border-2 border-black bg-white shadow-[3px_3px_0px_#000000] divide-x-2 divide-black text-xs font-black shrink-0">
+              {/* OG CARDS (1200x630) */}
+              <button
+                type="button"
+                onClick={() => setShowSocialCardsModal(true)}
+                className="px-2.5 xl:px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap cursor-pointer"
+                title="Launch OpenGraph 1200x630 Social Card Generator"
+              >
+                <span className="text-amber-500 font-bold">★</span>
+                <span>OG CARDS</span>
+              </button>
+
+              {/* 300 DPI QR */}
+              <Link
+                href="/"
+                className={`px-2.5 xl:px-3 py-1.5 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                  pathname === '/' || pathname === '/photo-qr'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>300 DPI QR</span>
+              </Link>
+
+              {/* INSTA CLIP */}
+              <Link
+                href="/insta-clip"
+                className={`px-2.5 xl:px-3 py-1.5 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                  pathname === '/insta-clip'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                <Video className="w-3.5 h-3.5" />
+                <span>INSTA CLIP</span>
+              </Link>
+
+              {/* MOCKUPS */}
+              <Link
+                href="/mochup"
+                className={`px-2.5 xl:px-3 py-1.5 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                  pathname === '/mochup' || pathname === '/mockup'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                <Monitor className="w-3.5 h-3.5" />
+                <span>MOCKUPS</span>
+              </Link>
+
+              {/* PHOTO DPI */}
+              <Link
+                href="/normal-dpi-photo"
+                className={`px-2.5 xl:px-3 py-1.5 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                  pathname === '/normal-dpi-photo' || pathname === '/nomral-dpi-photo'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                <Printer className="w-3.5 h-3.5" />
+                <span>PHOTO DPI</span>
+              </Link>
+
+              {/* BARCODES */}
+              <Link
+                href="/barcode-pick"
+                className={`px-2.5 xl:px-3 py-1.5 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                  pathname === '/barcode-pick'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                <BarcodeIcon className="w-3.5 h-3.5" />
+                <span>BARCODES</span>
+              </Link>
+
+              {/* WINTER ARC 2026 */}
+              <Link
+                href="/fitness-glass/winter-arc-2026"
+                className={`px-2.5 xl:px-3 py-1.5 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                  pathname === '/fitness-glass/winter-arc-2026'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00]'
+                }`}
+              >
+                <Flame className="w-3.5 h-3.5 fill-current" />
+                <span>WINTER ARC</span>
+              </Link>
+
+              {/* PLANS */}
+              <Link
+                href="/payment"
+                className={`px-2.5 xl:px-3 py-1.5 flex items-center gap-1.5 transition-colors whitespace-nowrap ${
+                  pathname === '/payment'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>PLANS</span>
+              </Link>
+            </div>
+
+            {/* RIGHT: Status Badge, Credits, Story, Upgrade to Pro, Sign In */}
+            <div className="flex items-center gap-2 xl:gap-2.5 shrink-0">
               
-              {/* Tablet only (Image 5): SYS_OK // 2 CREDITS */}
-              <div className="hidden md:flex items-center gap-1.5 border-2 border-black bg-white px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
-                <span className="w-2.5 h-2.5 bg-emerald-500 border border-black inline-block" />
-                <span>SYS_OK // {remainingCredits} CREDITS</span>
+              {/* Dynamic Status badge */}
+              <div className="hidden 2xl:flex items-center gap-2 border-2 border-black bg-white px-2.5 py-1 text-xs font-black shadow-[2px_2px_0px_#000000] whitespace-nowrap">
+                <span className="w-2.5 h-2.5 bg-emerald-500 border border-black inline-block animate-pulse" />
+                <span>{context.statusText}</span>
               </div>
 
-              {/* Standard Mobile & Tablet (Images 2 & 5): ✨ PLANS (Neon #ccff00) */}
+              {/* Credits pill */}
+              {session?.user ? (
+                <Link
+                  href={userProfileUrl}
+                  className="hidden xl:flex items-center gap-2 border-2 border-black bg-white px-2.5 py-1 text-xs font-black hover:bg-zinc-100 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000] whitespace-nowrap"
+                  title="View Profile and Active Plan"
+                >
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block animate-pulse" />
+                  <span className="text-zinc-800">CREDITS: {remainingCredits}</span>
+                  <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-bold">
+                    PRO
+                  </span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(true)}
+                  className="hidden xl:flex items-center gap-1.5 border-2 border-black bg-white px-2.5 py-1 text-xs font-black hover:bg-zinc-100 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000] whitespace-nowrap"
+                  title="Guest initial uses. Sign in for 10!"
+                >
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full inline-block" />
+                  <span className="text-zinc-800">CREDITS: {remainingCredits}</span>
+                  <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-bold">
+                    UNLOCK 10
+                  </span>
+                </button>
+              )}
+
+              {/* Story button */}
+              <StoryShareButton
+                variant="pill"
+                label="STORY"
+                className="border-2 border-black bg-white text-black px-2.5 py-1 text-xs font-black hover:bg-zinc-100 shadow-[2px_2px_0px_#000000] rounded-none whitespace-nowrap"
+              />
+
+              {/* Upgrade to Pro button */}
+              <Link
+                href="/payment"
+                className="flex items-center gap-1 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-2.5 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#ccff00]" />
+                <span>PRO // ∞</span>
+              </Link>
+
+              {/* Sign In / Register or User Profile */}
+              {session?.user ? (
+                <Link
+                  href={userProfileUrl}
+                  className="flex items-center gap-1.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] px-3 py-1 text-xs font-black shadow-[2px_2px_0px_#000000] transition-all whitespace-nowrap cursor-pointer"
+                  title="User Profile"
+                >
+                  <User className="w-3.5 h-3.5" />
+                  <span className="uppercase truncate max-w-[100px]">
+                    {session.user.name?.split(' ')[0] || 'PROFILE'}
+                  </span>
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center gap-1.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] px-3 py-1 text-xs font-black shadow-[2px_2px_0px_#000000] transition-all whitespace-nowrap cursor-pointer"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>SIGN IN</span>
+                </button>
+              )}
+
+              {/* Admin badge if active */}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-1 border-2 border-black bg-rose-500 text-white px-2 py-1 text-xs font-black hover:bg-black transition-colors shadow-[2px_2px_0px_#000000]"
+                  title="Admin Portal"
+                >
+                  <ShieldAlert className="w-3.5 h-3.5" />
+                  <span>ADMIN</span>
+                </Link>
+              )}
+            </div>
+
+          </div>
+        </div>
+
+        {/* ========================================================================================= */}
+        {/* 2. TABLET & MOBILE NAVBAR (< lg: md, sm, xs): DYNAMIC CONTEXT BAR                         */}
+        {/* ========================================================================================= */}
+        <div className="lg:hidden w-full bg-[#f5f5f0] border-b-2 border-black">
+          <div className="w-full px-3 py-2 flex items-center justify-between gap-2">
+            
+            {/* Left: Dynamic Brand Box & Title */}
+            <div className="flex items-center gap-2.5">
+              <Link
+                href={context.brandLink}
+                className="border-2 border-black bg-white px-2.5 py-1 text-xs sm:text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+              >
+                {context.brandBox}
+              </Link>
+
+              {/* Dynamic Title: visible on sm & md, hidden on xs < 480px */}
+              <div className="hidden sm:flex flex-col">
+                <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                  <span>{context.title}</span>
+                  <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                </div>
+                <span className="text-[9px] text-zinc-500 tracking-wider uppercase leading-none truncate max-w-[200px]">
+                  {context.subtitle}
+                </span>
+              </div>
+            </div>
+
+            {/* Right: Dynamic buttons depending on screen size */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              
+              {/* Tablet only: Status & credits */}
+              <div className="hidden md:flex items-center gap-1.5 border-2 border-black bg-white px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                <span className="w-2.5 h-2.5 bg-emerald-500 border border-black inline-block" />
+                <span>{remainingCredits} CREDITS</span>
+              </div>
+
+              {/* Standard Mobile & Tablet: ✨ PLANS (Neon #ccff00) */}
               <Link
                 href="/payment"
                 className="hidden sm:flex items-center gap-1 border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] hover:bg-black hover:text-[#ccff00] transition-colors whitespace-nowrap cursor-pointer"
@@ -408,30 +525,17 @@ export function GlobalNavbar() {
                   </span>
                 </Link>
               ) : (
-                <>
-                  {/* On screen >= sm (Images 2 & 5): ➔] SIGN IN */}
-                  <button
-                    type="button"
-                    onClick={() => setShowAuthModal(true)}
-                    className="hidden sm:flex items-center gap-1.5 border-2 border-black bg-white text-black px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-all whitespace-nowrap cursor-pointer"
-                  >
-                    <LogIn className="w-3.5 h-3.5" />
-                    <span>SIGN IN</span>
-                  </button>
-
-                  {/* On smallest mobile < sm (Image 4): ➔] LOGIN */}
-                  <button
-                    type="button"
-                    onClick={() => setShowAuthModal(true)}
-                    className="sm:hidden flex items-center gap-1.5 border-2 border-black bg-white text-black px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-all whitespace-nowrap cursor-pointer"
-                  >
-                    <LogIn className="w-3.5 h-3.5" />
-                    <span>LOGIN</span>
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={() => setShowAuthModal(true)}
+                  className="flex items-center gap-1.5 border-2 border-black bg-white text-black px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-all whitespace-nowrap cursor-pointer"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>SIGN IN</span>
+                </button>
               )}
 
-              {/* Neo-brutalist Hamburger Button (☰) with 3px shadow (Images 2, 4, 5) */}
+              {/* Neo-brutalist Hamburger Button (☰) with 3px shadow */}
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -455,6 +559,20 @@ export function GlobalNavbar() {
         {/* ========================================================================================= */}
         {isMobileMenuOpen && (
           <div className="lg:hidden w-full bg-white border-b-4 border-black p-4 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+            
+            {/* Header info in drawer */}
+            <div className="flex items-center justify-between p-2 border-2 border-black bg-[#f5f5f0]">
+              <div className="flex items-center gap-2 text-xs font-black">
+                <span className="border border-black bg-black text-[#ccff00] px-1.5 py-0.5 text-[10px]">
+                  {context.brandBox}
+                </span>
+                <span className="truncate max-w-[180px]">{context.title}</span>
+              </div>
+              <span className="text-[10px] font-bold text-zinc-600">
+                {context.statusText}
+              </span>
+            </div>
+
             {/* Quick Actions & Credits */}
             <div className="flex items-center justify-between gap-2 p-2.5 border-2 border-black bg-zinc-50">
               <div className="flex items-center gap-2 text-xs font-black">
@@ -468,7 +586,7 @@ export function GlobalNavbar() {
                     setIsMobileMenuOpen(false);
                     setShowAuthModal(true);
                   }}
-                  className="bg-[#00875a] text-white px-2 py-0.5 text-[10px] font-bold border border-black"
+                  className="bg-[#00875a] text-white px-2 py-0.5 text-[10px] font-bold border border-black cursor-pointer"
                 >
                   UNLOCK 10
                 </button>
@@ -534,7 +652,7 @@ export function GlobalNavbar() {
                     setIsMobileMenuOpen(false);
                     setShowSocialCardsModal(true);
                   }}
-                  className="p-2 border-2 border-black bg-white font-black flex items-center justify-center gap-1.5 hover:bg-[#ccff00] shadow-[2px_2px_0px_#000000]"
+                  className="p-2 border-2 border-black bg-white font-black flex items-center justify-center gap-1.5 hover:bg-[#ccff00] shadow-[2px_2px_0px_#000000] cursor-pointer"
                 >
                   <span className="text-amber-500 font-bold">★</span>
                   <span>OG CARDS</span>
@@ -555,7 +673,7 @@ export function GlobalNavbar() {
             <div className="pt-2 border-t border-black flex items-center justify-between text-[11px] text-zinc-600 font-bold">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-emerald-500 border border-black inline-block" />
-                <span>SYS_OK // 300_DPI_READY</span>
+                <span>{context.statusText}</span>
               </div>
               <span>BUILD 2026.4</span>
             </div>
