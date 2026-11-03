@@ -29,6 +29,10 @@ import {
   Flame,
   Tv,
   Share2,
+  Sliders,
+  Music2,
+  Headphones,
+  Mic,
 } from 'lucide-react';
 import {
   InstaClipOptions,
@@ -53,6 +57,7 @@ import {
   recordInstaClipVideo,
   exportInstaPoster,
   createCinematicAudioStream,
+  decodeMediaAudio,
 } from '@/lib/insta-clip-engine';
 import { UsageBanner } from '@/components/auth/UsageBanner';
 import { useSession } from 'next-auth/react';
@@ -99,6 +104,12 @@ export default function InstaClipPage() {
   // Custom Audio State
   const [customAudioUrl, setCustomAudioUrl] = useState<string | null>(null);
   const [customAudioName, setCustomAudioName] = useState<string | null>(null);
+
+  // Dual Audio Blending & Detection State
+  const [videoAudioBuffer, setVideoAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [customAudioBuffer, setCustomAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [hasOriginalAudio, setHasOriginalAudio] = useState<boolean>(false);
+  const [isAudioDetecting, setIsAudioDetecting] = useState<boolean>(false);
 
   // Options & Tabs
   const [options, setOptions] = useState<InstaClipOptions>(DEFAULT_INSTA_OPTIONS);
@@ -172,7 +183,9 @@ export default function InstaClipPage() {
     const vid = document.createElement('video');
     vid.crossOrigin = 'anonymous';
     vid.playsInline = true;
-    vid.muted = true;
+    const shouldMute = isAudioMuted || !options.useOriginalAudio || options.isOriginalAudioMuted || (options.videoAudioVolume ?? 1.0) === 0;
+    vid.muted = shouldMute;
+    vid.volume = Math.max(0, Math.min(1, options.videoAudioVolume ?? 1.0));
     vid.loop = true;
     vid.preload = 'auto';
     vid.src = mediaSourceUrl;
@@ -204,41 +217,92 @@ export default function InstaClipPage() {
     };
   }, [mediaSourceUrl, mediaType, maxAllowedDuration]);
 
-  // Handle Play/Pause synchronization with video and audio
+  // Handle Play/Pause and Volume synchronization with video and custom audio elements
   useEffect(() => {
     if (mediaType === 'video' && sourceVideoRef.current) {
+      const shouldMuteVideo =
+        isAudioMuted ||
+        !options.useOriginalAudio ||
+        options.isOriginalAudioMuted ||
+        (options.videoAudioVolume ?? 1.0) === 0;
+      sourceVideoRef.current.muted = shouldMuteVideo;
+      sourceVideoRef.current.volume = Math.max(0, Math.min(1, options.videoAudioVolume ?? 1.0));
+
       if (isPlaying && !isRecording) {
         sourceVideoRef.current.play().catch(() => {});
       } else {
         sourceVideoRef.current.pause();
       }
     }
-  }, [isPlaying, isRecording, mediaType]);
 
-  // Handle user scrubbing video timeline
+    if (options.audioStyle === 'custom' && customAudioRef.current) {
+      const shouldMuteCustom =
+        isAudioMuted ||
+        options.isSecondaryAudioMuted ||
+        (options.secondaryAudioVolume ?? 0.7) === 0;
+      customAudioRef.current.muted = shouldMuteCustom;
+      customAudioRef.current.volume = Math.max(0, Math.min(1, options.secondaryAudioVolume ?? 0.7));
+
+      if (isPlaying && !isRecording && !shouldMuteCustom) {
+        customAudioRef.current.play().catch(() => {});
+      } else {
+        customAudioRef.current.pause();
+      }
+    } else if (customAudioRef.current) {
+      customAudioRef.current.pause();
+    }
+  }, [
+    mediaType,
+    isPlaying,
+    isRecording,
+    isAudioMuted,
+    options.useOriginalAudio,
+    options.isOriginalAudioMuted,
+    options.videoAudioVolume,
+    options.audioStyle,
+    options.isSecondaryAudioMuted,
+    options.secondaryAudioVolume,
+  ]);
+
+  // Handle user scrubbing video and audio timeline
   const handleSeek = (time: number) => {
     setCurrentTime(time);
     if (mediaType === 'video' && sourceVideoRef.current) {
       sourceVideoRef.current.currentTime = time % (sourceVideoRef.current.duration || options.durationSeconds);
     }
+    if (customAudioRef.current && customAudioRef.current.duration > 0) {
+      customAudioRef.current.currentTime = time % customAudioRef.current.duration;
+    }
   };
 
-  // Audio preview playback toggle
+  // Synthesized preset audio preview playback (vinyl, synthwave, drone, etc.)
   useEffect(() => {
     if (previewAudioCtxRef.current) {
       previewAudioCtxRef.current.close().catch(() => {});
       previewAudioCtxRef.current = null;
     }
 
-    if (isPlaying && !isAudioMuted && options.audioStyle !== 'muted') {
+    const isSynthPreset =
+      options.audioStyle !== 'custom' &&
+      options.audioStyle !== 'muted' &&
+      options.audioStyle !== 'none';
+    const shouldPlaySynth =
+      isPlaying &&
+      !isRecording &&
+      !isAudioMuted &&
+      !options.isSecondaryAudioMuted &&
+      isSynthPreset &&
+      (options.secondaryAudioVolume ?? 0.7) > 0;
+
+    if (shouldPlaySynth) {
       const { context, stream } = createCinematicAudioStream(
         options.audioStyle,
-        customAudioRef.current
+        null
       );
       if (context && stream) {
         const audioEl = new Audio();
         audioEl.srcObject = stream;
-        audioEl.volume = options.audioVolume ?? 1.0;
+        audioEl.volume = Math.max(0, Math.min(1, options.secondaryAudioVolume ?? 0.7));
         audioEl.play().catch(() => {});
         previewAudioCtxRef.current = context;
       }
@@ -250,7 +314,14 @@ export default function InstaClipPage() {
         previewAudioCtxRef.current = null;
       }
     };
-  }, [isPlaying, isAudioMuted, options.audioStyle, options.audioVolume, customAudioUrl]);
+  }, [
+    isPlaying,
+    isRecording,
+    isAudioMuted,
+    options.audioStyle,
+    options.secondaryAudioVolume,
+    options.isSecondaryAudioMuted,
+  ]);
 
   // Animation render loop
   useEffect(() => {
@@ -313,9 +384,47 @@ export default function InstaClipPage() {
       setMediaType('video');
       const blobUrl = URL.createObjectURL(file);
       setMediaSourceUrl(blobUrl);
+      setIsAudioDetecting(true);
+
+      // Auto-decode audio track from uploaded video
+      decodeMediaAudio(file)
+        .then((buffer) => {
+          setIsAudioDetecting(false);
+          if (buffer && buffer.numberOfChannels > 0 && buffer.duration > 0) {
+            setVideoAudioBuffer(buffer);
+            setHasOriginalAudio(true);
+            // Automatically use original video audio! No need to add other audio unless desired
+            handleUpdate({
+              useOriginalAudio: true,
+              videoAudioVolume: 1.0,
+              isOriginalAudioMuted: false,
+              audioStyle: 'none', // Set secondary BGM to none by default so only video's audio plays!
+            });
+            showToast(`Video audio track detected (${buffer.numberOfChannels}ch, ${Math.round(buffer.duration)}s)! Auto-enabled.`);
+          } else {
+            setVideoAudioBuffer(null);
+            setHasOriginalAudio(false);
+            handleUpdate({
+              useOriginalAudio: false,
+              audioStyle: 'lofi-vinyl',
+            });
+            showToast(`Video loaded (silent video: no audio track detected).`);
+          }
+        })
+        .catch(() => {
+          setIsAudioDetecting(false);
+          setVideoAudioBuffer(null);
+        });
+
       showToast(`Loaded video "${file.name}". Preparing canvas decoder...`);
     } else {
       setMediaType('image');
+      setVideoAudioBuffer(null);
+      setHasOriginalAudio(false);
+      handleUpdate({
+        useOriginalAudio: false,
+        audioStyle: options.audioStyle === 'none' ? 'lofi-vinyl' : options.audioStyle,
+      });
       const reader = new FileReader();
       reader.onload = (event) => {
         const dataUrl = event.target?.result as string;
@@ -326,7 +435,7 @@ export default function InstaClipPage() {
     }
   };
 
-  // Custom Audio Track Upload
+  // Custom Audio Track Upload (Secondary audio for blending)
   const handleAudioUpload = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -334,20 +443,28 @@ export default function InstaClipPage() {
     const audioUrl = URL.createObjectURL(file);
     setCustomAudioUrl(audioUrl);
     setCustomAudioName(file.name);
+
+    decodeMediaAudio(file).then((buf) => {
+      setCustomAudioBuffer(buf);
+    });
+
     handleUpdate({
       audioStyle: 'custom',
       customAudioUrl: audioUrl,
       customAudioName: file.name,
+      secondaryAudioVolume: 0.8,
+      isSecondaryAudioMuted: false,
     });
 
     if (!customAudioRef.current) {
-      customAudioRef.current = new Audio(audioUrl);
-      customAudioRef.current.loop = true;
+      const audio = new Audio(audioUrl);
+      audio.loop = true;
+      customAudioRef.current = audio;
     } else {
       customAudioRef.current.src = audioUrl;
     }
 
-    showToast(`Loaded custom audio track "${file.name}"`);
+    showToast(`Loaded custom audio track "${file.name}" for dual mixing!`);
   };
 
   // Quota verification
@@ -377,7 +494,7 @@ export default function InstaClipPage() {
     setRecordingProgress(0);
 
     try {
-      showToast('Compiling cinematic frames, 17-effect shaders & audio multiplexer...');
+      showToast('Compiling cinematic frames, 17-effect shaders & dual audio mixer...');
       const videoBlob = await recordInstaClipVideo(
         canvasRef.current,
         currentSource,
@@ -385,7 +502,9 @@ export default function InstaClipPage() {
         (percent) => {
           setRecordingProgress(percent);
         },
-        customAudioRef.current
+        customAudioRef.current,
+        videoAudioBuffer,
+        customAudioBuffer
       );
 
       const url = URL.createObjectURL(videoBlob);
@@ -733,8 +852,14 @@ export default function InstaClipPage() {
                   <span className="font-black text-black truncate">{activeEffectMeta.name}</span>
                 </div>
                 <div>
-                  <span className="block font-bold text-zinc-400">AUDIO</span>
-                  <span className="font-black text-black truncate">{options.audioStyle.toUpperCase()}</span>
+                  <span className="block font-bold text-zinc-400">AUDIO MIX</span>
+                  <span className="font-black text-black truncate" title="Active audio stream">
+                    {mediaType === 'video' && options.useOriginalAudio && !options.isOriginalAudioMuted
+                      ? options.audioStyle === 'none' || options.audioStyle === 'muted'
+                        ? `VIDEO (${Math.round((options.videoAudioVolume ?? 1) * 100)}%)`
+                        : `BLEND [V:${Math.round((options.videoAudioVolume ?? 1) * 100)}% + B:${Math.round((options.secondaryAudioVolume ?? 0.7) * 100)}%]`
+                      : options.audioStyle.toUpperCase()}
+                  </span>
                 </div>
               </div>
 
@@ -780,7 +905,7 @@ export default function InstaClipPage() {
                   }`}
                 >
                   <Music className="w-3.5 h-3.5" />
-                  <span>3. AUDIO &amp; CUSTOM</span>
+                  <span>3. DUAL AUDIO MIXER</span>
                 </button>
 
                 <button
@@ -1053,92 +1178,481 @@ export default function InstaClipPage() {
               )}
 
               {/* ======================================================== */}
-              {/* TAB 3: AUDIO SOUNDSCAPES & CUSTOM AUDIO UPLOAD           */}
+              {/* TAB 3: DUAL AUDIO MIXER, BLENDING & CUSTOM SOUNDTRACKS   */}
               {/* ======================================================== */}
               {activeTab === 'audio' && (
                 <div className="space-y-5 animate-in fade-in duration-150 font-mono text-xs">
                   
-                  {/* Custom Audio Upload Box */}
-                  <div className="p-3.5 bg-[#f0fde8] border-2 border-black space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-black uppercase text-black flex items-center gap-1.5">
-                        <Disc className="w-4 h-4 text-emerald-600 animate-spin" />
-                        <span>CUSTOM AUDIO TRACK (UPLOAD YOUR OWN):</span>
-                      </span>
-                      <button
-                        onClick={() => audioInputRef.current?.click()}
-                        className="border border-black bg-black text-[#ccff00] px-2.5 py-1 font-black text-[11px] hover:bg-[#ccff00] hover:text-black transition-colors cursor-pointer"
-                      >
-                        CHOOSE MP3 / WAV
-                      </button>
-                      <input
-                        ref={audioInputRef}
-                        type="file"
-                        accept="audio/mp3,audio/wav,audio/aac,audio/m4a,audio/*"
-                        onChange={handleAudioUpload}
-                        className="hidden"
-                      />
-                    </div>
-                    {customAudioName ? (
-                      <div className="text-[11px] font-bold text-emerald-800">
-                        Active Custom Track: <strong>{customAudioName}</strong>
+                  {/* Top Status & Blend Mode Banner */}
+                  <div className="p-3.5 bg-black text-white border-2 border-black space-y-2">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-[#ccff00] animate-pulse" />
+                        <span className="font-black text-xs uppercase tracking-wider text-[#ccff00]">
+                          DUAL AUDIO MIXER &amp; SOUNDTRACK BLENDER
+                        </span>
                       </div>
-                    ) : (
-                      <p className="text-[10px] text-zinc-600">
-                        Upload any background music, beat, or voiceover file. Audio will be multiplexed into exported MP4/WebM!
-                      </p>
-                    )}
-                  </div>
+                      
+                      <div className="flex items-center gap-2">
+                        {mediaType === 'video' ? (
+                          hasOriginalAudio ? (
+                            <span className="border border-[#ccff00] bg-[#ccff00]/20 text-[#ccff00] text-[10px] font-black px-2 py-0.5 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-[#ccff00]" />
+                              <span>ORIGINAL VIDEO AUDIO DETECTED</span>
+                            </span>
+                          ) : isAudioDetecting ? (
+                            <span className="border border-amber-400 bg-amber-400/20 text-amber-300 text-[10px] font-black px-2 py-0.5">
+                              ANALYZING AUDIO TRACK...
+                            </span>
+                          ) : (
+                            <span className="border border-zinc-600 bg-zinc-800 text-zinc-400 text-[10px] font-black px-2 py-0.5">
+                              NO AUDIO IN VIDEO
+                            </span>
+                          )
+                        ) : (
+                          <span className="border border-cyan-400 bg-cyan-400/20 text-cyan-300 text-[10px] font-black px-2 py-0.5">
+                            PHOTO MODE (SOUNDTRACK ACTIVE)
+                          </span>
+                        )}
 
-                  {/* Master Volume */}
-                  <div className="p-3 bg-[#fafaf8] border-2 border-black space-y-1.5">
-                    <div className="flex justify-between items-center font-black uppercase text-black">
-                      <span>AUDIO VOLUME:</span>
-                      <span className="bg-black text-[#ccff00] px-2 py-0.5 border border-black font-black">
-                        {Math.round((options.audioVolume ?? 1.0) * 100)}%
-                      </span>
+                        <span className="border border-white/30 text-white text-[10px] font-black px-2 py-0.5">
+                          {options.audioStyle === 'none' || options.audioStyle === 'muted'
+                            ? (options.useOriginalAudio ? 'SOLO VIDEO AUDIO' : 'MUTED')
+                            : 'DUAL BLEND ACTIVE'}
+                        </span>
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      min="0.0"
-                      max="1.5"
-                      step="0.05"
-                      value={options.audioVolume ?? 1.0}
-                      onChange={(e) => handleUpdate({ audioVolume: parseFloat(e.target.value) })}
-                      className="w-full accent-black cursor-pointer"
-                    />
+
+                    <p className="text-[11px] text-zinc-300 leading-relaxed">
+                      Automatically uses your uploaded video&apos;s original audio. You can blend it with custom background music or atmospheric synthesizer presets, and adjust independent volume levels for both!
+                    </p>
+
+                    {/* Live Dual Audio Mix Ratio Bar */}
+                    <div className="pt-2 border-t border-zinc-800 space-y-1">
+                      <div className="flex justify-between items-center text-[10px] text-zinc-400 font-bold">
+                        <span className="text-[#ccff00]">
+                          CHANNEL 1: VIDEO AUDIO ({options.isOriginalAudioMuted || !options.useOriginalAudio ? 'MUTED' : `${Math.round((options.videoAudioVolume ?? 1.0) * 100)}%`})
+                        </span>
+                        <span className="text-cyan-400">
+                          CHANNEL 2: SECONDARY BGM ({options.isSecondaryAudioMuted || options.audioStyle === 'none' || options.audioStyle === 'muted' ? 'OFF' : `${Math.round((options.secondaryAudioVolume ?? 0.7) * 100)}%`})
+                        </span>
+                      </div>
+
+                      <div className="w-full h-3 bg-zinc-900 border border-zinc-700 flex overflow-hidden">
+                        <div
+                          className="bg-[#ccff00] h-full transition-all duration-150"
+                          style={{
+                            width: `${
+                              options.isOriginalAudioMuted || !options.useOriginalAudio
+                                ? 0
+                                : Math.min(100, (options.videoAudioVolume ?? 1.0) * 50)
+                            }%`,
+                          }}
+                          title="Original Video Audio Channel"
+                        />
+                        <div
+                          className="bg-cyan-400 h-full transition-all duration-150"
+                          style={{
+                            width: `${
+                              options.isSecondaryAudioMuted || options.audioStyle === 'none' || options.audioStyle === 'muted'
+                                ? 0
+                                : Math.min(100, (options.secondaryAudioVolume ?? 0.7) * 50)
+                            }%`,
+                          }}
+                          title="Secondary Custom/Preset Audio Channel"
+                        />
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Preset Audio Soundscapes */}
-                  <div className="space-y-2">
-                    <label className="font-black uppercase text-black">SYNTHESIZED ACOUSTIC PRESETS:</label>
-                    <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                      {AUDIO_STYLES_CATALOG.map((audio) => {
-                        const isSelected = options.audioStyle === audio.id;
-                        return (
+                  {/* 1-CLICK DUAL AUDIO BLEND BALANCERS */}
+                  <div className="p-3 bg-white border-2 border-black space-y-2">
+                    <span className="font-black uppercase text-black text-[11px] flex items-center gap-1.5">
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>QUICK 1-CLICK DUAL BLEND PRESETS:</span>
+                    </span>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                      <button
+                        onClick={() => {
+                          handleUpdate({
+                            useOriginalAudio: true,
+                            isOriginalAudioMuted: false,
+                            videoAudioVolume: 1.0,
+                            audioStyle: 'none',
+                          });
+                          showToast('Active: 100% Video Audio (No BGM)');
+                        }}
+                        className={`p-1.5 border text-center transition-all cursor-pointer ${
+                          options.audioStyle === 'none' && !options.isOriginalAudioMuted
+                            ? 'bg-black text-[#ccff00] border-black font-black shadow-[2px_2px_0px_#000000]'
+                            : 'bg-zinc-50 hover:bg-zinc-200 border-zinc-300 text-black font-bold'
+                        }`}
+                      >
+                        <div className="text-[10px] font-black">PURE VIDEO</div>
+                        <div className="text-[8px] text-zinc-500">100% Vid · 0% BGM</div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleUpdate({
+                            useOriginalAudio: true,
+                            isOriginalAudioMuted: false,
+                            videoAudioVolume: 1.0,
+                            secondaryAudioVolume: 0.25,
+                            isSecondaryAudioMuted: false,
+                            audioStyle: options.audioStyle === 'none' || options.audioStyle === 'muted' ? 'synthwave-80s' : options.audioStyle,
+                          });
+                          showToast('Active: Voice Priority (100% Video / 25% BGM)');
+                        }}
+                        className="p-1.5 border border-zinc-300 bg-zinc-50 hover:bg-zinc-200 text-black text-center transition-all cursor-pointer"
+                      >
+                        <div className="text-[10px] font-black">VOICE PRIORITY</div>
+                        <div className="text-[8px] text-zinc-500">100% Vid · 25% BGM</div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleUpdate({
+                            useOriginalAudio: true,
+                            isOriginalAudioMuted: false,
+                            videoAudioVolume: 0.8,
+                            secondaryAudioVolume: 0.5,
+                            isSecondaryAudioMuted: false,
+                            audioStyle: options.audioStyle === 'none' || options.audioStyle === 'muted' ? 'lofi-vinyl' : options.audioStyle,
+                          });
+                          showToast('Active: Balanced Studio Mix (80% Video / 50% BGM)');
+                        }}
+                        className="p-1.5 border border-zinc-300 bg-zinc-50 hover:bg-zinc-200 text-black text-center transition-all cursor-pointer"
+                      >
+                        <div className="text-[10px] font-black">BALANCED MIX</div>
+                        <div className="text-[8px] text-zinc-500">80% Vid · 50% BGM</div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleUpdate({
+                            useOriginalAudio: true,
+                            isOriginalAudioMuted: false,
+                            videoAudioVolume: 0.35,
+                            secondaryAudioVolume: 1.0,
+                            isSecondaryAudioMuted: false,
+                            audioStyle: options.audioStyle === 'none' || options.audioStyle === 'muted' ? 'dark-techno' : options.audioStyle,
+                          });
+                          showToast('Active: Music Priority (35% Video / 100% BGM)');
+                        }}
+                        className="p-1.5 border border-zinc-300 bg-zinc-50 hover:bg-zinc-200 text-black text-center transition-all cursor-pointer"
+                      >
+                        <div className="text-[10px] font-black">MUSIC PRIORITY</div>
+                        <div className="text-[8px] text-zinc-500">35% Vid · 100% BGM</div>
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          handleUpdate({
+                            useOriginalAudio: false,
+                            isOriginalAudioMuted: true,
+                            secondaryAudioVolume: 1.0,
+                            isSecondaryAudioMuted: false,
+                            audioStyle: options.audioStyle === 'none' || options.audioStyle === 'muted' ? 'lofi-vinyl' : options.audioStyle,
+                          });
+                          showToast('Active: Music Only (Video Muted)');
+                        }}
+                        className="p-1.5 border border-zinc-300 bg-zinc-50 hover:bg-zinc-200 text-black text-center transition-all cursor-pointer"
+                      >
+                        <div className="text-[10px] font-black">MUSIC ONLY</div>
+                        <div className="text-[8px] text-zinc-500">0% Vid · 100% BGM</div>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ======================================================== */}
+                  {/* CHANNEL 1: ORIGINAL VIDEO AUDIO TRACK CONTROLS           */}
+                  {/* ======================================================== */}
+                  <div className={`p-4 border-2 border-black space-y-3 transition-colors ${
+                    options.useOriginalAudio && !options.isOriginalAudioMuted ? 'bg-[#f4ffc4]' : 'bg-[#f5f5f0]'
+                  }`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/20 pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 bg-black" />
+                        <span className="font-black uppercase text-black text-xs tracking-wider flex items-center gap-1.5">
+                          <Mic className="w-4 h-4 text-black" />
+                          <span>CHANNEL 1: ORIGINAL VIDEO AUDIO</span>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const newMuted = !options.isOriginalAudioMuted;
+                            handleUpdate({ isOriginalAudioMuted: newMuted });
+                            showToast(newMuted ? 'Original video audio muted' : 'Original video audio unmuted');
+                          }}
+                          className={`px-2.5 py-1 font-mono text-[11px] font-black border border-black flex items-center gap-1 transition-colors cursor-pointer ${
+                            options.isOriginalAudioMuted
+                              ? 'bg-zinc-200 text-zinc-600'
+                              : 'bg-black text-[#ccff00]'
+                          }`}
+                        >
+                          {options.isOriginalAudioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                          <span>{options.isOriginalAudioMuted ? 'MUTED' : 'UNMUTED'}</span>
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            const toggle = !options.useOriginalAudio;
+                            handleUpdate({ useOriginalAudio: toggle });
+                            showToast(toggle ? 'Original video audio enabled' : 'Original video audio disabled');
+                          }}
+                          className={`px-2.5 py-1 font-mono text-[11px] font-black border border-black transition-colors cursor-pointer ${
+                            options.useOriginalAudio
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-zinc-200 text-zinc-700'
+                          }`}
+                        >
+                          {options.useOriginalAudio ? '✓ ENABLED' : 'DISABLED'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Original Audio Volume Slider */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center font-black uppercase text-black">
+                        <span className="flex items-center gap-1 text-[11px]">
+                          <span>VIDEO AUDIO VOLUME:</span>
+                          {options.isOriginalAudioMuted && <span className="text-rose-600">(MUTED)</span>}
+                        </span>
+                        <span className="bg-black text-[#ccff00] px-2 py-0.5 border border-black font-black text-xs">
+                          {options.isOriginalAudioMuted ? '0%' : `${Math.round((options.videoAudioVolume ?? 1.0) * 100)}%`}
+                          {(options.videoAudioVolume ?? 1.0) > 1.0 && ' (BOOSTED)'}
+                        </span>
+                      </div>
+
+                      <input
+                        type="range"
+                        min="0.0"
+                        max="1.5"
+                        step="0.05"
+                        value={options.isOriginalAudioMuted ? 0 : (options.videoAudioVolume ?? 1.0)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          handleUpdate({
+                            videoAudioVolume: val,
+                            isOriginalAudioMuted: val === 0,
+                            useOriginalAudio: true,
+                          });
+                        }}
+                        className="w-full accent-black cursor-pointer h-2 bg-zinc-200 border border-black"
+                      />
+
+                      <div className="flex justify-between items-center text-[10px] text-zinc-600 font-bold">
+                        <span>0% (Silent)</span>
+                        <div className="flex items-center gap-1">
                           <button
-                            key={audio.id}
+                            onClick={() => handleUpdate({ videoAudioVolume: 0.5, isOriginalAudioMuted: false })}
+                            className="px-1.5 py-0.5 bg-white border border-black text-[9px] hover:bg-zinc-100"
+                          >
+                            50%
+                          </button>
+                          <button
+                            onClick={() => handleUpdate({ videoAudioVolume: 1.0, isOriginalAudioMuted: false })}
+                            className="px-1.5 py-0.5 bg-white border border-black text-[9px] hover:bg-zinc-100 font-black"
+                          >
+                            100%
+                          </button>
+                          <button
+                            onClick={() => handleUpdate({ videoAudioVolume: 1.3, isOriginalAudioMuted: false })}
+                            className="px-1.5 py-0.5 bg-white border border-black text-[9px] hover:bg-zinc-100"
+                          >
+                            130% Boost
+                          </button>
+                        </div>
+                        <span>150% (Max Boost)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ======================================================== */}
+                  {/* CHANNEL 2: SECONDARY / CUSTOM AUDIO & SOUNDSCAPES        */}
+                  {/* ======================================================== */}
+                  <div className={`p-4 border-2 border-black space-y-3 transition-colors ${
+                    options.audioStyle !== 'none' && options.audioStyle !== 'muted' && !options.isSecondaryAudioMuted
+                      ? 'bg-[#eef8ff]'
+                      : 'bg-[#fafaf8]'
+                  }`}>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-black/20 pb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-2.5 h-2.5 bg-black" />
+                        <span className="font-black uppercase text-black text-xs tracking-wider flex items-center gap-1.5">
+                          <Headphones className="w-4 h-4 text-black" />
+                          <span>CHANNEL 2: SECONDARY AUDIO (CUSTOM OR PRESET BGM)</span>
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            const newMuted = !options.isSecondaryAudioMuted;
+                            handleUpdate({ isSecondaryAudioMuted: newMuted });
+                            showToast(newMuted ? 'Secondary audio muted' : 'Secondary audio unmuted');
+                          }}
+                          className={`px-2.5 py-1 font-mono text-[11px] font-black border border-black flex items-center gap-1 transition-colors cursor-pointer ${
+                            options.isSecondaryAudioMuted || options.audioStyle === 'none' || options.audioStyle === 'muted'
+                              ? 'bg-zinc-200 text-zinc-600'
+                              : 'bg-black text-[#00ffff]'
+                          }`}
+                        >
+                          {options.isSecondaryAudioMuted ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+                          <span>{options.isSecondaryAudioMuted ? 'MUTED' : 'ACTIVE'}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Secondary Audio Volume Slider */}
+                    <div className="space-y-1.5">
+                      <div className="flex justify-between items-center font-black uppercase text-black">
+                        <span className="flex items-center gap-1 text-[11px]">
+                          <span>SECONDARY BGM VOLUME:</span>
+                          {(options.isSecondaryAudioMuted || options.audioStyle === 'none' || options.audioStyle === 'muted') && (
+                            <span className="text-zinc-500">(OFF / MUTED)</span>
+                          )}
+                        </span>
+                        <span className="bg-black text-cyan-300 px-2 py-0.5 border border-black font-black text-xs">
+                          {options.isSecondaryAudioMuted || options.audioStyle === 'none' || options.audioStyle === 'muted'
+                            ? '0%'
+                            : `${Math.round((options.secondaryAudioVolume ?? 0.7) * 100)}%`}
+                          {(options.secondaryAudioVolume ?? 0.7) > 1.0 && ' (BOOSTED)'}
+                        </span>
+                      </div>
+
+                      <input
+                        type="range"
+                        min="0.0"
+                        max="1.5"
+                        step="0.05"
+                        value={options.isSecondaryAudioMuted ? 0 : (options.secondaryAudioVolume ?? 0.7)}
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          handleUpdate({
+                            secondaryAudioVolume: val,
+                            isSecondaryAudioMuted: val === 0,
+                          });
+                        }}
+                        className="w-full accent-black cursor-pointer h-2 bg-zinc-200 border border-black"
+                      />
+
+                      <div className="flex justify-between items-center text-[10px] text-zinc-600 font-bold">
+                        <span>0% (Silent)</span>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => handleUpdate({ secondaryAudioVolume: 0.3, isSecondaryAudioMuted: false })}
+                            className="px-1.5 py-0.5 bg-white border border-black text-[9px] hover:bg-zinc-100"
+                          >
+                            30% Subtle
+                          </button>
+                          <button
+                            onClick={() => handleUpdate({ secondaryAudioVolume: 0.7, isSecondaryAudioMuted: false })}
+                            className="px-1.5 py-0.5 bg-white border border-black text-[9px] hover:bg-zinc-100 font-black"
+                          >
+                            70% Default
+                          </button>
+                          <button
+                            onClick={() => handleUpdate({ secondaryAudioVolume: 1.0, isSecondaryAudioMuted: false })}
+                            className="px-1.5 py-0.5 bg-white border border-black text-[9px] hover:bg-zinc-100"
+                          >
+                            100% Full
+                          </button>
+                        </div>
+                        <span>150% (Max Boost)</span>
+                      </div>
+                    </div>
+
+                    {/* Custom Audio Upload Box */}
+                    <div className="p-3 bg-white border-2 border-black space-y-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <span className="font-black uppercase text-black text-xs flex items-center gap-1.5">
+                            <Disc className="w-4 h-4 text-emerald-600" />
+                            <span>UPLOAD CUSTOM AUDIO (MP3 / WAV / AAC):</span>
+                          </span>
+                          <p className="text-[10px] text-zinc-500">
+                            Upload your music track, voiceover, beat, or podcast clip to blend with video audio
+                          </p>
+                        </div>
+
+                        <button
+                          onClick={() => audioInputRef.current?.click()}
+                          className="border-2 border-black bg-black text-[#ccff00] px-3 py-1.5 font-black text-xs hover:bg-[#ccff00] hover:text-black transition-colors cursor-pointer shrink-0 shadow-[2px_2px_0px_#000000]"
+                        >
+                          CHOOSE AUDIO FILE
+                        </button>
+                        <input
+                          ref={audioInputRef}
+                          type="file"
+                          accept="audio/mp3,audio/wav,audio/aac,audio/m4a,audio/*"
+                          onChange={handleAudioUpload}
+                          className="hidden"
+                        />
+                      </div>
+
+                      {customAudioName && (
+                        <div className="p-2 bg-emerald-50 border border-emerald-400 flex items-center justify-between text-xs font-bold text-emerald-900">
+                          <span className="truncate">
+                            Active Custom Track: <strong>{customAudioName}</strong>
+                          </span>
+                          <button
                             onClick={() => {
-                              handleUpdate({ audioStyle: audio.id });
-                              showToast(`Audio Atmosphere: ${audio.label}`);
+                              handleUpdate({ audioStyle: 'custom' });
+                              showToast(`Using custom audio: ${customAudioName}`);
                             }}
-                            className={`w-full p-2.5 border-2 text-left font-black transition-all cursor-pointer flex items-center justify-between ${
-                              isSelected
-                                ? 'border-black bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
-                                : 'border-zinc-300 bg-white text-black hover:border-black'
+                            className={`px-2 py-0.5 border border-black text-[10px] font-black ${
+                              options.audioStyle === 'custom' ? 'bg-emerald-600 text-white' : 'bg-white text-black'
                             }`}
                           >
-                            <div>
-                              <div className="text-xs">{audio.label}</div>
-                              <div className={`text-[10px] font-normal ${isSelected ? 'text-zinc-300' : 'text-zinc-500'}`}>
-                                {audio.desc}
-                              </div>
-                            </div>
-                            <Radio className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#ccff00]' : 'text-zinc-400'}`} />
+                            {options.audioStyle === 'custom' ? '✓ SELECTED' : 'USE THIS'}
                           </button>
-                        );
-                      })}
+                        </div>
+                      )}
                     </div>
+
+                    {/* Secondary Audio Style Selector Grid */}
+                    <div className="space-y-2 pt-2">
+                      <label className="font-black uppercase text-black text-xs block">
+                        CHOOSE SECONDARY SOUNDTRACK PRESET:
+                      </label>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[300px] overflow-y-auto pr-1">
+                        {AUDIO_STYLES_CATALOG.map((audio) => {
+                          const isSelected = options.audioStyle === audio.id;
+                          return (
+                            <button
+                              key={audio.id}
+                              onClick={() => {
+                                handleUpdate({
+                                  audioStyle: audio.id,
+                                  isSecondaryAudioMuted: audio.id === 'none' || audio.id === 'muted',
+                                });
+                                showToast(`Secondary Track: ${audio.label}`);
+                              }}
+                              className={`p-2.5 border-2 text-left font-black transition-all cursor-pointer flex items-center justify-between ${
+                                isSelected
+                                  ? 'border-black bg-black text-[#ccff00] shadow-[2px_2px_0px_#000000]'
+                                  : 'border-zinc-300 bg-white text-black hover:border-black'
+                              }`}
+                            >
+                              <div className="pr-2">
+                                <div className="text-xs">{audio.label}</div>
+                                <div className={`text-[10px] font-normal ${isSelected ? 'text-zinc-300' : 'text-zinc-500'}`}>
+                                  {audio.desc}
+                                </div>
+                              </div>
+                              <Radio className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#ccff00]' : 'text-zinc-400'}`} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
                   </div>
 
                 </div>

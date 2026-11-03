@@ -59,6 +59,7 @@ export type CinematicAudioStyle =
   | 'theatrical-braam'
   | 'chill-rhodes'
   | 'custom'
+  | 'none'
   | 'muted';
 
 export type CaptionFontStyle =
@@ -130,6 +131,13 @@ export interface InstaClipOptions {
   customAudioUrl?: string;
   customAudioName?: string;
   audioVolume: number; // 0.0 - 1.5
+  // DUAL AUDIO BLENDING CAPABILITIES:
+  useOriginalAudio?: boolean; // Auto-detect and use original video audio track
+  videoAudioVolume?: number; // 0.0 - 1.5 (Level of original video audio)
+  isOriginalAudioMuted?: boolean;
+  secondaryAudioVolume?: number; // 0.0 - 1.5 (Level of second custom/preset audio)
+  isSecondaryAudioMuted?: boolean;
+  blendAudios?: boolean; // Whether to blend both audios together
   showTimecodeOverlay: boolean;
   caption: CaptionOptions;
 }
@@ -171,6 +179,12 @@ export const DEFAULT_INSTA_OPTIONS: InstaClipOptions = {
   fps: 30,
   audioStyle: 'lofi-vinyl',
   audioVolume: 1.0,
+  useOriginalAudio: true,
+  videoAudioVolume: 1.0,
+  isOriginalAudioMuted: false,
+  secondaryAudioVolume: 0.7,
+  isSecondaryAudioMuted: false,
+  blendAudios: true,
   showTimecodeOverlay: true,
   caption: DEFAULT_CAPTION_OPTIONS,
 };
@@ -229,6 +243,7 @@ export const AUDIO_STYLES_CATALOG: {
   { id: 'theatrical-braam', label: 'Theatrical Inception Braam', category: 'Synthesizer', desc: 'Epic low brass trailer roar with long reverb tail' },
   { id: 'chill-rhodes', label: 'Chill Hop Rain & Rhodes', category: 'Beats', desc: 'Relaxing rain textures with warm electric piano chords' },
   { id: 'custom', label: 'Custom Audio Track (Uploaded)', category: 'Custom', desc: 'Use your own uploaded MP3, WAV, or AAC audio file' },
+  { id: 'none', label: 'No Secondary Audio (Original Video Only)', category: 'Custom', desc: 'Plays pure original video audio without any background music or synths' },
   { id: 'muted', label: 'Muted (Silent Video)', category: 'Custom', desc: 'Export pure video without any audio stream' },
 ];
 
@@ -841,14 +856,58 @@ export function renderInstaClipFrame(
 }
 
 /**
- * Audio Synthesizer Engine using Web Audio API
- * Generates continuous audio streams (vinyl, drone, synthwave, techno, braam, rhodes) or mixes custom audio
+ * Decodes audio from any video or audio file/blob/URL into an AudioBuffer
+ */
+export async function decodeMediaAudio(
+  mediaUrlOrBlob: string | Blob,
+  audioCtx?: AudioContext
+): Promise<AudioBuffer | null> {
+  if (typeof window === 'undefined') return null;
+  try {
+    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioCtx) return null;
+    const ctx = audioCtx || new AudioCtx();
+    let arrayBuffer: ArrayBuffer;
+    if (typeof mediaUrlOrBlob === 'string') {
+      const response = await fetch(mediaUrlOrBlob);
+      arrayBuffer = await response.arrayBuffer();
+    } else {
+      arrayBuffer = await mediaUrlOrBlob.arrayBuffer();
+    }
+    const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
+    if (!audioCtx && ctx.state !== 'closed') {
+      ctx.close().catch(() => {});
+    }
+    return audioBuffer;
+  } catch (err) {
+    console.warn('Could not decode audio track (media may be silent):', err);
+    return null;
+  }
+}
+
+export interface AudioMixerSources {
+  videoElement?: HTMLVideoElement | null;
+  videoAudioBuffer?: AudioBuffer | null;
+  customAudioElement?: HTMLAudioElement | null;
+  customAudioBuffer?: AudioBuffer | null;
+}
+
+/**
+ * Dual Audio Mixer & Synthesizer Engine using Web Audio API
+ * Generates continuous audio streams (synthesized presets or custom track)
+ * AND blends original video audio with independent gain channels!
  */
 export function createCinematicAudioStream(
-  audioStyle: CinematicAudioStyle,
-  customAudioElement?: HTMLAudioElement | null
-): { context: AudioContext; stream: MediaStream | null } {
-  if (typeof window === 'undefined' || audioStyle === 'muted') {
+  audioStyleOrOptions: CinematicAudioStyle | InstaClipOptions,
+  customAudioElementOrSources?: HTMLAudioElement | null | AudioMixerSources
+): {
+  context: AudioContext;
+  stream: MediaStream | null;
+  videoGainNode?: GainNode;
+  secondaryGainNode?: GainNode;
+  masterGainNode?: GainNode;
+} {
+  if (typeof window === 'undefined') {
     return { context: null as any, stream: null };
   }
 
@@ -858,162 +917,268 @@ export function createCinematicAudioStream(
   const ctx = new AudioCtx();
   const dest = ctx.createMediaStreamDestination();
 
+  const isOptionsObj = typeof audioStyleOrOptions === 'object' && audioStyleOrOptions !== null;
+  const options: InstaClipOptions = isOptionsObj
+    ? (audioStyleOrOptions as InstaClipOptions)
+    : ({
+        audioStyle: audioStyleOrOptions as CinematicAudioStyle,
+        audioVolume: 1.0,
+        useOriginalAudio: false,
+        videoAudioVolume: 1.0,
+        isOriginalAudioMuted: false,
+        secondaryAudioVolume: 0.7,
+        isSecondaryAudioMuted: false,
+      } as any);
+
+  let sources: AudioMixerSources = {};
+  if (customAudioElementOrSources) {
+    if (customAudioElementOrSources instanceof HTMLAudioElement) {
+      sources = { customAudioElement: customAudioElementOrSources };
+    } else {
+      sources = customAudioElementOrSources;
+    }
+  }
+
   const masterGain = ctx.createGain();
-  masterGain.gain.value = 0.4;
+  masterGain.gain.value = 1.0;
   masterGain.connect(dest);
 
-  if (audioStyle === 'custom' && customAudioElement) {
-    try {
-      const sourceNode = ctx.createMediaElementSource(customAudioElement);
-      sourceNode.connect(masterGain);
-    } catch {
-      // If already connected or cross-origin
+  let hasAnyActiveAudio = false;
+
+  // CHANNEL 1: Original Video Audio
+  const useOrig = options.useOriginalAudio ?? true;
+  const isOrigMuted = options.isOriginalAudioMuted ?? false;
+  const origVol = isOrigMuted ? 0 : (options.videoAudioVolume ?? 1.0);
+
+  const videoGain = ctx.createGain();
+  videoGain.gain.value = origVol;
+  videoGain.connect(masterGain);
+
+  if (useOrig && origVol > 0) {
+    if (sources.videoAudioBuffer) {
+      const vidBufferSource = ctx.createBufferSource();
+      vidBufferSource.buffer = sources.videoAudioBuffer;
+      vidBufferSource.loop = true;
+      vidBufferSource.connect(videoGain);
+      vidBufferSource.start(0);
+      hasAnyActiveAudio = true;
+    } else if (sources.videoElement) {
+      try {
+        const stream = (sources.videoElement as any).captureStream?.() || (sources.videoElement as any).mozCaptureStream?.();
+        if (stream && stream.getAudioTracks().length > 0) {
+          const track = stream.getAudioTracks()[0];
+          const mediaStreamSource = ctx.createMediaStreamSource(new MediaStream([track]));
+          mediaStreamSource.connect(videoGain);
+          hasAnyActiveAudio = true;
+        }
+      } catch (err) {
+        console.warn('Could not attach video element audio to stream destination:', err);
+      }
     }
-    return { context: ctx, stream: dest.stream };
   }
 
-  if (audioStyle === 'lofi-vinyl') {
-    const bufferSize = ctx.sampleRate * 2;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      const base = (Math.random() * 2 - 1) * 0.02;
-      const isClick = Math.random() < 0.0006;
-      output[i] = base + (isClick ? (Math.random() * 2 - 1) * 0.35 : 0);
+  // CHANNEL 2: Secondary / Custom Audio & Presets
+  const style = options.audioStyle ?? 'muted';
+  const isSecMuted = options.isSecondaryAudioMuted ?? false;
+  const secVol = isSecMuted || style === 'muted' || style === 'none'
+    ? 0
+    : (options.secondaryAudioVolume ?? options.audioVolume ?? 0.7);
+
+  const secondaryGain = ctx.createGain();
+  secondaryGain.gain.value = secVol;
+  secondaryGain.connect(masterGain);
+
+  if (secVol > 0 && style !== 'muted' && style !== 'none') {
+    if (style === 'custom') {
+      if (sources.customAudioBuffer) {
+        const customBufferSource = ctx.createBufferSource();
+        customBufferSource.buffer = sources.customAudioBuffer;
+        customBufferSource.loop = true;
+        customBufferSource.connect(secondaryGain);
+        customBufferSource.start(0);
+        hasAnyActiveAudio = true;
+      } else if (sources.customAudioElement) {
+        try {
+          const stream = (sources.customAudioElement as any).captureStream?.() || (sources.customAudioElement as any).mozCaptureStream?.();
+          if (stream && stream.getAudioTracks().length > 0) {
+            const track = stream.getAudioTracks()[0];
+            const mediaStreamSource = ctx.createMediaStreamSource(new MediaStream([track]));
+            mediaStreamSource.connect(secondaryGain);
+            hasAnyActiveAudio = true;
+          } else {
+            const sourceNode = ctx.createMediaElementSource(sources.customAudioElement);
+            sourceNode.connect(secondaryGain);
+            hasAnyActiveAudio = true;
+          }
+        } catch {
+          // If already connected
+        }
+      }
+    } else if (style === 'lofi-vinyl') {
+      const bufferSize = ctx.sampleRate * 2;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        const base = (Math.random() * 2 - 1) * 0.02;
+        const isClick = Math.random() < 0.0006;
+        output[i] = base + (isClick ? (Math.random() * 2 - 1) * 0.35 : 0);
+      }
+      const whiteNoise = ctx.createBufferSource();
+      whiteNoise.buffer = noiseBuffer;
+      whiteNoise.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 2400;
+
+      whiteNoise.connect(filter);
+      filter.connect(secondaryGain);
+      whiteNoise.start();
+      hasAnyActiveAudio = true;
+    } else if (style === 'cinematic-drone') {
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc1.frequency.value = 55; // A1 low drone
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'sine';
+      osc2.frequency.value = 82.4; // E2 fifth
+
+      const droneFilter = ctx.createBiquadFilter();
+      droneFilter.type = 'lowpass';
+      droneFilter.frequency.value = 320;
+
+      osc1.connect(droneFilter);
+      osc2.connect(droneFilter);
+      droneFilter.connect(secondaryGain);
+
+      osc1.start();
+      osc2.start();
+      hasAnyActiveAudio = true;
+    } else if (style === 'ambient-shimmer') {
+      const bufferSize = ctx.sampleRate * 2;
+      const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const output = noiseBuffer.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0;
+      for (let i = 0; i < bufferSize; i++) {
+        const white = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + white * 0.0555179;
+        b1 = 0.99332 * b1 + white * 0.0750759;
+        b2 = 0.96900 * b2 + white * 0.1538520;
+        output[i] = (b0 + b1 + b2 + white * 0.5362) * 0.035;
+      }
+      const pinkNoise = ctx.createBufferSource();
+      pinkNoise.buffer = noiseBuffer;
+      pinkNoise.loop = true;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 1400;
+      filter.Q.value = 1.2;
+
+      pinkNoise.connect(filter);
+      filter.connect(secondaryGain);
+      pinkNoise.start();
+      hasAnyActiveAudio = true;
+    } else if (style === 'synthwave-80s') {
+      const osc = ctx.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = 65.4; // C2
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 800;
+
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 4.0; // 4Hz pulse
+      const lfoGain = ctx.createGain();
+      lfoGain.gain.value = 400;
+      lfo.connect(filter.frequency);
+      lfo.start();
+
+      osc.connect(filter);
+      filter.connect(secondaryGain);
+      osc.start();
+      hasAnyActiveAudio = true;
+    } else if (style === 'dark-techno') {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 50;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 180;
+
+      osc.connect(filter);
+      filter.connect(secondaryGain);
+      osc.start();
+      hasAnyActiveAudio = true;
+    } else if (style === 'theatrical-braam') {
+      const osc1 = ctx.createOscillator();
+      osc1.type = 'sawtooth';
+      osc1.frequency.value = 43.65; // F1
+
+      const osc2 = ctx.createOscillator();
+      osc2.type = 'triangle';
+      osc2.frequency.value = 65.4;
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 450;
+
+      osc1.connect(filter);
+      osc2.connect(filter);
+      filter.connect(secondaryGain);
+      osc1.start();
+      osc2.start();
+      hasAnyActiveAudio = true;
+    } else if (style === 'chill-rhodes') {
+      const osc = ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = 220; // A3 warm tone
+
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = 650;
+
+      osc.connect(filter);
+      filter.connect(secondaryGain);
+      osc.start();
+      hasAnyActiveAudio = true;
     }
-    const whiteNoise = ctx.createBufferSource();
-    whiteNoise.buffer = noiseBuffer;
-    whiteNoise.loop = true;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 2400;
-
-    whiteNoise.connect(filter);
-    filter.connect(masterGain);
-    whiteNoise.start();
-  } else if (audioStyle === 'cinematic-drone') {
-    const osc1 = ctx.createOscillator();
-    osc1.type = 'sawtooth';
-    osc1.frequency.value = 55; // A1 low drone
-
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'sine';
-    osc2.frequency.value = 82.4; // E2 fifth
-
-    const droneFilter = ctx.createBiquadFilter();
-    droneFilter.type = 'lowpass';
-    droneFilter.frequency.value = 320;
-
-    osc1.connect(droneFilter);
-    osc2.connect(droneFilter);
-    droneFilter.connect(masterGain);
-
-    osc1.start();
-    osc2.start();
-  } else if (audioStyle === 'ambient-shimmer') {
-    const bufferSize = ctx.sampleRate * 2;
-    const noiseBuffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const output = noiseBuffer.getChannelData(0);
-    let b0 = 0, b1 = 0, b2 = 0;
-    for (let i = 0; i < bufferSize; i++) {
-      const white = Math.random() * 2 - 1;
-      b0 = 0.99886 * b0 + white * 0.0555179;
-      b1 = 0.99332 * b1 + white * 0.0750759;
-      b2 = 0.96900 * b2 + white * 0.1538520;
-      output[i] = (b0 + b1 + b2 + white * 0.5362) * 0.035;
-    }
-    const pinkNoise = ctx.createBufferSource();
-    pinkNoise.buffer = noiseBuffer;
-    pinkNoise.loop = true;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.value = 1400;
-    filter.Q.value = 1.2;
-
-    pinkNoise.connect(filter);
-    filter.connect(masterGain);
-    pinkNoise.start();
-  } else if (audioStyle === 'synthwave-80s') {
-    // Pulsing 80s bassline
-    const osc = ctx.createOscillator();
-    osc.type = 'sawtooth';
-    osc.frequency.value = 65.4; // C2
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 800;
-
-    // LFO modulation for pulse
-    const lfo = ctx.createOscillator();
-    lfo.frequency.value = 4.0; // 4Hz pulse
-    const lfoGain = ctx.createGain();
-    lfoGain.gain.value = 400;
-    lfo.connect(filter.frequency);
-    lfo.start();
-
-    osc.connect(filter);
-    filter.connect(masterGain);
-    osc.start();
-  } else if (audioStyle === 'dark-techno') {
-    // 128 BPM Techno Kick Pulse (2.13Hz)
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.value = 50;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 180;
-
-    osc.connect(filter);
-    filter.connect(masterGain);
-    osc.start();
-  } else if (audioStyle === 'theatrical-braam') {
-    // Heavy brass trailer roar
-    const osc1 = ctx.createOscillator();
-    osc1.type = 'sawtooth';
-    osc1.frequency.value = 43.65; // F1
-
-    const osc2 = ctx.createOscillator();
-    osc2.type = 'triangle';
-    osc2.frequency.value = 65.4;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 450;
-
-    osc1.connect(filter);
-    osc2.connect(filter);
-    filter.connect(masterGain);
-    osc1.start();
-    osc2.start();
-  } else if (audioStyle === 'chill-rhodes') {
-    const osc = ctx.createOscillator();
-    osc.type = 'sine';
-    osc.frequency.value = 220; // A3 warm tone
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.value = 650;
-
-    osc.connect(filter);
-    filter.connect(masterGain);
-    osc.start();
   }
 
-  return { context: ctx, stream: dest.stream };
+  if (!hasAnyActiveAudio) {
+    return {
+      context: ctx,
+      stream: null,
+      videoGainNode: videoGain,
+      secondaryGainNode: secondaryGain,
+      masterGainNode: masterGain,
+    };
+  }
+
+  return {
+    context: ctx,
+    stream: dest.stream,
+    videoGainNode: videoGain,
+    secondaryGainNode: secondaryGain,
+    masterGainNode: masterGain,
+  };
 }
 
 /**
  * Records Canvas animation in real time to MP4/WebM video blob
+ * Combines both original video audio and secondary custom/preset audio with precise gain levels!
  */
 export async function recordInstaClipVideo(
   sourceCanvas: HTMLCanvasElement,
   sourceMedia: HTMLImageElement | HTMLVideoElement,
   options: InstaClipOptions,
   onProgress?: (percent: number, currentSecond: number) => void,
-  customAudioElement?: HTMLAudioElement | null
+  customAudioElement?: HTMLAudioElement | null,
+  videoAudioBuffer?: AudioBuffer | null,
+  customAudioBuffer?: AudioBuffer | null
 ): Promise<Blob> {
   const recCanvas = document.createElement('canvas');
   recCanvas.width = options.width;
@@ -1021,8 +1186,13 @@ export async function recordInstaClipVideo(
 
   const canvasStream = recCanvas.captureStream(options.fps);
   const { context: audioCtx, stream: audioStream } = createCinematicAudioStream(
-    options.audioStyle,
-    customAudioElement
+    options,
+    {
+      videoElement: sourceMedia instanceof HTMLVideoElement ? sourceMedia : null,
+      videoAudioBuffer,
+      customAudioElement,
+      customAudioBuffer,
+    }
   );
 
   const combinedStream = new MediaStream();
@@ -1055,13 +1225,17 @@ export async function recordInstaClipVideo(
     };
 
     mediaRecorder.onstop = () => {
-      if (audioCtx) audioCtx.close().catch(() => {});
+      if (audioCtx && audioCtx.state !== 'closed') {
+        audioCtx.close().catch(() => {});
+      }
       const finalBlob = new Blob(recordedChunks, { type: chosenMime });
       resolve(finalBlob);
     };
 
     mediaRecorder.onerror = (e) => {
-      if (audioCtx) audioCtx.close().catch(() => {});
+      if (audioCtx && audioCtx.state !== 'closed') {
+        audioCtx.close().catch(() => {});
+      }
       reject(e);
     };
 
@@ -1071,6 +1245,7 @@ export async function recordInstaClipVideo(
     const frameIntervalMs = 1000 / options.fps;
     let currentFrame = 0;
     const isVideo = sourceMedia instanceof HTMLVideoElement;
+    const startTime = performance.now();
 
     const renderLoop = async () => {
       if (currentFrame >= totalFrames) {
@@ -1084,7 +1259,7 @@ export async function recordInstaClipVideo(
       if (isVideo && sourceMedia.duration > 0) {
         sourceMedia.currentTime = currentSec % sourceMedia.duration;
         // Small pause to allow frame seek
-        await new Promise((r) => setTimeout(r, 12));
+        await new Promise((r) => setTimeout(r, 10));
       }
 
       renderInstaClipFrame(recCanvas, sourceMedia, options, currentSec);
@@ -1095,7 +1270,11 @@ export async function recordInstaClipVideo(
         onProgress(percent, currentSec);
       }
 
-      setTimeout(renderLoop, frameIntervalMs * 0.5);
+      // Pace frame generation to match target wall clock time for audio sync
+      const targetWallElapsed = currentFrame * frameIntervalMs;
+      const actualWallElapsed = performance.now() - startTime;
+      const delay = Math.max(4, targetWallElapsed - actualWallElapsed);
+      setTimeout(renderLoop, delay);
     };
 
     renderLoop();

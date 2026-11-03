@@ -62,6 +62,15 @@ body {
   background: #ccff00;
 }
 
+/* Hide scrollbar for horizontal inline nav elements */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Print Media Styles: Clean Single-Page Invoice Output */
 @media print {
   @page {
