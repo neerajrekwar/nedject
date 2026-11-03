@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
@@ -15,6 +15,7 @@ import {
   Menu,
   X,
   ShieldAlert,
+  ArrowLeft,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { getUsageStats, UsageStats } from '@/lib/usage-limits';
@@ -28,8 +29,6 @@ export function GlobalNavbar() {
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showSocialCardsModal, setShowSocialCardsModal] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
-  const [isVisible, setIsVisible] = useState<boolean>(true);
-  const lastScrollY = useRef(0);
 
   const [usageStats, setUsageStats] = useState<UsageStats>({
     used: 0,
@@ -39,31 +38,6 @@ export function GlobalNavbar() {
     isLoggedIn: false,
     plan: 'guest',
   });
-
-  // Sticky navbar: hide on scroll down, show on scroll up
-  useEffect(() => {
-    const handleScroll = () => {
-      const currentScrollY = window.scrollY;
-      if (isMobileMenuOpen) {
-        setIsVisible(true);
-        return;
-      }
-      if (currentScrollY < 60) {
-        setIsVisible(true);
-        lastScrollY.current = currentScrollY;
-        return;
-      }
-      if (currentScrollY > lastScrollY.current + 8) {
-        setIsVisible(false);
-      } else if (currentScrollY < lastScrollY.current - 8) {
-        setIsVisible(true);
-      }
-      lastScrollY.current = currentScrollY;
-    };
-
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [isMobileMenuOpen]);
 
   // Update usage stats on mount and session change
   const refreshUsage = () => {
@@ -89,7 +63,7 @@ export function GlobalNavbar() {
     }
   }, [session]);
 
-  // Primary Tool navigation links (exact match to visual mockups across all screen sizes)
+  // Primary Tool navigation links
   const navLinks = [
     { href: '/', label: '300 DPI PHOTO QR' },
     { href: '/insta-clip', label: 'INSTA CLIP STUDIO' },
@@ -107,19 +81,43 @@ export function GlobalNavbar() {
     return null;
   }
 
+  const isHomePage = !pathname || pathname === '/' || pathname === '/photo-qr';
+  const isBarcodePick = pathname?.startsWith('/barcode-pick');
+  const isNormalDPI = pathname?.startsWith('/normal-dpi-photo') || pathname?.startsWith('/nomral-dpi-photo');
+  const isMockup = pathname?.startsWith('/mochup') || pathname?.startsWith('/mockup');
+  const isInstaClip = pathname?.startsWith('/insta-clip');
+  const isWinterArc = pathname?.startsWith('/fitness-glass/winter-arc-2026');
+  const isFitnessGlass = !isWinterArc && pathname?.startsWith('/fitness-glass');
+  const isPayment = pathname?.startsWith('/payment');
+  const isBlog = pathname?.startsWith('/blog');
+
   const userProfileUrl = `/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`;
   const isAdmin = (session?.user as any)?.role === 'admin' || (session?.user as any)?.email === 'neerajrekwar413@gmail.com';
   const remainingCredits = Math.max(0, usageStats.remaining);
 
+  // Dynamic context for mobile brand indicator
+  const mobileBrandContext = isBarcodePick
+    ? { box: '|||||', title: 'BARCODE PICK & STUDIO' }
+    : isNormalDPI
+    ? { box: 'NR', title: 'PHOTO DPI MAKER' }
+    : isWinterArc
+    ? { box: '🔥', title: 'WINTER ARC 2026' }
+    : isFitnessGlass
+    ? { box: '⚡', title: 'FITNESS GLASS' }
+    : isMockup
+    ? { box: 'NEDJECT', title: 'WEBSITE MOCKUPS' }
+    : isInstaClip
+    ? { box: 'NEDJECT', title: 'INSTA CLIP' }
+    : isPayment
+    ? { box: 'NEDJECT', title: 'PLANS & PRICING' }
+    : { box: 'NEDJECT', title: 'GENQR_STUDIO' };
+
   return (
     <>
-      <header
-        className={`sticky top-0 z-40 w-full font-mono select-none print:hidden transition-transform duration-300 ease-in-out ${
-          isVisible ? 'translate-y-0' : '-translate-y-full'
-        }`}
-      >
+      {/* Sticky top-0 navbar */}
+      <header className="sticky top-0 z-40 w-full font-mono select-none print:hidden shadow-sm">
         {/* ========================================================================================= */}
-        {/* 1. DESKTOP & LARGE SCREENS (lg & xl >= 1024px) - Images 1 & 3                             */}
+        {/* 1. DESKTOP & LARGE SCREENS (lg & xl >= 1024px)                                             */}
         {/* ========================================================================================= */}
         <div className="hidden lg:block w-full">
           {/* TIER 1: Top White Header */}
@@ -243,149 +241,518 @@ export function GlobalNavbar() {
             </div>
           </div>
 
-          {/* TIER 2: Bottom Studio Bar (Cream/Off-White #f5f5f0) */}
+          {/* TIER 2: Bottom Studio Bar (Cream/Off-White #f5f5f0) - DYNAMIC CONTEXT PER PAGE */}
           <div className="w-full bg-[#f5f5f0] border-b-2 border-black">
             <div className="w-full max-w-[1700px] mx-auto px-4 py-2 flex items-center justify-between gap-3">
               
-              {/* Left: NEDJECT Box + GENQR_STUDIO title */}
-              <div className="flex items-center gap-3">
-                <Link
-                  href="/"
-                  className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
-                >
-                  NEDJECT
-                </Link>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-1.5 text-xs font-black text-black">
-                    <span>GENQR_STUDIO</span>
-                    <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+              {/* ------------------------------------------------------------- */}
+              {/* CASE A: HOME PAGE (Shows NEDJECT + DEVELOPED BY NEERAJREKWAR) */}
+              {/* ------------------------------------------------------------- */}
+              {isHomePage && (
+                <>
+                  {/* Left: NEDJECT Box + GENQR_STUDIO title */}
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                    >
+                      NEDJECT
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>GENQR_STUDIO</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        DEVELOPED BY NEERAJREKWAR
+                      </span>
+                    </div>
                   </div>
-                  <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
-                    DEVELOPED BY NEERAJREKWAR
-                  </span>
-                </div>
-              </div>
 
-              {/* Center: Neo-Brutalist Segmented Bar (Divider-separated) */}
-              <div className="flex items-center border-2 border-black bg-white shadow-[3px_3px_0px_#000000] divide-x-2 divide-black text-xs font-black">
-                {/* OG CARDS (1200x630) */}
-                <button
-                  type="button"
-                  onClick={() => setShowSocialCardsModal(true)}
-                  className="px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap cursor-pointer"
-                  title="Launch OpenGraph 1200x630 Social Card Generator"
-                >
-                  <span className="text-amber-500 font-bold">★</span>
-                  <span>OG CARDS (1200×630)</span>
-                </button>
+                  {/* Center: Neo-Brutalist Segmented Bar */}
+                  <div className="flex items-center border-2 border-black bg-white shadow-[3px_3px_0px_#000000] divide-x-2 divide-black text-xs font-black">
+                    <button
+                      type="button"
+                      onClick={() => setShowSocialCardsModal(true)}
+                      className="px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap cursor-pointer"
+                      title="Launch OpenGraph 1200x630 Social Card Generator"
+                    >
+                      <span className="text-amber-500 font-bold">★</span>
+                      <span>OG CARDS (1200×630)</span>
+                    </button>
 
-                {/* MOCKUPS */}
-                <Link
-                  href="/mochup"
-                  className={`px-3 py-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap ${
-                    pathname === '/mochup' ? 'bg-black text-[#ccff00]' : ''
-                  }`}
-                >
-                  MOCKUPS
-                </Link>
+                    <Link
+                      href="/mochup"
+                      className="px-3 py-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap"
+                    >
+                      MOCKUPS
+                    </Link>
 
-                {/* PHOTO DPI */}
-                <Link
-                  href="/normal-dpi-photo"
-                  className={`px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap ${
-                    pathname === '/normal-dpi-photo' ? 'bg-black text-[#ccff00]' : ''
-                  }`}
-                >
-                  <Printer className="w-3.5 h-3.5" />
-                  <span>PHOTO DPI</span>
-                </Link>
+                    <Link
+                      href="/normal-dpi-photo"
+                      className="px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>PHOTO DPI</span>
+                    </Link>
 
-                {/* BARCODES */}
-                <Link
-                  href="/barcode-pick"
-                  className={`px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap ${
-                    pathname === '/barcode-pick' ? 'bg-black text-[#ccff00]' : ''
-                  }`}
-                >
-                  <BarcodeIcon className="w-3.5 h-3.5" />
-                  <span>BARCODES</span>
-                </Link>
+                    <Link
+                      href="/barcode-pick"
+                      className="px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap"
+                    >
+                      <BarcodeIcon className="w-3.5 h-3.5" />
+                      <span>BARCODES</span>
+                    </Link>
 
-                {/* WINTER ARC 2026 - Highlighted with bright neon #ccff00 */}
-                <Link
-                  href="/fitness-glass/winter-arc-2026"
-                  className="px-3 py-1.5 flex items-center gap-1.5 bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] transition-colors whitespace-nowrap"
-                >
-                  <Flame className="w-3.5 h-3.5 fill-black" />
-                  <span>WINTER ARC 2026</span>
-                </Link>
-              </div>
+                    <Link
+                      href="/fitness-glass/winter-arc-2026"
+                      className="px-3 py-1.5 flex items-center gap-1.5 bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] transition-colors whitespace-nowrap"
+                    >
+                      <Flame className="w-3.5 h-3.5 fill-black" />
+                      <span>WINTER ARC 2026</span>
+                    </Link>
+                  </div>
 
-              {/* Right: Status badge & Quick Action pills (as in Image 1) */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
-                  <span className="w-2.5 h-2.5 bg-emerald-500 border border-black inline-block" />
-                  <span>SYS_OK // 300_DPI_READY</span>
-                </div>
+                  {/* Right: Status badge & Quick Action pills */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 border-2 border-black bg-white px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      <span className="w-2.5 h-2.5 bg-emerald-500 border border-black inline-block" />
+                      <span>SYS_OK // 300_DPI_READY</span>
+                    </div>
 
-                <Link
-                  href="/fitness-glass/winter-arc-2026"
-                  className="hidden 2xl:flex items-center gap-1.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap"
-                >
-                  <Flame className="w-3.5 h-3.5 fill-black" />
-                  <span>WINTER ARC</span>
-                </Link>
+                    <Link
+                      href="/fitness-glass/winter-arc-2026"
+                      className="hidden 2xl:flex items-center gap-1.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap"
+                    >
+                      <Flame className="w-3.5 h-3.5 fill-black" />
+                      <span>WINTER ARC</span>
+                    </Link>
 
-                <button
-                  type="button"
-                  onClick={() => setShowSocialCardsModal(true)}
-                  className="hidden 2xl:flex items-center gap-1.5 border-2 border-black bg-white text-black hover:bg-zinc-100 px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap"
-                >
-                  <span>OG CARDS</span>
-                </button>
-              </div>
+                    <button
+                      type="button"
+                      onClick={() => setShowSocialCardsModal(true)}
+                      className="hidden 2xl:flex items-center gap-1.5 border-2 border-black bg-white text-black hover:bg-zinc-100 px-3 py-1.5 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap"
+                    >
+                      <span>OG CARDS</span>
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE B: PHOTO DPI MAKER (Matches user image_805df1ea.png)                     */}
+              {/* ----------------------------------------------------------------------------- */}
+              {isNormalDPI && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/normal-dpi-photo"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                    >
+                      NR
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>PHOTO DPI MAKER &amp; AM HALFTONE STUDIO</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        RATIOS · OPTIONAL CANVAS FRAMES · 600-1200 DPI · 45-65 LPI · 45° AM SCREENING
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      600 DPI · 55 LPI
+                    </span>
+                    <span className="border-2 border-black bg-white text-zinc-700 px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      FRAME: OFF (BORDERLESS)
+                    </span>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>RETURN TO QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE C: BARCODE PICK & STUDIO (Matches user image_06ba08b1.png)               */}
+              {/* ----------------------------------------------------------------------------- */}
+              {isBarcodePick && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/barcode-pick"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap"
+                    >
+                      |||||
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>BARCODE PICK &amp; STUDIO</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        INDUSTRIAL LINEAR &amp; 2D BARCODE GENERATOR
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      CODE128
+                    </span>
+                    <span className="border-2 border-black bg-black text-[#ccff00] px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      300 DPI PRINT
+                    </span>
+                    <Link
+                      href="/normal-dpi-photo"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <Printer className="w-3.5 h-3.5" />
+                      <span>PHOTO DPI MAKER</span>
+                    </Link>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE D: MOCKUP STUDIO                                                         */}
+              {/* ----------------------------------------------------------------------------- */}
+              {isMockup && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/mochup"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                    >
+                      NEDJECT
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>WEBSITE MOCKUP STUDIO</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        INTERACTIVE MULTI-DEVICE 9:16 &amp; 16:9 4K ENGINE
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      4K UHD 60 FPS
+                    </span>
+                    <span className="border-2 border-black bg-black text-[#ccff00] px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      9:16 &amp; 16:9
+                    </span>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>RETURN TO QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE E: INSTA CLIP STUDIO                                                     */}
+              {/* ----------------------------------------------------------------------------- */}
+              {isInstaClip && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/insta-clip"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                    >
+                      NEDJECT
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>INSTA CLIP STUDIO</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        REELS &amp; STORY SOCIAL VIDEO EXPORTER
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      1080×1920 9:16
+                    </span>
+                    <span className="border-2 border-black bg-black text-[#ccff00] px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      60 FPS MP4/WEBM
+                    </span>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>RETURN TO QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE F: WINTER ARC 2026                                                       */}
+              {/* ----------------------------------------------------------------------------- */}
+              {isWinterArc && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/fitness-glass/winter-arc-2026"
+                      className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-black hover:text-[#ccff00] transition-colors whitespace-nowrap flex items-center gap-1"
+                    >
+                      <Flame className="w-4 h-4 fill-black" />
+                      <span>WINTER ARC</span>
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>WINTER ARC 2026</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        ULTRA DISCIPLINE &amp; BIO-CALIBRATION PROTOCOL
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      PROTOCOL: ACTIVE
+                    </span>
+                    <span className="border-2 border-black bg-black text-[#ccff00] px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      2026 EDITION
+                    </span>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>RETURN TO QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE G: FITNESS GLASS                                                         */}
+              {/* ----------------------------------------------------------------------------- */}
+              {isFitnessGlass && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/fitness-glass"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap"
+                    >
+                      ⚡
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>FITNESS GLASS</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        HEALTH BIOMETRICS &amp; ACTIVITY DASHBOARD
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      WEARABLE SYNC
+                    </span>
+                    <span className="border-2 border-black bg-black text-[#ccff00] px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      BIOMETRICS: OK
+                    </span>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>RETURN TO QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE H: PAYMENT / PLANS                                                       */}
+              {/* ----------------------------------------------------------------------------- */}
+              {isPayment && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/payment"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                    >
+                      NEDJECT
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>PLANS &amp; PRICING</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        PRO MEMBERSHIP &amp; INDUSTRIAL TOOL LICENSES
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      LIFETIME ACCESS
+                    </span>
+                    <span className="border-2 border-black bg-black text-[#ccff00] px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      UNLIMITED CREDITS
+                    </span>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>RETURN TO QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE I: BLOG                                                                  */}
+              {/* ----------------------------------------------------------------------------- */}
+              {isBlog && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/blog"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                    >
+                      NEDJECT
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>ENGINEERING LOG &amp; BLOG</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        TECHNICAL ARTICLES &amp; ISO/IEC PRINT STANDARDS
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      TECHNICAL ARTICLES
+                    </span>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>RETURN TO QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
+
+              {/* ----------------------------------------------------------------------------- */}
+              {/* CASE J: OTHER (Dashboard, User Profile, etc.)                                 */}
+              {/* ----------------------------------------------------------------------------- */}
+              {!isHomePage && !isNormalDPI && !isBarcodePick && !isMockup && !isInstaClip && !isWinterArc && !isFitnessGlass && !isPayment && !isBlog && (
+                <>
+                  <div className="flex items-center gap-3">
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
+                    >
+                      NEDJECT
+                    </Link>
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-1.5 text-xs font-black text-black">
+                        <span>USER DASHBOARD</span>
+                        <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
+                      </div>
+                      <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
+                        SAVED CODES, EXPORTS &amp; CLOUD CREDITS
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2.5">
+                    <span className="border-2 border-black bg-[#ccff00] text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
+                      CLOUD SYNC: OK
+                    </span>
+                    <Link
+                      href="/"
+                      className="border-2 border-black bg-white hover:bg-zinc-100 text-black px-3 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] transition-colors whitespace-nowrap flex items-center gap-1.5"
+                    >
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      <span>RETURN TO QR STUDIO</span>
+                    </Link>
+                  </div>
+                </>
+              )}
 
             </div>
           </div>
         </div>
 
         {/* ========================================================================================= */}
-        {/* 2. TABLET & MOBILE NAVBAR (< lg: md, sm, xs) - Images 2, 4, 5                             */}
+        {/* 2. TABLET & MOBILE NAVBAR (< lg: md, sm, xs)                                              */}
         {/* ========================================================================================= */}
         <div className="lg:hidden w-full bg-[#f5f5f0] border-b-2 border-black">
           <div className="w-full px-3 py-2 flex items-center justify-between gap-2">
             
-            {/* Left: Brand Box & optional subtitle (hidden on smallest screens as in Image 4) */}
+            {/* Left: Dynamic Brand Box & optional subtitle */}
             <div className="flex items-center gap-2.5">
               <Link
                 href="/"
                 className="border-2 border-black bg-white px-2.5 py-1 text-xs sm:text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
               >
-                NEDJECT
+                {mobileBrandContext.box}
               </Link>
 
-              {/* Subtitle: visible on sm & md (Images 2 & 5), hidden on xs < 480px (Image 4) */}
+              {/* Title: visible on sm & md, hidden on xs < 480px */}
               <div className="hidden sm:flex flex-col">
                 <div className="flex items-center gap-1.5 text-xs font-black text-black">
-                  <span>GENQR_STUDIO</span>
+                  <span>{mobileBrandContext.title}</span>
                   <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
                 </div>
-                <span className="text-[9px] text-zinc-500 tracking-wider uppercase leading-none">
-                  DEVELOPED BY NEERAJREKWAR
-                </span>
+                {isHomePage && (
+                  <span className="text-[9px] text-zinc-500 tracking-wider uppercase leading-none">
+                    DEVELOPED BY NEERAJREKWAR
+                  </span>
+                )}
               </div>
             </div>
 
-            {/* Right: Dynamic buttons depending on screen size (Images 2, 4, 5) */}
+            {/* Right: Dynamic buttons depending on screen size */}
             <div className="flex items-center gap-1.5 sm:gap-2">
               
-              {/* Tablet only (Image 5): SYS_OK // 2 CREDITS */}
+              {/* Tablet only: SYS_OK // CREDITS */}
               <div className="hidden md:flex items-center gap-1.5 border-2 border-black bg-white px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap">
                 <span className="w-2.5 h-2.5 bg-emerald-500 border border-black inline-block" />
-                <span>SYS_OK // {remainingCredits} CREDITS</span>
+                <span>{remainingCredits} CREDITS</span>
               </div>
 
-              {/* Standard Mobile & Tablet (Images 2 & 5): ✨ PLANS (Neon #ccff00) */}
+              {/* Standard Mobile & Tablet: ✨ PLANS (Neon #ccff00) */}
               <Link
                 href="/payment"
                 className="hidden sm:flex items-center gap-1 border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] hover:bg-black hover:text-[#ccff00] transition-colors whitespace-nowrap cursor-pointer"
@@ -407,7 +774,6 @@ export function GlobalNavbar() {
                 </Link>
               ) : (
                 <>
-                  {/* On screen >= sm (Images 2 & 5): ➔] SIGN IN */}
                   <button
                     type="button"
                     onClick={() => setShowAuthModal(true)}
@@ -417,7 +783,6 @@ export function GlobalNavbar() {
                     <span>SIGN IN</span>
                   </button>
 
-                  {/* On smallest mobile < sm (Image 4): ➔] LOGIN */}
                   <button
                     type="button"
                     onClick={() => setShowAuthModal(true)}
@@ -429,7 +794,7 @@ export function GlobalNavbar() {
                 </>
               )}
 
-              {/* Neo-brutalist Hamburger Button (☰) with 3px shadow (Images 2, 4, 5) */}
+              {/* Neo-brutalist Hamburger Button (☰) with 3px shadow */}
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -497,7 +862,7 @@ export function GlobalNavbar() {
             {/* Primary Tool Links */}
             <div>
               <div className="text-xs font-black uppercase text-zinc-500 border-b-2 border-black pb-1 mb-2">
-                Studio Tools & Generators
+                Studio Tools &amp; Generators
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
                 {navLinks.map((link) => {
@@ -523,7 +888,7 @@ export function GlobalNavbar() {
             {/* Secondary Studio Bar Links */}
             <div>
               <div className="text-xs font-black uppercase text-zinc-500 border-b-2 border-black pb-1 mb-2">
-                Social & OG Badges
+                Social &amp; OG Badges
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <button
@@ -553,7 +918,7 @@ export function GlobalNavbar() {
             <div className="pt-2 border-t border-black flex items-center justify-between text-[11px] text-zinc-600 font-bold">
               <div className="flex items-center gap-1.5">
                 <span className="w-2 h-2 bg-emerald-500 border border-black inline-block" />
-                <span>SYS_OK // 300_DPI_READY</span>
+                <span>SYS_OK // READY</span>
               </div>
               <span>BUILD 2026.4</span>
             </div>
