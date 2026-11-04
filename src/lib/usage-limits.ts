@@ -1,8 +1,15 @@
 'use client';
 
-export const GUEST_GENERATION_LIMIT = 2;
-export const AUTH_FREE_GENERATION_LIMIT = 10;
-export const PRO_GENERATION_LIMIT = 99999; // Unlimited for Pro
+export {
+  GUEST_GENERATION_LIMIT,
+  AUTH_FREE_GENERATION_LIMIT,
+  PRO_GENERATION_LIMIT,
+} from './usage-constants';
+import {
+  GUEST_GENERATION_LIMIT,
+  AUTH_FREE_GENERATION_LIMIT,
+  PRO_GENERATION_LIMIT,
+} from './usage-constants';
 
 export type ToolKey =
   | 'qr_studio'
@@ -113,79 +120,84 @@ export function getUsageStats(
   isAdminOverride?: boolean
 ): UsageStats {
   const used = getLocalUsageCount();
-  const isAdmin = isAdminOverride ?? isClientAdmin();
-  const cachedPlan = isLoggedIn ? getCachedActivePlan() : null;
+
+  // =========================================================================
+  // 1. GUEST TIER (NOT LOGGED IN): STRICT 2 FREE CREDITS
+  // Never unlimited, never admin, never paid plan. Max remaining is strictly 2.
+  // =========================================================================
+  if (!isLoggedIn) {
+    const limit = GUEST_GENERATION_LIMIT; // 2
+    const remaining = Math.min(limit, Math.max(0, limit - used));
+    return {
+      used,
+      limit,
+      remaining,
+      canGenerate: remaining > 0,
+      isLoggedIn: false,
+      isAdmin: false,
+      isUnlimited: false,
+      plan: 'guest',
+      badgeColor: 'green',
+      badgeLabel: '2 Free Uses',
+      displayRemaining: `${remaining} / 2`,
+      displayLimit: '2',
+      toolBreakdown: getLocalToolBreakdown(),
+    };
+  }
+
+  // =========================================================================
+  // 2. AUTHENTICATED USERS (LOGGED IN)
+  // =========================================================================
+  const isAdmin = Boolean(isAdminOverride ?? isClientAdmin());
+  const cachedPlan = getCachedActivePlan();
   const effectivePlan =
     plan === 'enterprise' || plan === 'pro'
       ? plan
       : cachedPlan || plan;
 
-  const normalizedPlan: 'guest' | 'free' | 'pro' | 'enterprise' = !isLoggedIn
-    ? 'guest'
-    : isAdmin
+  const normalizedPlan: 'free' | 'pro' | 'enterprise' = isAdmin
     ? 'enterprise'
     : (effectivePlan === 'pro' || effectivePlan === 'enterprise' ? effectivePlan : 'free');
 
   const isPaidPlan = normalizedPlan === 'pro' || normalizedPlan === 'enterprise';
   const isUnlimited = isAdmin || isPaidPlan;
-  const limit = !isLoggedIn
-    ? GUEST_GENERATION_LIMIT
-    : isUnlimited
-    ? PRO_GENERATION_LIMIT
-    : AUTH_FREE_GENERATION_LIMIT;
 
-  const remaining = isUnlimited ? 99999 : Math.max(0, limit - used);
-  const canGenerate = isUnlimited || remaining > 0;
-
-  // Colors based on user specifications:
-  // Green: free / guest / 2-10 uses
-  // Yellow: pro studio
-  // Purple: enterprise pack / admin
-  let badgeColor: 'green' | 'yellow' | 'purple' = 'green';
-  let badgeLabel = '2 Free Uses';
-  let displayRemaining = '2 Uses';
-  let displayLimit = '2';
-
-  if (!isLoggedIn) {
-    badgeColor = 'green';
-    badgeLabel = '2 Free Uses';
-    displayRemaining = '2 Uses';
-    displayLimit = '2';
-  } else if (isAdmin) {
-    badgeColor = 'purple';
-    badgeLabel = 'Admin Unlimited';
-    displayRemaining = '∞ Unlimited';
-    displayLimit = 'Unlimited';
-  } else if (normalizedPlan === 'enterprise') {
-    badgeColor = 'purple';
-    badgeLabel = 'Enterprise Pack';
-    displayRemaining = '∞ Unlimited';
-    displayLimit = 'Unlimited';
-  } else if (normalizedPlan === 'pro') {
-    badgeColor = 'yellow';
-    badgeLabel = 'Pro Studio';
-    displayRemaining = '∞ Unlimited';
-    displayLimit = 'Unlimited';
-  } else {
-    badgeColor = 'green';
-    badgeLabel = 'Free Tier';
-    displayRemaining = `${remaining} / 10`;
-    displayLimit = '10';
+  if (isUnlimited) {
+    // 3. PAID TIER (PRO / ENTERPRISE) OR ADMIN: UNLIMITED CREDITS
+    const isEnterpriseOrAdmin = isAdmin || normalizedPlan === 'enterprise';
+    return {
+      used,
+      limit: PRO_GENERATION_LIMIT, // 99999
+      remaining: 99999,
+      canGenerate: true,
+      isLoggedIn: true,
+      isAdmin,
+      isUnlimited: true,
+      plan: normalizedPlan,
+      badgeColor: isEnterpriseOrAdmin ? 'purple' : 'yellow',
+      badgeLabel: isAdmin ? 'Admin Unlimited' : normalizedPlan === 'enterprise' ? 'Enterprise Pack' : 'Pro Studio',
+      displayRemaining: '∞ Unlimited',
+      displayLimit: 'Unlimited',
+      toolBreakdown: getLocalToolBreakdown(),
+    };
   }
 
+  // 4. FREE AUTHENTICATED TIER: 10 CREDITS
+  const limit = AUTH_FREE_GENERATION_LIMIT; // 10
+  const remaining = Math.max(0, limit - used);
   return {
     used,
     limit,
     remaining,
-    canGenerate,
-    isLoggedIn,
-    isAdmin,
-    isUnlimited,
-    plan: normalizedPlan,
-    badgeColor,
-    badgeLabel,
-    displayRemaining,
-    displayLimit,
+    canGenerate: remaining > 0,
+    isLoggedIn: true,
+    isAdmin: false,
+    isUnlimited: false,
+    plan: 'free',
+    badgeColor: 'green',
+    badgeLabel: 'Free Tier',
+    displayRemaining: `${remaining} / 10`,
+    displayLimit: '10',
     toolBreakdown: getLocalToolBreakdown(),
   };
 }

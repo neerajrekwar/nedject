@@ -176,14 +176,20 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           <div className="flex items-center justify-between text-xs font-black">
             <span className="text-zinc-600">ACTIVE ACCOUNT STATUS:</span>
             <span className="bg-[#ccff00] text-black px-2 py-0.5 border border-black uppercase text-[10px]">
-              {session?.user ? (plan === 'pro' ? 'PRO PLAN (UNLIMITED)' : 'AUTHENTICATED (10 LIMITS)') : 'GUEST (2 LIMITS)'}
+              {session?.user
+                ? plan === 'enterprise' || plan === 'pro'
+                  ? `${plan.toUpperCase()} PLAN (UNLIMITED)`
+                  : 'AUTHENTICATED (10 CREDITS)'
+                : 'GUEST (2 CREDITS)'}
             </span>
           </div>
 
           <div className="flex items-center justify-between text-xs font-bold pt-1 border-t border-zinc-200">
             <span>GENERATIONS USED:</span>
             <span className="font-black text-black">
-              {usage?.used || 0} / {usage?.limit || 2} ({usage?.remaining || 0} remaining)
+              {usage?.isUnlimited
+                ? `${usage?.used || 0} USED • ∞ UNLIMITED`
+                : `${usage?.used || 0} / ${usage?.limit || (session?.user ? 10 : 2)} (${usage?.remaining ?? (session?.user ? 10 : 2)} remaining)`}
             </span>
           </div>
 

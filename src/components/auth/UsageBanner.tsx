@@ -31,6 +31,10 @@ export const UsageBanner: React.FC<UsageBannerProps> = ({
   const [stats, setStats] = useState<UsageStats>(() => getUsageStats(false, 'guest', false));
 
   const checkAdmin = () => {
+    if (!session?.user) {
+      setIsAdmin(false);
+      return false;
+    }
     const adminSes = getAdminSession();
     const sessionUser = session?.user as any;
     const isAdm = Boolean(
@@ -38,6 +42,7 @@ export const UsageBanner: React.FC<UsageBannerProps> = ({
       sessionUser?.role === 'admin' ||
       sessionUser?.isAdmin === true ||
       sessionUser?.email === 'admin@nedject.com' ||
+      sessionUser?.email === 'neerajrekwar413@gmail.com' ||
       sessionUser?.planAssignedBy === 'admin'
     );
     setIsAdmin(isAdm);
@@ -45,10 +50,15 @@ export const UsageBanner: React.FC<UsageBannerProps> = ({
   };
 
   const refresh = () => {
-    const isAdm = checkAdmin();
     const isLogged = Boolean(session?.user);
+    if (!isLogged) {
+      setIsAdmin(false);
+      setStats(getUsageStats(false, 'guest', false));
+      return;
+    }
+    const isAdm = checkAdmin();
     const plan = ((session?.user as any)?.plan || 'free') as string;
-    setStats(getUsageStats(isLogged, plan, isAdm));
+    setStats(getUsageStats(true, plan, isAdm));
   };
 
   useEffect(() => {
@@ -76,17 +86,18 @@ export const UsageBanner: React.FC<UsageBannerProps> = ({
     };
   }, [session]);
 
-  const isGuest = !session?.user && !isAdmin;
-  const isUnlimited = isAdmin || stats.plan === 'pro' || stats.plan === 'enterprise';
+  const isLogged = Boolean(session?.user);
+  const isGuest = !isLogged;
+  const isUnlimited = !isGuest && (isAdmin || stats.plan === 'pro' || stats.plan === 'enterprise');
   const isExhausted = !isUnlimited && stats.remaining === 0;
 
   // Determine tier styling
   // Green base: guest or free tier
   // Yellow base: pro studio
   // Purple base: enterprise pack or admin
-  const tierColor = isAdmin
-    ? 'purple'
-    : stats.plan === 'enterprise'
+  const tierColor = isGuest
+    ? 'green'
+    : isAdmin || stats.plan === 'enterprise'
     ? 'purple'
     : stats.plan === 'pro'
     ? 'yellow'

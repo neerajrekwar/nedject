@@ -43,19 +43,23 @@ export function GlobalNavbar() {
   // Update usage stats and active plan on mount, session change, and storage events
   const refreshUsage = async () => {
     const isLogged = Boolean(session?.user);
+
+    if (!isLogged) {
+      setActivePlan('guest');
+      setUsageStats(getUsageStats(false, 'guest', false));
+      return;
+    }
+
     const sessionPlan = (((session?.user as any)?.plan || '') as string).toLowerCase();
     const isUserAdmin =
       (session?.user as any)?.role === 'admin' ||
       session?.user?.email === 'neerajrekwar413@gmail.com' ||
+      session?.user?.email === 'admin@nedject.com' ||
       (typeof window !== 'undefined' && Boolean(localStorage.getItem('nedject_admin_session_v1')));
 
-    let plan: 'guest' | 'free' | 'pro' | 'enterprise' = 'guest';
+    let plan: 'free' | 'pro' | 'enterprise' = 'free';
 
-    if (!isLogged) {
-      plan = 'guest';
-    } else if (isUserAdmin) {
-      plan = 'enterprise';
-    } else if (sessionPlan === 'enterprise') {
+    if (isUserAdmin || sessionPlan === 'enterprise') {
       plan = 'enterprise';
     } else if (sessionPlan === 'pro') {
       plan = 'pro';
@@ -69,7 +73,7 @@ export function GlobalNavbar() {
     }
 
     setActivePlan(plan);
-    setUsageStats(getUsageStats(isLogged, plan, isUserAdmin));
+    setUsageStats(getUsageStats(true, plan, isUserAdmin));
 
     // Fetch live profile to sync latest purchased plan from DB
     if (isLogged && session?.user?.email) {
@@ -141,10 +145,13 @@ export function GlobalNavbar() {
   const isPayment = pathname?.startsWith('/pay-to-use') || pathname?.startsWith('/payment');
   const isBlog = pathname?.startsWith('/blog');
 
+  const isLogged = Boolean(session?.user);
   const userProfileUrl = `/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`;
-  const isAdmin = (session?.user as any)?.role === 'admin' || (session?.user as any)?.email === 'neerajrekwar413@gmail.com';
-  const remainingCredits = Math.max(0, usageStats.remaining);
-  const isUnlimited = activePlan === 'enterprise' || activePlan === 'pro' || isAdmin || Boolean(usageStats.isUnlimited);
+  const isAdmin = isLogged && ((session?.user as any)?.role === 'admin' || (session?.user as any)?.email === 'neerajrekwar413@gmail.com');
+  const remainingCredits = isLogged
+    ? Math.max(0, usageStats.remaining)
+    : Math.min(2, Math.max(0, usageStats.remaining));
+  const isUnlimited = isLogged && (activePlan === 'enterprise' || activePlan === 'pro' || isAdmin || Boolean(usageStats.isUnlimited));
 
   // Dynamic context for mobile brand indicator
   const mobileBrandContext = isBarcodePick
@@ -247,7 +254,7 @@ export function GlobalNavbar() {
                     >
                       <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block" />
                       <span className="tracking-tight">
-                        CREDITS: {remainingCredits} INITIAL USES
+                        CREDITS: {remainingCredits} / 2
                       </span>
                       <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black hover:bg-black transition-colors">
                         UNLOCK 10
@@ -884,7 +891,7 @@ export function GlobalNavbar() {
                         : 'bg-emerald-500'
                     }`}
                   />
-                  <span>{isUnlimited ? 'CREDITS: ∞' : `CREDITS: ${remainingCredits}`}</span>
+                  <span>{isUnlimited ? 'CREDITS: ∞' : `CREDITS: ${remainingCredits} / 10`}</span>
                   <span
                     className={`text-[9px] px-1 py-0.2 font-black uppercase border border-black ${
                       activePlan === 'enterprise'
@@ -905,7 +912,7 @@ export function GlobalNavbar() {
                   title="Guest initial uses. Sign in for 10 credits!"
                 >
                   <span className="w-2 h-2 bg-emerald-500 border border-black inline-block" />
-                  <span>CREDITS: {remainingCredits}</span>
+                  <span>CREDITS: {remainingCredits} / 2</span>
                   <span className="bg-[#00875a] text-white text-[9px] px-1 py-0.2 font-black uppercase border border-black">
                     UNLOCK 10
                   </span>
@@ -981,7 +988,9 @@ export function GlobalNavbar() {
             {/* Quick Actions & Credits */}
             <div
               className={`flex items-center justify-between gap-2 p-2.5 border-2 border-black shadow-[2px_2px_0px_#000000] ${
-                activePlan === 'enterprise'
+                !session?.user
+                  ? 'bg-zinc-50 text-black'
+                  : activePlan === 'enterprise'
                   ? 'bg-[#9333ea] text-white'
                   : activePlan === 'pro'
                   ? 'bg-[#ccff00] text-black'
@@ -991,7 +1000,9 @@ export function GlobalNavbar() {
               <div className="flex items-center gap-2 text-xs font-black">
                 <span
                   className={`w-2.5 h-2.5 rounded-full inline-block ${
-                    activePlan === 'enterprise'
+                    !session?.user
+                      ? 'bg-emerald-500'
+                      : activePlan === 'enterprise'
                       ? 'bg-white animate-pulse shadow-[0_0_6px_#ffffff]'
                       : activePlan === 'pro'
                       ? 'bg-black animate-pulse'
@@ -999,11 +1010,11 @@ export function GlobalNavbar() {
                   }`}
                 />
                 <span>
-                  {isUnlimited
+                  {!session?.user
+                    ? `CREDITS: ${remainingCredits} / 2 FREE USES`
+                    : isUnlimited
                     ? 'CREDITS: ∞ UNLIMITED'
-                    : session?.user
-                    ? `CREDITS: ${remainingCredits} / 10 AVAILABLE`
-                    : `CREDITS: ${remainingCredits} INITIAL USES`}
+                    : `CREDITS: ${remainingCredits} / 10 AVAILABLE`}
                 </span>
               </div>
               {!session?.user ? (

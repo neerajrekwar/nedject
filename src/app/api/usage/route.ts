@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth-options';
 import { getDb } from '@/lib/mongodb';
-import { GUEST_GENERATION_LIMIT, AUTH_FREE_GENERATION_LIMIT, PRO_GENERATION_LIMIT } from '@/lib/usage-limits';
+import { GUEST_GENERATION_LIMIT, AUTH_FREE_GENERATION_LIMIT, PRO_GENERATION_LIMIT } from '@/lib/usage-constants';
 import { extractDeviceMetadata, getDeviceUsage, incrementDeviceUsage } from '@/lib/server-device';
 
 export const dynamic = 'force-dynamic';
