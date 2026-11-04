@@ -31,6 +31,7 @@ import {
   LogIn,
   Globe,
   Download,
+  Clock,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
 import {
@@ -77,7 +78,7 @@ function PaymentContent() {
   const initialPlan = searchParams?.get('plan') === 'enterprise' ? 'enterprise' : 'pro';
   const initialCoupon = searchParams?.get('coupon') || '';
 
-  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'lifetime'>('monthly');
   // Default to USD for whole world as requested, will update on geo detection via ipapi.co
   const [currency, setCurrency] = useState<SupportedCurrency>('USD');
   const [dynamicPlans, setDynamicPlans] = useState<ManagedPlan[]>(DEFAULT_PLANS);
@@ -128,7 +129,7 @@ function PaymentContent() {
     currency: string;
     planName: string;
     planId: 'pro' | 'enterprise';
-    billingCycle: 'monthly' | 'yearly';
+    billingCycle: 'monthly' | 'yearly' | 'lifetime';
     displayAmount: string;
     couponCode?: string;
   } | null>(null);
@@ -284,9 +285,18 @@ function PaymentContent() {
       DEFAULT_PLANS.find((p) => p.id === planId) ||
       DEFAULT_PLANS[1];
 
-    const currPricing = planConfig.pricing?.[currency] || planConfig.pricing?.USD || { monthly: 9, yearly: 79 };
-    const orig = billingCycle === 'yearly' ? currPricing.yearly : currPricing.monthly;
+    const currPricing = planConfig.pricing?.[currency] || planConfig.pricing?.USD || { monthly: 9.99, yearly: 99.0, lifetime: 199.0 };
+    const orig = billingCycle === 'yearly'
+      ? currPricing.yearly
+      : billingCycle === 'lifetime'
+      ? (currPricing.lifetime || currPricing.yearly * 2)
+      : currPricing.monthly;
     const symbol = CURRENCY_SYMBOLS[currency] || '$';
+    const unitLabel = billingCycle === 'yearly'
+      ? '/year'
+      : billingCycle === 'lifetime'
+      ? ' one-time'
+      : '/month';
 
     if (
       appliedCoupon &&
@@ -310,6 +320,7 @@ function PaymentContent() {
         discountAmount: discount,
         origDisplay: `${symbol}${orig.toLocaleString()}`,
         finalDisplay: `${symbol}${final.toLocaleString()}`,
+        unitLabel,
         isFree: final === 0,
         hasDiscount: discount > 0,
       };
@@ -321,6 +332,7 @@ function PaymentContent() {
       discountAmount: 0,
       origDisplay: `${symbol}${orig.toLocaleString()}`,
       finalDisplay: `${symbol}${orig.toLocaleString()}`,
+      unitLabel,
       isFree: false,
       hasDiscount: false,
     };
@@ -448,7 +460,7 @@ function PaymentContent() {
         signedOrderToken: orderData.signedOrderToken,
         amount: orderData.amount,
         currency: orderData.currency,
-        planName: NEDJECT_PLANS[planId].name,
+        planName: (dynamicPlans.find(p => p.id === planId) || DEFAULT_PLANS.find(p => p.id === planId) || DEFAULT_PLANS[1]).name,
         planId,
         billingCycle,
         displayAmount,
@@ -519,7 +531,7 @@ function PaymentContent() {
       }
 
       setPaymentSuccess({
-        planName: NEDJECT_PLANS[planId].name,
+        planName: (dynamicPlans.find(p => p.id === planId) || DEFAULT_PLANS.find(p => p.id === planId) || DEFAULT_PLANS[1]).name,
         paymentId: verifyData.paymentId || razorpay_payment_id,
         orderId: razorpay_order_id,
         amount: displayAmount,
@@ -558,7 +570,7 @@ function PaymentContent() {
         amount: cleanAmountNum,
         amountFormatted: paymentSuccess.amount,
         currency: paymentSuccess.currency || currency,
-        billingCycle: billingCycle === 'yearly' ? 'annual' : 'monthly',
+        billingCycle: billingCycle === 'yearly' ? 'annual' : billingCycle === 'lifetime' ? 'lifetime' : 'monthly',
         gateway: 'Razorpay / Card',
         paymentId: paymentSuccess.paymentId,
         orderId: paymentSuccess.orderId,
@@ -662,29 +674,53 @@ function PaymentContent() {
 
           {/* CONTROLS STRIP: BILLING CYCLE & CURRENCY TOGGLE */}
           <div className="pt-2 flex flex-wrap items-center justify-between gap-4 border-t-2 border-black">
-            {/* Billing Toggle */}
-            <div className="flex items-center gap-3 text-xs font-black">
-              <span className={billingCycle === 'monthly' ? 'text-black font-black' : 'text-zinc-500'}>
-                MONTHLY BILLING
+            {/* Billing Cycle 3-Way Selector */}
+            <div className="flex items-center gap-2 text-xs font-black flex-wrap">
+              <span className="text-zinc-600 uppercase flex items-center gap-1 mr-1">
+                <Clock className="w-3.5 h-3.5 text-zinc-800" />
+                <span>BILLING CYCLE:</span>
               </span>
-              <button
-                type="button"
-                onClick={() => setBillingCycle(billingCycle === 'monthly' ? 'yearly' : 'monthly')}
-                className="w-14 h-7 border-2 border-black bg-white p-0.5 flex items-center transition-all cursor-pointer shadow-[2px_2px_0px_#000000]"
-                aria-label="Toggle billing cycle"
-              >
-                <div
-                  className={`w-5 h-5 bg-black transition-transform ${
-                    billingCycle === 'yearly' ? 'translate-x-7 bg-[#ccff00]' : ''
+              <div className="inline-flex border-2 border-black bg-white shadow-[2px_2px_0px_#000000] p-0.5 gap-1 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('monthly')}
+                  className={`px-3 py-1 text-xs font-black uppercase transition-all cursor-pointer ${
+                    billingCycle === 'monthly'
+                      ? 'bg-black text-[#ccff00] shadow-[1px_1px_0px_#000000]'
+                      : 'bg-white text-zinc-700 hover:bg-zinc-100 hover:text-black'
                   }`}
-                />
-              </button>
-              <span className={billingCycle === 'yearly' ? 'text-black font-black flex items-center gap-1.5' : 'text-zinc-500'}>
-                <span>ANNUAL BILLING</span>
-                <span className="bg-[#ccff00] text-black px-2 py-0.5 border border-black text-[10px] shadow-[1px_1px_0px_#000000]">
-                  SAVE UP TO 37%
-                </span>
-              </span>
+                >
+                  <span>MONTHLY (30 DAYS)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('yearly')}
+                  className={`px-3 py-1 text-xs font-black uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                    billingCycle === 'yearly'
+                      ? 'bg-black text-[#ccff00] shadow-[1px_1px_0px_#000000]'
+                      : 'bg-white text-zinc-700 hover:bg-zinc-100 hover:text-black'
+                  }`}
+                >
+                  <span>ANNUAL (365 DAYS)</span>
+                  <span className="bg-[#ccff00] text-black text-[9px] px-1 py-0.2 border border-black font-black">
+                    SAVE 20%
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setBillingCycle('lifetime')}
+                  className={`px-3 py-1 text-xs font-black uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                    billingCycle === 'lifetime'
+                      ? 'bg-purple-950 text-white shadow-[1px_1px_0px_#000000]'
+                      : 'bg-white text-purple-900 hover:bg-purple-50'
+                  }`}
+                >
+                  <span>LIFETIME (NO EXPIRY)</span>
+                  <span className="bg-amber-400 text-black text-[9px] px-1 py-0.2 border border-black font-black">
+                    PERMANENT
+                  </span>
+                </button>
+              </div>
             </div>
 
             {/* Currency Selector with Geo Detection (ipapi.co) */}
@@ -735,7 +771,7 @@ function PaymentContent() {
                   {selectedPlanId === 'pro' ? 'PRO STUDIO' : 'ENTERPRISE MATRIX'}
                 </span>
                 <span className="text-zinc-500 text-xs font-bold">
-                  ({billingCycle.toUpperCase()} BILLING)
+                  ({billingCycle === 'lifetime' ? 'LIFETIME // NO EXPIRY' : `${billingCycle.toUpperCase()} BILLING`})
                 </span>
               </h2>
             </div>
@@ -987,7 +1023,9 @@ function PaymentContent() {
           <div className="border-2 border-black bg-white p-5 shadow-[4px_4px_0px_#000000] space-y-4">
             <h4 className="text-xs font-black uppercase text-black border-b border-black/20 pb-2 flex items-center justify-between">
               <span>ORDER BILLING BREAKDOWN // {selectedPlanId.toUpperCase()}</span>
-              <span className="text-zinc-500 font-bold">{billingCycle.toUpperCase()} INTERVAL</span>
+              <span className="text-zinc-500 font-bold">
+                {billingCycle === 'lifetime' ? 'NO EXPIRY (LIFETIME)' : `${billingCycle.toUpperCase()} INTERVAL`}
+              </span>
             </h4>
 
             <div className="space-y-2 text-xs font-mono">
@@ -1229,163 +1267,197 @@ function PaymentContent() {
           </div>
 
           {/* TIER 2: PRO STUDIO (YELLOW BASE) */}
-          <div
-            className={`border-4 border-black bg-[#fffde6] p-6 sm:p-7 shadow-[10px_10px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all border-l-[8px] border-l-amber-400 ${
-              selectedPlanId === 'pro' ? 'ring-4 ring-amber-400' : ''
-            }`}
-          >
-            <div className="absolute -top-3.5 right-6 bg-amber-400 text-black text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
-              {selectedPlanId === 'pro' ? 'CHOSEN PLAN // ACTIVE' : 'MOST POPULAR // CREATORS'}
-            </div>
+          {(() => {
+            const proPlan = dynamicPlans.find((p) => p.id === 'pro') || DEFAULT_PLANS[1];
+            const proSub = billingCycle === 'monthly'
+              ? (proPlan.cycles?.monthly?.subtitle || '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days')
+              : billingCycle === 'yearly'
+              ? (proPlan.cycles?.yearly?.subtitle || '$99.00/yr rate • Full annual Pro access • 1-year expiration')
+              : (proPlan.cycles?.lifetime?.subtitle || 'Pro Lifetime (No Expiry)');
 
-            <div className="space-y-4">
-              <div className="flex items-baseline justify-between border-b-2 border-black pb-3">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-amber-600 fill-amber-400" />
-                  <span className="font-black text-base uppercase text-black">
-                    PRO STUDIO
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-3xl font-black text-black">
-                    {getPlanPrice('pro').origDisplay}
-                  </span>
-                  <span className="text-xs text-zinc-600 font-bold block text-right">
-                    /{billingCycle === 'yearly' ? 'year' : 'month'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Yellow Base Quota Badge */}
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-200 text-amber-950 border border-amber-500 font-black text-[11px] uppercase">
-                <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                <span>QUOTA: ∞ UNLIMITED GENERATIONS</span>
-              </div>
-
-              <p className="text-xs text-zinc-700 font-sans leading-relaxed">
-                {(dynamicPlans.find(p => p.id === 'pro') || DEFAULT_PLANS[1]).description}
-              </p>
-
-              <div className="border-t border-black/30 pt-3 space-y-2.5">
-                <div className="text-[11px] font-black uppercase text-amber-900">
-                  ALL PRO ADVANTAGES:
-                </div>
-                <ul className="space-y-2 text-xs font-bold text-zinc-900">
-                  {(dynamicPlans.find(p => p.id === 'pro') || DEFAULT_PLANS[1]).features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
-                      <span className={f.highlight ? 'text-black font-black bg-amber-300/80 px-1' : ''}>
-                        {f.text}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPlanId('pro');
-                  window.scrollTo({ top: 300, behavior: 'smooth' });
-                }}
-                className={`w-full py-3.5 border-2 border-black font-black text-xs sm:text-sm uppercase transition-all shadow-[4px_4px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
-                  selectedPlanId === 'pro'
-                    ? 'bg-amber-400 text-black ring-2 ring-black'
-                    : 'bg-black text-[#ccff00] hover:bg-amber-400 hover:text-black'
+            return (
+              <div
+                className={`border-4 border-black bg-[#fffde6] p-6 sm:p-7 shadow-[10px_10px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all border-l-[8px] border-l-amber-400 ${
+                  selectedPlanId === 'pro' ? 'ring-4 ring-amber-400' : ''
                 }`}
               >
-                <CheckSquare className="w-4 h-4" />
-                <span>
-                  {selectedPlanId === 'pro' ? 'CHOSEN PLAN (CHECKOUT ABOVE)' : 'SELECT PRO STUDIO'}
-                </span>
-              </button>
-              <div className="text-[10px] text-zinc-600 font-bold text-center flex items-center justify-center gap-1">
-                <Lock className="w-3 h-3 text-zinc-500" />
-                <span>Instant activation via UPI, Cards, NetBanking</span>
+                <div className="absolute -top-3.5 right-6 bg-amber-400 text-black text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
+                  {selectedPlanId === 'pro' ? 'CHOSEN PLAN // ACTIVE' : 'MOST POPULAR // CREATORS'}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-baseline justify-between border-b-2 border-black pb-3">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-4 h-4 text-amber-600 fill-amber-400" />
+                      <span className="font-black text-base uppercase text-black">
+                        PRO STUDIO
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-3xl font-black text-black">
+                        {getPlanPrice('pro').origDisplay}
+                      </span>
+                      <span className="text-xs text-zinc-600 font-bold block text-right">
+                        {getPlanPrice('pro').unitLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Yellow Base Quota Badge */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-200 text-amber-950 border border-amber-500 font-black text-[11px] uppercase">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-700" />
+                    <span>QUOTA: ∞ UNLIMITED GENERATIONS</span>
+                  </div>
+
+                  {/* Target Plan & Cycle Presets Subtitle */}
+                  <div className="border border-amber-500 bg-amber-100/70 p-2 text-xs font-bold text-amber-950">
+                    {proSub}
+                  </div>
+
+                  <p className="text-xs text-zinc-700 font-sans leading-relaxed">
+                    {proPlan.description}
+                  </p>
+
+                  <div className="border-t border-black/30 pt-3 space-y-2.5">
+                    <div className="text-[11px] font-black uppercase text-amber-900">
+                      ALL PRO ADVANTAGES:
+                    </div>
+                    <ul className="space-y-2 text-xs font-bold text-zinc-900">
+                      {proPlan.features.map((f, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 text-emerald-700 shrink-0 mt-0.5" />
+                          <span className={f.highlight ? 'text-black font-black bg-amber-300/80 px-1' : ''}>
+                            {f.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlanId('pro');
+                      window.scrollTo({ top: 300, behavior: 'smooth' });
+                    }}
+                    className={`w-full py-3.5 border-2 border-black font-black text-xs sm:text-sm uppercase transition-all shadow-[4px_4px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
+                      selectedPlanId === 'pro'
+                        ? 'bg-amber-400 text-black ring-2 ring-black'
+                        : 'bg-black text-[#ccff00] hover:bg-amber-400 hover:text-black'
+                    }`}
+                  >
+                    <CheckSquare className="w-4 h-4" />
+                    <span>
+                      {selectedPlanId === 'pro' ? 'CHOSEN PLAN (CHECKOUT ABOVE)' : 'SELECT PRO STUDIO'}
+                    </span>
+                  </button>
+                  <div className="text-[10px] text-zinc-600 font-bold text-center flex items-center justify-center gap-1">
+                    <Lock className="w-3 h-3 text-zinc-500" />
+                    <span>Instant activation via UPI, Cards, NetBanking</span>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
 
           {/* TIER 3: ENTERPRISE PACK / MATRIX (PURPLE BASE) */}
-          <div
-            className={`border-4 border-black bg-[#faf5ff] p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all border-l-[8px] border-l-purple-600 ${
-              selectedPlanId === 'enterprise' ? 'ring-4 ring-purple-600 bg-purple-50/50' : ''
-            }`}
-          >
-            <div className="absolute -top-3.5 right-6 bg-purple-600 text-white text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
-              {selectedPlanId === 'enterprise' ? 'CHOSEN PLAN // ACTIVE' : 'ENTERPRISE PACK // POWER'}
-            </div>
+          {(() => {
+            const entPlan = dynamicPlans.find((p) => p.id === 'enterprise') || DEFAULT_PLANS[2];
+            const entSub = billingCycle === 'monthly'
+              ? (entPlan.cycles?.monthly?.subtitle || '$29.00/mo rate • Full prepress vector engine • 30 days')
+              : billingCycle === 'yearly'
+              ? (entPlan.cycles?.yearly?.subtitle || '$249.00/yr rate • Unlimited prepress license • 1-year expiration')
+              : (entPlan.cycles?.lifetime?.subtitle || 'Enterprise Lifetime (No Expiry)');
 
-            <div className="space-y-4">
-              <div className="flex items-baseline justify-between border-b-2 border-black pb-3">
-                <div className="flex items-center gap-1.5">
-                  <ShieldAlert className="w-4 h-4 text-purple-600" />
-                  <span className="font-black text-sm uppercase text-purple-950">
-                    ENTERPRISE PACK
-                  </span>
-                </div>
-                <div className="text-right">
-                  <span className="text-2xl font-black text-black">
-                    {getPlanPrice('enterprise').origDisplay}
-                  </span>
-                  <span className="text-xs text-zinc-500 font-bold block text-right">
-                    /{billingCycle === 'yearly' ? 'year' : 'month'}
-                  </span>
-                </div>
-              </div>
-
-              {/* Purple Base Quota Badge */}
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-200 text-purple-950 border border-purple-500 font-black text-[11px] uppercase">
-                <Sparkles className="w-3.5 h-3.5 text-purple-700" />
-                <span>QUOTA: ∞ UNLIMITED + MAX THROUGHPUT</span>
-              </div>
-
-              <p className="text-xs text-zinc-700 font-sans leading-relaxed">
-                {NEDJECT_PLANS.enterprise.description}
-              </p>
-
-              <div className="border-t border-black/20 pt-3 space-y-2.5">
-                <div className="text-[11px] font-black uppercase text-purple-900">
-                  ENTERPRISE CAPABILITIES:
-                </div>
-                <ul className="space-y-2 text-xs font-bold text-zinc-800">
-                  {NEDJECT_PLANS.enterprise.features.map((f, i) => (
-                    <li key={i} className="flex items-start gap-2">
-                      <Check className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
-                      <span>{f.text}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-
-            <div className="space-y-2 pt-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPlanId('enterprise');
-                  window.scrollTo({ top: 300, behavior: 'smooth' });
-                }}
-                className={`w-full py-3.5 border-2 border-black font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
-                  selectedPlanId === 'enterprise'
-                    ? 'bg-purple-600 text-white ring-2 ring-black'
-                    : 'bg-white hover:bg-purple-600 hover:text-white text-black'
+            return (
+              <div
+                className={`border-4 border-black bg-[#faf5ff] p-6 shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-6 relative transition-all border-l-[8px] border-l-purple-600 ${
+                  selectedPlanId === 'enterprise' ? 'ring-4 ring-purple-600 bg-purple-50/50' : ''
                 }`}
               >
-                <Zap className="w-4 h-4" />
-                <span>
-                  {selectedPlanId === 'enterprise'
-                    ? 'CHOSEN PLAN (CHECKOUT ABOVE)'
-                    : 'SELECT ENTERPRISE PACK'}
-                </span>
-              </button>
-              <div className="text-[10px] text-zinc-600 font-bold text-center">
-                Includes REST API key &amp; direct technical account manager
+                <div className="absolute -top-3.5 right-6 bg-purple-600 text-white text-[10px] font-black tracking-widest px-3 py-1 border-2 border-black uppercase shadow-[2px_2px_0px_#000000]">
+                  {selectedPlanId === 'enterprise' ? 'CHOSEN PLAN // ACTIVE' : 'ENTERPRISE PACK // POWER'}
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-baseline justify-between border-b-2 border-black pb-3">
+                    <div className="flex items-center gap-1.5">
+                      <ShieldAlert className="w-4 h-4 text-purple-600" />
+                      <span className="font-black text-sm uppercase text-purple-950">
+                        ENTERPRISE PACK
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-2xl font-black text-black">
+                        {getPlanPrice('enterprise').origDisplay}
+                      </span>
+                      <span className="text-xs text-zinc-500 font-bold block text-right">
+                        {getPlanPrice('enterprise').unitLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Purple Base Quota Badge */}
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-purple-200 text-purple-950 border border-purple-500 font-black text-[11px] uppercase">
+                    <Sparkles className="w-3.5 h-3.5 text-purple-700" />
+                    <span>QUOTA: ∞ UNLIMITED + MAX THROUGHPUT</span>
+                  </div>
+
+                  {/* Target Plan & Cycle Presets Subtitle */}
+                  <div className="border border-purple-400 bg-purple-100/70 p-2 text-xs font-bold text-purple-950">
+                    {entSub}
+                  </div>
+
+                  <p className="text-xs text-zinc-700 font-sans leading-relaxed">
+                    {entPlan.description}
+                  </p>
+
+                  <div className="border-t border-black/20 pt-3 space-y-2.5">
+                    <div className="text-[11px] font-black uppercase text-purple-900">
+                      ENTERPRISE CAPABILITIES:
+                    </div>
+                    <ul className="space-y-2 text-xs font-bold text-zinc-800">
+                      {entPlan.features.map((f, i) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 text-purple-700 shrink-0 mt-0.5" />
+                          <span className={f.highlight ? 'text-purple-950 font-black bg-purple-200/80 px-1' : ''}>
+                            {f.text}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedPlanId('enterprise');
+                      window.scrollTo({ top: 300, behavior: 'smooth' });
+                    }}
+                    className={`w-full py-3.5 border-2 border-black font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 ${
+                      selectedPlanId === 'enterprise'
+                        ? 'bg-purple-600 text-white ring-2 ring-black'
+                        : 'bg-white hover:bg-purple-600 hover:text-white text-black'
+                    }`}
+                  >
+                    <Zap className="w-4 h-4" />
+                    <span>
+                      {selectedPlanId === 'enterprise'
+                        ? 'CHOSEN PLAN (CHECKOUT ABOVE)'
+                        : 'SELECT ENTERPRISE PACK'}
+                    </span>
+                  </button>
+                  <div className="text-[10px] text-zinc-600 font-bold text-center">
+                    Includes REST API key &amp; direct technical account manager
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
 
         {/* 4. PAYMENT METHODS & TRUST BADGES */}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/mongodb';
 import { ObjectId } from 'mongodb';
 import { verifyAdminApiRequest, unauthorizedAdminResponse } from '@/lib/admin-auth-guard';
+import { createPurchaseRecord } from '@/lib/purchases';
 
 export const dynamic = 'force-dynamic';
 
@@ -137,13 +138,13 @@ export async function PUT(req: NextRequest) {
         updateDoc.generationsLimit = 10;
         updateDoc.planAssignedBy = 'admin';
       } else {
-        const cycle = billingCycle === 'annual' ? 'annual' : 'monthly';
+        const cycle = isLifetime || billingCycle === 'lifetime' ? 'lifetime' : (billingCycle === 'annual' ? 'annual' : 'monthly');
         updateDoc.subscriptionBillingCycle = cycle;
         updateDoc.subscriptionStatus = 'active';
         updateDoc.planAssignedBy = 'admin';
 
         // Calculate expiration date
-        if (isLifetime) {
+        if (isLifetime || cycle === 'lifetime') {
           updateDoc.subscriptionExpiresAt = null; // No expiry
         } else if (typeof durationDays === 'number' && durationDays > 0) {
           const exp = new Date(now.getTime() + durationDays * 86400000);
@@ -169,6 +170,39 @@ export async function PUT(req: NextRequest) {
     }
 
     const result = await db.collection('users').updateOne(query, { $set: updateDoc });
+
+    // Record in purchases collection for audit trail & invoice viewing
+    if (plan && plan !== 'free') {
+      try {
+        const userDoc = await db.collection('users').findOne(query);
+        if (userDoc) {
+          const cycle = isLifetime || billingCycle === 'lifetime' ? 'lifetime' : (billingCycle === 'annual' ? 'annual' : 'monthly');
+          await createPurchaseRecord({
+            userId: userDoc._id.toString(),
+            userEmail: userDoc.email,
+            userName: userDoc.name || 'Subscriber',
+            plan,
+            planName: plan === 'enterprise' ? 'Nedject Enterprise Matrix' : 'Nedject Pro Studio',
+            amount: 0,
+            amountFormatted: 'FREE (Admin Granted)',
+            currency: 'USD',
+            billingCycle: cycle,
+            gateway: 'Admin Override',
+            status: 'Paid',
+            items: [
+              {
+                description: `${plan.toUpperCase()} tier granted by administrator (${cycle.toUpperCase()} cycle)`,
+                quantity: 1,
+                unitPrice: 0,
+                total: 0,
+              },
+            ],
+          });
+        }
+      } catch (e) {
+        console.warn('[Admin Users] Could not record admin purchase audit:', e);
+      }
+    }
 
     return NextResponse.json({
       success: true,

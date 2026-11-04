@@ -9,7 +9,7 @@ export interface Coupon {
   discountType: 'percentage' | 'fixed_inr' | 'fixed_usd';
   discountValue: number; // e.g. 50 (for 50%) or 200 (for ₹200)
   applicablePlans: ('all' | 'pro' | 'enterprise')[];
-  applicableBillingCycles: ('all' | 'monthly' | 'yearly')[];
+  applicableBillingCycles: ('all' | 'monthly' | 'yearly' | 'lifetime')[];
   maxRedemptions: number; // -1 or 0 for unlimited
   timesRedeemed: number;
   expiresAt: string | null; // ISO string or null
@@ -433,7 +433,7 @@ export async function validateCouponForPlan({
 }: {
   rawCode: string;
   planId: 'pro' | 'enterprise';
-  billingCycle: 'monthly' | 'yearly';
+  billingCycle: 'monthly' | 'yearly' | 'lifetime' | string;
   currency?: string;
   basePrice: number;
 }): Promise<CouponValidationResult> {
@@ -519,9 +519,11 @@ export async function validateCouponForPlan({
   }
 
   // Check applicable billing cycle
+  const normCycle = billingCycle === 'annual' ? 'yearly' : billingCycle;
   const cycleMatch =
     coupon.applicableBillingCycles.includes('all') ||
-    coupon.applicableBillingCycles.includes(billingCycle);
+    coupon.applicableBillingCycles.includes(normCycle as any) ||
+    coupon.applicableBillingCycles.includes(billingCycle as any);
 
   if (!cycleMatch) {
     return {

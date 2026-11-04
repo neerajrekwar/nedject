@@ -1,0 +1,128 @@
+[
+  {
+    "id": "free",
+    "name": "Nedject Free Tier",
+    "badge": "FREE FOREVER",
+    "description": "Essential optical tools for casual and hobbyist printing.",
+    "generationLimit": 10,
+    "active": true,
+    "pricing": {
+      "USD": { "monthly": 0, "yearly": 0, "lifetime": 0 },
+      "INR": { "monthly": 0, "yearly": 0, "lifetime": 0 },
+      "EUR": { "monthly": 0, "yearly": 0, "lifetime": 0 },
+      "GBP": { "monthly": 0, "yearly": 0, "lifetime": 0 },
+      "RUB": { "monthly": 0, "yearly": 0, "lifetime": 0 }
+    },
+    "cycles": {
+      "monthly": {
+        "durationDays": 30,
+        "label": "30 DAYS",
+        "subtitle": "2 Guest / 10 Auth Generations • Active for 30 days"
+      },
+      "yearly": {
+        "durationDays": 365,
+        "label": "365 DAYS",
+        "subtitle": "Standard free access • 1-year renewal"
+      },
+      "lifetime": {
+        "durationDays": null,
+        "label": "NO EXPIRY",
+        "subtitle": "Free Tier (No Expiry)"
+      }
+    },
+    "features": [
+      { "text": "2 Guest / 10 Authenticated Generations", "included": true },
+      { "text": "Standard 300 DPI PNG Canvas Output", "included": true },
+      { "text": "High-contrast B/W Print Calibration", "included": true },
+      { "text": "Basic Barcode Pick (Code128, EAN-13, UPC)", "included": true },
+      { "text": "Normal Photo DPI Upscaler (150-300 DPI)", "included": true },
+      { "text": "600 DPI Vector PDF & CMYK Color Separation", "included": false },
+      { "text": "Batch ZIP Matrix & Event Pass Generator", "included": false },
+      { "text": "Priority Server Queue & Unlimited Generations", "included": false }
+    ]
+  },
+  {
+    "id": "pro",
+    "name": "Nedject Pro Studio",
+    "badge": "MOST POPULAR",
+    "description": "High-performance optical engine for creators, print designers & businesses.",
+    "generationLimit": 99999,
+    "active": true,
+    "pricing": {
+      "USD": { "monthly": 9.99, "yearly": 99, "lifetime": 199 },
+      "INR": { "monthly": 849, "yearly": 7999, "lifetime": 15999 },
+      "EUR": { "monthly": 9.49, "yearly": 94, "lifetime": 189 },
+      "GBP": { "monthly": 7.99, "yearly": 79, "lifetime": 159 },
+      "RUB": { "monthly": 899, "yearly": 8999, "lifetime": 17999 }
+    },
+    "cycles": {
+      "monthly": {
+        "durationDays": 30,
+        "label": "30 DAYS",
+        "subtitle": "$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days"
+      },
+      "yearly": {
+        "durationDays": 365,
+        "label": "365 DAYS",
+        "subtitle": "$99.00/yr rate • Full annual Pro access • 1-year expiration"
+      },
+      "lifetime": {
+        "durationDays": null,
+        "label": "NO EXPIRY",
+        "subtitle": "Pro Lifetime (No Expiry)"
+      }
+    },
+    "features": [
+      { "text": "UNLIMITED 300 & 600 DPI Generations", "included": true, "highlight": true },
+      { "text": "600 DPI Vector PDF (Print Press Ready)", "included": true, "highlight": true },
+      { "text": "Full Barcode Suite (All 8 Industrial Formats)", "included": true },
+      { "text": "Batch ZIP Matrix & Automated Pass Export", "included": true },
+      { "text": "Photo QR Visual Blend & Logo Overlay Matrix", "included": true },
+      { "text": "Persistent Cloud Storage & Cross-Device Sync", "included": true },
+      { "text": "Zero Watermark & Full Commercial License", "included": true },
+      { "text": "VIP Discord Support & Priority Processing", "included": true }
+    ]
+  },
+  {
+    "id": "enterprise",
+    "name": "Nedject Enterprise Matrix",
+    "badge": "ENTERPRISE",
+    "description": "Maximum throughput and prepress vector engine for high-volume workflows.",
+    "generationLimit": 999999,
+    "active": true,
+    "pricing": {
+      "USD": { "monthly": 29, "yearly": 249, "lifetime": 499 },
+      "INR": { "monthly": 2499, "yearly": 19999, "lifetime": 39999 },
+      "EUR": { "monthly": 27, "yearly": 229, "lifetime": 459 },
+      "GBP": { "monthly": 24, "yearly": 199, "lifetime": 399 },
+      "RUB": { "monthly": 2699, "yearly": 22999, "lifetime": 45999 }
+    },
+    "cycles": {
+      "monthly": {
+        "durationDays": 30,
+        "label": "30 DAYS",
+        "subtitle": "$29.00/mo rate • Full prepress vector engine • 30 days"
+      },
+      "yearly": {
+        "durationDays": 365,
+        "label": "365 DAYS",
+        "subtitle": "$249.00/yr rate • Unlimited prepress license • 1-year expiration"
+      },
+      "lifetime": {
+        "durationDays": null,
+        "label": "NO EXPIRY",
+        "subtitle": "Enterprise Lifetime (No Expiry)"
+      }
+    },
+    "features": [
+      { "text": "Everything in Pro Studio Included", "included": true, "highlight": true },
+      { "text": "Unlimited Batch Matrix & Event Pass Generation", "included": true, "highlight": true },
+      { "text": "Dedicated Vector PDF Press Profile & Preflight Check", "included": true },
+      { "text": "Custom CMYK/RGB Optical Color Calibration Curves", "included": true },
+      { "text": "Team Quota Sharing & Multi-Seat Sub-Accounts", "included": true },
+      { "text": "Priority Server Queue & Ultra-Low Latency Rendering", "included": true },
+      { "text": "99.9% Uptime SLA & Dedicated Technical Account Manager", "included": true },
+      { "text": "Custom Contract & GST / VAT Invoice Provisioning", "included": true }
+    ]
+  }
+]

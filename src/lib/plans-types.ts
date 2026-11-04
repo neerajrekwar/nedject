@@ -50,6 +50,13 @@ export interface PlanFeature {
 export interface PlanPricing {
   monthly: number;
   yearly: number;
+  lifetime: number;
+}
+
+export interface PlanCycleDetails {
+  durationDays: number | null; // e.g. 30, 365, null for lifetime
+  label: string; // e.g. "30 DAYS", "365 DAYS", "NO EXPIRY"
+  subtitle: string; // Detailed badge/subtext
 }
 
 export interface ManagedPlan {
@@ -60,6 +67,11 @@ export interface ManagedPlan {
   generationLimit: number;
   active: boolean;
   pricing: Record<SupportedCurrency, PlanPricing>;
+  cycles?: {
+    monthly?: PlanCycleDetails;
+    yearly?: PlanCycleDetails;
+    lifetime?: PlanCycleDetails;
+  };
   features: PlanFeature[];
   updatedAt?: string;
 }
@@ -68,15 +80,33 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
   {
     id: 'free',
     name: 'Nedject Free Tier',
+    badge: 'FREE FOREVER',
     description: 'Essential optical tools for casual and hobbyist printing.',
     generationLimit: 10,
     active: true,
     pricing: {
-      USD: { monthly: 0, yearly: 0 },
-      INR: { monthly: 0, yearly: 0 },
-      EUR: { monthly: 0, yearly: 0 },
-      GBP: { monthly: 0, yearly: 0 },
-      RUB: { monthly: 0, yearly: 0 },
+      USD: { monthly: 0, yearly: 0, lifetime: 0 },
+      INR: { monthly: 0, yearly: 0, lifetime: 0 },
+      EUR: { monthly: 0, yearly: 0, lifetime: 0 },
+      GBP: { monthly: 0, yearly: 0, lifetime: 0 },
+      RUB: { monthly: 0, yearly: 0, lifetime: 0 },
+    },
+    cycles: {
+      monthly: {
+        durationDays: 30,
+        label: '30 DAYS',
+        subtitle: '2 Guest / 10 Auth Generations • Active for 30 days',
+      },
+      yearly: {
+        durationDays: 365,
+        label: '365 DAYS',
+        subtitle: 'Standard free access • 1-year renewal',
+      },
+      lifetime: {
+        durationDays: null,
+        label: 'NO EXPIRY',
+        subtitle: 'Free Tier (No Expiry)',
+      },
     },
     features: [
       { text: '2 Guest / 10 Authenticated Generations', included: true },
@@ -97,11 +127,28 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
     generationLimit: 99999,
     active: true,
     pricing: {
-      USD: { monthly: 9, yearly: 79 },
-      INR: { monthly: 499, yearly: 3999 },
-      EUR: { monthly: 8, yearly: 75 },
-      GBP: { monthly: 7, yearly: 69 },
-      RUB: { monthly: 799, yearly: 6999 },
+      USD: { monthly: 9.99, yearly: 99.0, lifetime: 199.0 },
+      INR: { monthly: 849, yearly: 7999, lifetime: 15999 },
+      EUR: { monthly: 9.49, yearly: 94.0, lifetime: 189.0 },
+      GBP: { monthly: 7.99, yearly: 79.0, lifetime: 159.0 },
+      RUB: { monthly: 899, yearly: 8999, lifetime: 17999 },
+    },
+    cycles: {
+      monthly: {
+        durationDays: 30,
+        label: '30 DAYS',
+        subtitle: '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days',
+      },
+      yearly: {
+        durationDays: 365,
+        label: '365 DAYS',
+        subtitle: '$99.00/yr rate • Full annual Pro access • 1-year expiration',
+      },
+      lifetime: {
+        durationDays: null,
+        label: 'NO EXPIRY',
+        subtitle: 'Pro Lifetime (No Expiry)',
+      },
     },
     features: [
       { text: 'UNLIMITED 300 & 600 DPI Generations', included: true, highlight: true },
@@ -118,15 +165,32 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
     id: 'enterprise',
     name: 'Nedject Enterprise Matrix',
     badge: 'ENTERPRISE',
-    description: 'Maximum throughput and custom integrations for high-volume workflows.',
-    generationLimit: 99999,
+    description: 'Maximum throughput and prepress vector engine for high-volume workflows.',
+    generationLimit: 999999,
     active: true,
     pricing: {
-      USD: { monthly: 29, yearly: 249 },
-      INR: { monthly: 1999, yearly: 14999 },
-      EUR: { monthly: 27, yearly: 229 },
-      GBP: { monthly: 24, yearly: 199 },
-      RUB: { monthly: 2499, yearly: 19999 },
+      USD: { monthly: 29.0, yearly: 249.0, lifetime: 499.0 },
+      INR: { monthly: 2499, yearly: 19999, lifetime: 39999 },
+      EUR: { monthly: 27.0, yearly: 229.0, lifetime: 459.0 },
+      GBP: { monthly: 24.0, yearly: 199.0, lifetime: 399.0 },
+      RUB: { monthly: 2699, yearly: 22999, lifetime: 45999 },
+    },
+    cycles: {
+      monthly: {
+        durationDays: 30,
+        label: '30 DAYS',
+        subtitle: '$29.00/mo rate • Full prepress vector engine • 30 days',
+      },
+      yearly: {
+        durationDays: 365,
+        label: '365 DAYS',
+        subtitle: '$249.00/yr rate • Unlimited prepress license • 1-year expiration',
+      },
+      lifetime: {
+        durationDays: null,
+        label: 'NO EXPIRY',
+        subtitle: 'Enterprise Lifetime (No Expiry)',
+      },
     },
     features: [
       { text: 'Everything in Pro Studio Included', included: true, highlight: true },
@@ -140,3 +204,37 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
     ],
   },
 ];
+
+export function getPlanCyclePrice(
+  plan: ManagedPlan,
+  cycle: 'monthly' | 'yearly' | 'lifetime' | 'annual',
+  currency: SupportedCurrency = 'USD'
+): number {
+  const normCycle = cycle === 'annual' ? 'yearly' : cycle;
+  const rates = plan.pricing?.[currency] || plan.pricing?.USD || { monthly: 0, yearly: 0, lifetime: 0 };
+  if (normCycle === 'yearly') return rates.yearly ?? 0;
+  if (normCycle === 'lifetime') return rates.lifetime ?? (rates.yearly ? rates.yearly * 2 : 0);
+  return rates.monthly ?? 0;
+}
+
+export function getPlanCycleSubtitle(
+  plan: ManagedPlan,
+  cycle: 'monthly' | 'yearly' | 'lifetime' | 'annual'
+): string {
+  const normCycle = cycle === 'annual' ? 'yearly' : cycle;
+  if (plan.cycles?.[normCycle]?.subtitle) {
+    return plan.cycles[normCycle]!.subtitle;
+  }
+  if (plan.id === 'pro') {
+    if (normCycle === 'monthly') return '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days';
+    if (normCycle === 'yearly') return '$99.00/yr rate • Full annual Pro access • 1-year expiration';
+    return 'Pro Lifetime (No Expiry)';
+  }
+  if (plan.id === 'enterprise') {
+    if (normCycle === 'monthly') return '$29.00/mo rate • Full prepress vector engine • 30 days';
+    if (normCycle === 'yearly') return '$249.00/yr rate • Unlimited prepress license • 1-year expiration';
+    return 'Enterprise Lifetime (No Expiry)';
+  }
+  return plan.description;
+}
+

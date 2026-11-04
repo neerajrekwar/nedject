@@ -42,7 +42,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
   const [email, setEmail] = useState('');
   const [dob, setDob] = useState('');
   const [occupation, setOccupation] = useState('');
-  const [plan, setPlan] = useState<'free' | 'pro'>('free');
+  const [plan, setPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

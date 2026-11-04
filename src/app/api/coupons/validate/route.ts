@@ -32,9 +32,17 @@ export async function POST(req: NextRequest) {
     // Determine standard price based on billing cycle and currency
     let basePrice = 0;
     if (currency === 'INR') {
-      basePrice = billingCycle === 'yearly' ? planConfig.yearlyInr : planConfig.monthlyInr;
+      basePrice = billingCycle === 'yearly' || billingCycle === 'annual'
+        ? planConfig.yearlyInr
+        : billingCycle === 'lifetime'
+        ? (planConfig.lifetimeInr || planConfig.yearlyInr * 2)
+        : planConfig.monthlyInr;
     } else {
-      basePrice = billingCycle === 'yearly' ? planConfig.yearlyUsd : planConfig.monthlyUsd;
+      basePrice = billingCycle === 'yearly' || billingCycle === 'annual'
+        ? planConfig.yearlyUsd
+        : billingCycle === 'lifetime'
+        ? (planConfig.lifetimeUsd || planConfig.yearlyUsd * 2)
+        : planConfig.monthlyUsd;
     }
 
     const result = await validateCouponForPlan({

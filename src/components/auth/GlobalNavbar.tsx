@@ -202,17 +202,17 @@ export function GlobalNavbar() {
                       href={userProfileUrl}
                       className={`flex items-center gap-2 border-2 border-black px-3 py-1 text-xs font-black transition-colors cursor-pointer shadow-[2px_2px_0px_#000000] select-none ${
                         activePlan === 'enterprise'
-                          ? 'bg-[#9333ea] text-white hover:bg-[#7e22ce]'
+                          ? 'bg-purple-600 text-white hover:bg-purple-700'
                           : activePlan === 'pro'
-                          ? 'bg-[#ccff00] text-black hover:bg-[#b8e600]'
-                          : 'bg-white text-zinc-900 hover:bg-zinc-100'
+                          ? 'bg-amber-400 text-black hover:bg-amber-300'
+                          : 'bg-emerald-500 text-black hover:bg-emerald-400'
                       }`}
                       title={
                         activePlan === 'enterprise'
-                          ? 'Enterprise Plan Active • Unlimited Studio Generations & Industrial Print Tools'
+                          ? 'Enterprise Plan Active (Purple Base) • Unlimited Studio Generations & Prepress Vector Tools'
                           : activePlan === 'pro'
-                          ? 'Pro Studio Plan Active • Unlimited 300 & 600 DPI Generations'
-                          : `${remainingCredits} credits remaining. Click to view profile and upgrade.`
+                          ? 'Pro Studio Plan Active (Yellow Base) • Unlimited 300 & 600 DPI Generations'
+                          : `${remainingCredits} credits remaining. Starter Tier (Green Base) Active.`
                       }
                     >
                       <span
@@ -221,7 +221,7 @@ export function GlobalNavbar() {
                             ? 'bg-white shadow-[0_0_8px_#ffffff]'
                             : activePlan === 'pro'
                             ? 'bg-black'
-                            : 'bg-emerald-500'
+                            : 'bg-black'
                         }`}
                       />
                       <span className="tracking-tight">
@@ -232,31 +232,31 @@ export function GlobalNavbar() {
                       <span
                         className={`px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black ${
                           activePlan === 'enterprise'
-                            ? 'bg-white text-[#581c87]'
+                            ? 'bg-white text-purple-950'
                             : activePlan === 'pro'
-                            ? 'bg-black text-[#ccff00]'
-                            : 'bg-[#00875a] text-white'
+                            ? 'bg-black text-amber-300'
+                            : 'bg-black text-emerald-300'
                         }`}
                       >
                         {activePlan === 'enterprise'
                           ? 'ENTERPRISE'
                           : activePlan === 'pro'
                           ? 'PRO ACTIVE'
-                          : 'FREE TIER'}
+                          : 'STARTER'}
                       </span>
                     </Link>
                   ) : (
                     <button
                       type="button"
                       onClick={() => setShowAuthModal(true)}
-                      className="flex items-center gap-2 border-2 border-black bg-white text-zinc-900 px-3 py-1 text-xs font-black hover:bg-zinc-100 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000] select-none"
-                      title="Guest initial uses. Sign in to unlock 10 authenticated credits!"
+                      className="flex items-center gap-2 border-2 border-black bg-emerald-500 text-black px-3 py-1 text-xs font-black hover:bg-emerald-400 transition-colors cursor-pointer shadow-[2px_2px_0px_#000000] select-none"
+                      title="Guest Starter uses. Sign in to unlock 10 authenticated credits!"
                     >
-                      <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block" />
+                      <span className="w-2.5 h-2.5 bg-black rounded-full inline-block animate-pulse" />
                       <span className="tracking-tight">
                         CREDITS: {remainingCredits} / 2
                       </span>
-                      <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black hover:bg-black transition-colors">
+                      <span className="bg-black text-emerald-300 px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black hover:bg-zinc-800 transition-colors">
                         UNLOCK 10
                       </span>
                     </button>
@@ -869,17 +869,17 @@ export function GlobalNavbar() {
                   href={userProfileUrl}
                   className={`hidden md:flex items-center gap-1.5 border-2 border-black px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap transition-colors ${
                     activePlan === 'enterprise'
-                      ? 'bg-[#9333ea] text-white hover:bg-[#7e22ce]'
+                      ? 'bg-purple-600 text-white hover:bg-purple-700'
                       : activePlan === 'pro'
-                      ? 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00]'
-                      : 'bg-white text-zinc-900 hover:bg-zinc-100'
+                      ? 'bg-amber-400 text-black hover:bg-amber-300'
+                      : 'bg-emerald-500 text-black hover:bg-emerald-400'
                   }`}
                   title={
                     activePlan === 'enterprise'
-                      ? 'Enterprise Plan Active • Unlimited Credits'
+                      ? 'Enterprise Plan Active (Purple Base) • Unlimited Credits'
                       : activePlan === 'pro'
-                      ? 'Pro Studio Active • Unlimited Credits'
-                      : `${remainingCredits} credits remaining. Click to view profile.`
+                      ? 'Pro Studio Active (Yellow Base) • Unlimited Credits'
+                      : `${remainingCredits} credits remaining. Starter Tier (Green Base) Active.`
                   }
                 >
                   <span
@@ -888,32 +888,32 @@ export function GlobalNavbar() {
                         ? 'bg-white shadow-[0_0_6px_#ffffff] animate-pulse'
                         : activePlan === 'pro'
                         ? 'bg-black animate-pulse'
-                        : 'bg-emerald-500'
+                        : 'bg-black animate-pulse'
                     }`}
                   />
                   <span>{isUnlimited ? 'CREDITS: ∞' : `CREDITS: ${remainingCredits} / 10`}</span>
                   <span
                     className={`text-[9px] px-1 py-0.2 font-black uppercase border border-black ${
                       activePlan === 'enterprise'
-                        ? 'bg-white text-purple-900'
+                        ? 'bg-white text-purple-950'
                         : activePlan === 'pro'
-                        ? 'bg-black text-[#ccff00]'
-                        : 'bg-[#00875a] text-white'
+                        ? 'bg-black text-amber-300'
+                        : 'bg-black text-emerald-300'
                     }`}
                   >
-                    {activePlan === 'enterprise' ? 'ENT' : activePlan === 'pro' ? 'PRO' : 'FREE'}
+                    {activePlan === 'enterprise' ? 'ENT' : activePlan === 'pro' ? 'PRO' : 'STARTER'}
                   </span>
                 </Link>
               ) : (
                 <button
                   type="button"
                   onClick={() => setShowAuthModal(true)}
-                  className="hidden md:flex items-center gap-1.5 border-2 border-black bg-white hover:bg-zinc-100 px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap transition-colors cursor-pointer"
+                  className="hidden md:flex items-center gap-1.5 border-2 border-black bg-emerald-500 text-black hover:bg-emerald-400 px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] whitespace-nowrap transition-colors cursor-pointer"
                   title="Guest initial uses. Sign in for 10 credits!"
                 >
-                  <span className="w-2 h-2 bg-emerald-500 border border-black inline-block" />
+                  <span className="w-2 h-2 bg-black border border-black inline-block animate-pulse" />
                   <span>CREDITS: {remainingCredits} / 2</span>
-                  <span className="bg-[#00875a] text-white text-[9px] px-1 py-0.2 font-black uppercase border border-black">
+                  <span className="bg-black text-emerald-300 text-[9px] px-1 py-0.2 font-black uppercase border border-black">
                     UNLOCK 10
                   </span>
                 </button>
@@ -989,29 +989,29 @@ export function GlobalNavbar() {
             <div
               className={`flex items-center justify-between gap-2 p-2.5 border-2 border-black shadow-[2px_2px_0px_#000000] ${
                 !session?.user
-                  ? 'bg-zinc-50 text-black'
+                  ? 'bg-emerald-500 text-black'
                   : activePlan === 'enterprise'
-                  ? 'bg-[#9333ea] text-white'
+                  ? 'bg-purple-600 text-white'
                   : activePlan === 'pro'
-                  ? 'bg-[#ccff00] text-black'
-                  : 'bg-zinc-50 text-black'
+                  ? 'bg-amber-400 text-black'
+                  : 'bg-emerald-500 text-black'
               }`}
             >
               <div className="flex items-center gap-2 text-xs font-black">
                 <span
                   className={`w-2.5 h-2.5 rounded-full inline-block ${
                     !session?.user
-                      ? 'bg-emerald-500'
+                      ? 'bg-black animate-pulse'
                       : activePlan === 'enterprise'
                       ? 'bg-white animate-pulse shadow-[0_0_6px_#ffffff]'
                       : activePlan === 'pro'
                       ? 'bg-black animate-pulse'
-                      : 'bg-emerald-500'
+                      : 'bg-black animate-pulse'
                   }`}
                 />
                 <span>
                   {!session?.user
-                    ? `CREDITS: ${remainingCredits} / 2 FREE USES`
+                    ? `CREDITS: ${remainingCredits} / 2 STARTER USES`
                     : isUnlimited
                     ? 'CREDITS: ∞ UNLIMITED'
                     : `CREDITS: ${remainingCredits} / 10 AVAILABLE`}
@@ -1024,7 +1024,7 @@ export function GlobalNavbar() {
                     setIsMobileMenuOpen(false);
                     setShowAuthModal(true);
                   }}
-                  className="bg-[#00875a] text-white px-2 py-0.5 text-[10px] font-bold border border-black cursor-pointer hover:bg-black transition-colors"
+                  className="bg-black text-emerald-300 px-2 py-0.5 text-[10px] font-bold border border-black cursor-pointer hover:bg-zinc-800 transition-colors"
                 >
                   UNLOCK 10
                 </button>
@@ -1034,13 +1034,13 @@ export function GlobalNavbar() {
                   onClick={() => setIsMobileMenuOpen(false)}
                   className={`px-2 py-0.5 text-[10px] font-black uppercase border border-black ${
                     activePlan === 'enterprise'
-                      ? 'bg-white text-purple-900'
+                      ? 'bg-white text-purple-950'
                       : activePlan === 'pro'
-                      ? 'bg-black text-[#ccff00]'
-                      : 'bg-[#00875a] text-white'
+                      ? 'bg-black text-amber-300'
+                      : 'bg-black text-emerald-300'
                   }`}
                 >
-                  {activePlan === 'enterprise' ? 'ENTERPRISE' : activePlan === 'pro' ? 'PRO ACTIVE' : 'FREE TIER'}
+                  {activePlan === 'enterprise' ? 'ENTERPRISE' : activePlan === 'pro' ? 'PRO ACTIVE' : 'STARTER'}
                 </Link>
               )}
             </div>

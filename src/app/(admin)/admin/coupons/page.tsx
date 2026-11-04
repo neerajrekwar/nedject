@@ -57,7 +57,7 @@ export default function AdminCouponsPage() {
   const [formDiscountType, setFormDiscountType] = useState<'percentage' | 'fixed_inr' | 'fixed_usd'>('percentage');
   const [formDiscountValue, setFormDiscountValue] = useState<number>(50);
   const [formPlans, setFormPlans] = useState<('all' | 'pro' | 'enterprise')[]>(['all']);
-  const [formBillingCycles, setFormBillingCycles] = useState<('all' | 'monthly' | 'yearly')[]>(['all']);
+  const [formBillingCycles, setFormBillingCycles] = useState<('all' | 'monthly' | 'yearly' | 'lifetime')[]>(['all']);
   const [formMaxRedemptions, setFormMaxRedemptions] = useState<number>(-1);
   const [formExpiresAt, setFormExpiresAt] = useState<string>('');
   const [formIsActive, setFormIsActive] = useState<boolean>(true);
@@ -67,7 +67,7 @@ export default function AdminCouponsPage() {
 
   // Live test preview state
   const [testPlan, setTestPlan] = useState<'pro' | 'enterprise'>('pro');
-  const [testCycle, setTestCycle] = useState<'monthly' | 'yearly'>('monthly');
+  const [testCycle, setTestCycle] = useState<'monthly' | 'yearly' | 'lifetime'>('monthly');
 
   const fetchCoupons = async () => {
     try {

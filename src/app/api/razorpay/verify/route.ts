@@ -274,11 +274,24 @@ export async function POST(req: NextRequest) {
 
     // 7. PERSIST UPGRADED PLAN IN USER RECORD
     const planDetails = RAZORPAY_PLANS[assignedPlan] || RAZORPAY_PLANS.pro;
+    const rawCycle = orderPayload?.billingCycle || body?.billingCycle || (assignedPlan === 'enterprise' ? 'annual' : 'monthly');
+    const verifiedCycle: 'monthly' | 'annual' | 'lifetime' =
+      rawCycle === 'yearly' || rawCycle === 'annual' ? 'annual' : rawCycle === 'lifetime' ? 'lifetime' : 'monthly';
+    const isLifetime = verifiedCycle === 'lifetime';
+    const expiresAt = isLifetime
+      ? null
+      : verifiedCycle === 'annual'
+      ? new Date(Date.now() + 365 * 86400000).toISOString()
+      : new Date(Date.now() + 30 * 86400000).toISOString();
 
     try {
       await updateUserProfile(userEmail, {
         plan: assignedPlan,
-        generationsLimit: 99999,
+        generationsLimit: assignedPlan === 'enterprise' ? 999999 : 99999,
+        subscriptionBillingCycle: verifiedCycle,
+        subscriptionStatus: 'active',
+        subscriptionExpiresAt: expiresAt,
+        planAssignedBy: paymentMethod === 'coupon_free' ? 'coupon' : 'checkout_payment',
       });
     } catch (dbErr) {
       console.warn('[Payment Verify] Note updating user profile in DB:', dbErr);
@@ -333,7 +346,7 @@ export async function POST(req: NextRequest) {
         amount: finalAmount,
         amountFormatted: formattedAmount,
         currency: targetCurrency,
-        billingCycle: assignedPlan === 'enterprise' ? 'annual' : 'monthly',
+        billingCycle: verifiedCycle,
         gateway: paymentMethod === 'coupon_free' ? 'Coupon Promo' : paymentMethod === 'card' ? 'Credit Card' : 'Razorpay',
         paymentId: razorpay_payment_id,
         orderId: razorpay_order_id,

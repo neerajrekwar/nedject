@@ -31,7 +31,7 @@ interface SecureCardCheckoutModalProps {
     currency: string;
     planName: string;
     planId: 'pro' | 'enterprise';
-    billingCycle: 'monthly' | 'yearly';
+    billingCycle: 'monthly' | 'yearly' | 'lifetime' | string;
     displayAmount: string;
     couponCode?: string;
   };
@@ -276,7 +276,7 @@ export function SecureCardCheckoutModal({
             <span className="font-bold text-zinc-600 block text-[10px] uppercase">UPGRADING TO:</span>
             <span className="font-black text-black uppercase">{orderData.planName}</span>
             <span className="text-zinc-500 text-[10px] ml-1">
-              ({orderData.billingCycle.toUpperCase()})
+              ({orderData.billingCycle === 'lifetime' ? 'LIFETIME • NO EXPIRY' : `${orderData.billingCycle.toUpperCase()} BILLING`})
             </span>
           </div>
           <div className="text-right">

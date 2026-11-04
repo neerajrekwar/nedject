@@ -14,8 +14,10 @@ export interface PlanConfig {
   description: string;
   monthlyInr: number;
   yearlyInr: number;
+  lifetimeInr?: number;
   monthlyUsd: number;
   yearlyUsd: number;
+  lifetimeUsd?: number;
   generationLimit: number; // 2 or 10 or 99999
   features: PlanFeature[];
 }
@@ -27,8 +29,10 @@ export const NEDJECT_PLANS: Record<string, PlanConfig> = {
     description: 'Essential optical tools for casual and hobbyist printing.',
     monthlyInr: 0,
     yearlyInr: 0,
+    lifetimeInr: 0,
     monthlyUsd: 0,
     yearlyUsd: 0,
+    lifetimeUsd: 0,
     generationLimit: 10,
     features: [
       { text: '2 Guest / 10 Authenticated Generations', included: true },
@@ -46,10 +50,12 @@ export const NEDJECT_PLANS: Record<string, PlanConfig> = {
     name: 'Nedject Pro Studio',
     badge: 'MOST POPULAR',
     description: 'High-performance optical engine for creators, print designers & businesses.',
-    monthlyInr: 499,
-    yearlyInr: 3999, // ~33% off
-    monthlyUsd: 9,
-    yearlyUsd: 79,
+    monthlyInr: 849,
+    yearlyInr: 7999,
+    lifetimeInr: 15999,
+    monthlyUsd: 9.99,
+    yearlyUsd: 99.0,
+    lifetimeUsd: 199.0,
     generationLimit: 99999,
     features: [
       { text: 'UNLIMITED 300 & 600 DPI Generations', included: true, highlight: true },
@@ -66,21 +72,23 @@ export const NEDJECT_PLANS: Record<string, PlanConfig> = {
     id: 'enterprise',
     name: 'Nedject Enterprise Matrix',
     badge: 'ENTERPRISE',
-    description: 'Maximum throughput and custom integrations for high-volume workflows.',
-    monthlyInr: 1999,
-    yearlyInr: 14999, // ~37% off
-    monthlyUsd: 29,
-    yearlyUsd: 249,
-    generationLimit: 99999,
+    description: 'Maximum throughput and prepress vector engine for high-volume workflows.',
+    monthlyInr: 2499,
+    yearlyInr: 19999,
+    lifetimeInr: 39999,
+    monthlyUsd: 29.0,
+    yearlyUsd: 249.0,
+    lifetimeUsd: 499.0,
+    generationLimit: 999999,
     features: [
-      { text: 'Everything in Pro Studio', included: true },
+      { text: 'Everything in Pro Studio Included', included: true, highlight: true },
+      { text: 'Full prepress vector engine & Unlimited prepress license', included: true, highlight: true },
       { text: '1200 DPI Ultra-Fine Vector & SVG Direct Stream', included: true, highlight: true },
       { text: 'Bulk 1,000+ Barcode / QR Batch Exporter', included: true },
       { text: 'REST API Key Access for Automated Pipelines', included: true },
       { text: 'Dedicated Server Worker Allocation', included: true },
       { text: 'Custom Pass Templates & Corporate Styling', included: true },
       { text: 'SLA Guaranteed 99.9% Optical Generation Uptime', included: true },
-      { text: '1-on-1 Engineering Support by neerajrekwar', included: true },
     ],
   },
 };

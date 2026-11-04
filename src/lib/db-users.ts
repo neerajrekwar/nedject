@@ -28,6 +28,10 @@ export interface UserProfile {
   providerAccountId?: string;
   image?: string;
   plan: 'free' | 'pro' | 'enterprise';
+  subscriptionBillingCycle?: 'monthly' | 'annual' | 'lifetime' | string | null;
+  subscriptionStatus?: 'active' | 'none' | 'cancelled' | string;
+  subscriptionExpiresAt?: string | null;
+  planAssignedBy?: string;
   generationsLimit: number;
   generationsUsed: number;
   googleFitTokens?: GoogleFitUserTokens;
@@ -310,6 +314,10 @@ export async function updateUserProfile(
     generationsUsed?: number;
     generationsLimit?: number;
     plan?: 'free' | 'pro' | 'enterprise';
+    subscriptionBillingCycle?: 'monthly' | 'annual' | 'lifetime' | string | null;
+    subscriptionStatus?: 'active' | 'none' | 'cancelled' | string;
+    subscriptionExpiresAt?: string | null;
+    planAssignedBy?: string;
   }
 ): Promise<UserProfile | null> {
   const normalizedEmail = email.toLowerCase().trim();

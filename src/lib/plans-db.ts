@@ -5,20 +5,22 @@ import { getDb } from '@/lib/mongodb';
 export * from './plans-types';
 import { ManagedPlan, DEFAULT_PLANS } from './plans-types';
 
-const LOCAL_PLANS_FILE = path.join(process.cwd(), 'src', 'data', 'plans.json');
+const PLANS_FILE = path.join(process.cwd(), 'data', 'plans.json');
 
 function ensureDataDir() {
-  const dir = path.dirname(LOCAL_PLANS_FILE);
+  const dir = path.join(process.cwd(), 'data');
   if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+    } catch {}
   }
 }
 
 export function readLocalPlans(): ManagedPlan[] {
   try {
     ensureDataDir();
-    if (fs.existsSync(LOCAL_PLANS_FILE)) {
-      const content = fs.readFileSync(LOCAL_PLANS_FILE, 'utf-8');
+    if (fs.existsSync(PLANS_FILE)) {
+      const content = fs.readFileSync(PLANS_FILE, 'utf-8');
       const data = JSON.parse(content);
       if (Array.isArray(data) && data.length > 0) {
         return data;
@@ -33,7 +35,7 @@ export function readLocalPlans(): ManagedPlan[] {
 export function writeLocalPlans(plans: ManagedPlan[]): boolean {
   try {
     ensureDataDir();
-    fs.writeFileSync(LOCAL_PLANS_FILE, JSON.stringify(plans, null, 2), 'utf-8');
+    fs.writeFileSync(PLANS_FILE, JSON.stringify(plans, null, 2), 'utf-8');
     return true;
   } catch (err) {
     console.error('[PlansDB] Failed writing local plans file:', err);
@@ -50,17 +52,36 @@ export async function getAllPlans(): Promise<ManagedPlan[]> {
     if (db) {
       const records = await db.collection('plans').find({}).toArray();
       if (records && records.length > 0) {
-        return records.map((r: any) => ({
-          id: r.id || r._id?.toString(),
-          name: r.name,
-          badge: r.badge,
-          description: r.description,
-          generationLimit: Number(r.generationLimit) || 10,
-          active: r.active !== false,
-          pricing: r.pricing || DEFAULT_PLANS.find(p => p.id === r.id)?.pricing || DEFAULT_PLANS[0].pricing,
-          features: Array.isArray(r.features) ? r.features : [],
-          updatedAt: r.updatedAt,
-        }));
+        return records.map((r: any) => {
+          const defaultPlan = DEFAULT_PLANS.find((p) => p.id === r.id);
+          const rawPricing = r.pricing || defaultPlan?.pricing || DEFAULT_PLANS[0].pricing;
+          const mergedPricing: any = {};
+          const currencies = ['USD', 'INR', 'EUR', 'GBP', 'RUB'] as const;
+          for (const c of currencies) {
+            mergedPricing[c] = {
+              monthly: Number(rawPricing[c]?.monthly ?? defaultPlan?.pricing[c]?.monthly ?? 0),
+              yearly: Number(rawPricing[c]?.yearly ?? defaultPlan?.pricing[c]?.yearly ?? 0),
+              lifetime: Number(
+                rawPricing[c]?.lifetime ??
+                  defaultPlan?.pricing[c]?.lifetime ??
+                  (Number(rawPricing[c]?.yearly || 0) * 2 || 0)
+              ),
+            };
+          }
+
+          return {
+            id: r.id || r._id?.toString(),
+            name: r.name,
+            badge: r.badge,
+            description: r.description,
+            generationLimit: Number(r.generationLimit) || 10,
+            active: r.active !== false,
+            pricing: mergedPricing,
+            cycles: r.cycles || defaultPlan?.cycles,
+            features: Array.isArray(r.features) ? r.features : defaultPlan?.features || [],
+            updatedAt: r.updatedAt,
+          };
+        });
       }
     }
   } catch (err) {

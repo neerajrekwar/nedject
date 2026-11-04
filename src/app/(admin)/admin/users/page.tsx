@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Users,
   Search,
@@ -20,14 +21,16 @@ import {
   CreditCard,
   Ban,
   Clock,
+  Sliders,
 } from 'lucide-react';
+import { ManagedPlan, DEFAULT_PLANS } from '@/lib/plans-types';
 
 interface UserRecord {
   _id: string;
   name: string;
   email: string;
   plan: 'free' | 'pro' | 'enterprise';
-  subscriptionBillingCycle?: 'monthly' | 'annual';
+  subscriptionBillingCycle?: 'monthly' | 'annual' | 'lifetime' | string;
   subscriptionStatus?: 'active' | 'cancelled' | 'none';
   subscriptionExpiresAt?: string | null;
   planAssignedBy?: string;
@@ -51,9 +54,22 @@ export default function AdminUsersPage() {
   // Plan modal state
   const [modalUser, setModalUser] = useState<UserRecord | null>(null);
   const [modalPlan, setModalPlan] = useState<'pro' | 'enterprise' | 'free'>('pro');
-  const [modalCycle, setModalCycle] = useState<'monthly' | 'annual'>('monthly');
+  const [modalCycle, setModalCycle] = useState<'monthly' | 'annual' | 'lifetime'>('monthly');
   const [modalDuration, setModalDuration] = useState<'30' | '365' | 'lifetime'>('30');
+  const [managedPlans, setManagedPlans] = useState<ManagedPlan[]>(DEFAULT_PLANS);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch dynamic managed plans from /api/plans
+  useEffect(() => {
+    fetch('/api/plans')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.success && Array.isArray(data.plans) && data.plans.length > 0) {
+          setManagedPlans(data.plans);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const fetchUsers = async () => {
     try {
@@ -86,20 +102,25 @@ export default function AdminUsersPage() {
   const openPlanModal = (user: UserRecord) => {
     setModalUser(user);
     setModalPlan(user.plan === 'free' ? 'pro' : user.plan);
-    setModalCycle(user.subscriptionBillingCycle === 'annual' ? 'annual' : 'monthly');
-    setModalDuration(user.subscriptionBillingCycle === 'annual' ? '365' : '30');
+    const userCycle = user.subscriptionBillingCycle === 'lifetime'
+      ? 'lifetime'
+      : user.subscriptionBillingCycle === 'annual'
+      ? 'annual'
+      : 'monthly';
+    setModalCycle(userCycle);
+    setModalDuration(userCycle === 'lifetime' ? 'lifetime' : userCycle === 'annual' ? '365' : '30');
   };
 
   const handleApplyPlan = async (
     plan: 'free' | 'pro' | 'enterprise',
-    cycle: 'monthly' | 'annual',
+    cycle: 'monthly' | 'annual' | 'lifetime',
     duration: '30' | '365' | 'lifetime'
   ) => {
     if (!modalUser) return;
     setIsSubmitting(true);
 
     try {
-      const isLifetime = duration === 'lifetime';
+      const isLifetime = duration === 'lifetime' || cycle === 'lifetime';
       const durationDays = isLifetime ? undefined : Number(duration);
 
       const res = await fetch('/api/admin/users', {
@@ -108,7 +129,7 @@ export default function AdminUsersPage() {
         body: JSON.stringify({
           userId: modalUser._id,
           plan,
-          billingCycle: cycle,
+          billingCycle: isLifetime ? 'lifetime' : cycle,
           durationDays,
           isLifetime,
         }),
@@ -118,7 +139,7 @@ export default function AdminUsersPage() {
       if (res.ok && data.success) {
         showNotify(
           'success',
-          `✓ Plan for ${modalUser.email} set to [${plan.toUpperCase()} - ${cycle.toUpperCase()}] by admin!`
+          `✓ Plan for ${modalUser.email} set to [${plan.toUpperCase()} - ${(isLifetime ? 'LIFETIME' : cycle).toUpperCase()}] by admin!`
         );
         setModalUser(null);
         fetchUsers();
@@ -396,7 +417,9 @@ export default function AdminUsersPage() {
                       {/* Expiration & Validity */}
                       <td className="p-3.5 font-mono text-[11px]">
                         {isPaid ? (
-                          user.subscriptionExpiresAt ? (
+                          user.subscriptionBillingCycle === 'lifetime' || !user.subscriptionExpiresAt ? (
+                            <span className="text-emerald-700 font-bold">Lifetime (No Expiry) • Permanent</span>
+                          ) : (
                             <div>
                               <div className="font-bold text-black">
                                 Expires {new Date(user.subscriptionExpiresAt).toLocaleDateString()}
@@ -411,8 +434,6 @@ export default function AdminUsersPage() {
                                   : 'Expiring today'}
                               </div>
                             </div>
-                          ) : (
-                            <span className="text-emerald-700 font-bold">Lifetime / Permanent</span>
                           )
                         ) : isCancelled ? (
                           <span className="text-rose-700 font-bold">Cancelled &bull; Free Tier</span>
@@ -532,111 +553,137 @@ export default function AdminUsersPage() {
 
             {/* 1-Click Preset Upgrade Plans */}
             <div className="space-y-3 text-xs">
-              <label className="block font-black uppercase text-black">
-                1. Select Target Plan &amp; Billing Cycle:
-              </label>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {/* Pro Monthly */}
-                <button
-                  type="button"
-                  onClick={() => handleApplyPlan('pro', 'monthly', '30')}
-                  disabled={isSubmitting}
-                  className="group p-3.5 border-2 border-black bg-white hover:bg-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+              <div className="flex items-center justify-between">
+                <label className="block font-black uppercase text-black">
+                  1. Target Plan &amp; Billing Cycle:
+                </label>
+                <Link
+                  href="/admin/plans"
+                  className="text-[10px] font-black text-zinc-600 hover:text-black uppercase underline flex items-center gap-1"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs uppercase text-black group-hover:text-[#ccff00] transition-colors">
-                      ⚡ PRO - MONTHLY
-                    </span>
-                    <span className="text-[10px] font-black bg-black text-[#ccff00] group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-black transition-colors">
-                      30 DAYS
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-zinc-600 group-hover:text-zinc-200 font-sans transition-colors">
-                    $9.99/mo rate &bull; Unlimited 300 DPI exports &bull; Active for 30 days
-                  </div>
-                </button>
-
-                {/* Pro Annual */}
-                <button
-                  type="button"
-                  onClick={() => handleApplyPlan('pro', 'annual', '365')}
-                  disabled={isSubmitting}
-                  className="group p-3.5 border-2 border-black bg-white hover:bg-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs uppercase text-black group-hover:text-[#ccff00] transition-colors">
-                      🌟 PRO - ANNUAL
-                    </span>
-                    <span className="text-[10px] font-black bg-black text-[#ccff00] group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-black transition-colors">
-                      365 DAYS
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-zinc-600 group-hover:text-zinc-200 font-sans transition-colors">
-                    $99.00/yr rate &bull; Full annual Pro access &bull; 1-year expiration
-                  </div>
-                </button>
-
-                {/* Enterprise Monthly */}
-                <button
-                  type="button"
-                  onClick={() => handleApplyPlan('enterprise', 'monthly', '30')}
-                  disabled={isSubmitting}
-                  className="group p-3.5 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 hover:border-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs uppercase text-purple-950 group-hover:text-white transition-colors">
-                      🏢 ENTERPRISE - MONTHLY
-                    </span>
-                    <span className="text-[10px] font-black bg-purple-900 text-white group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-purple-950 group-hover:border-black transition-colors">
-                      30 DAYS
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-zinc-600 group-hover:text-purple-200 font-sans transition-colors">
-                    $29.00/mo rate &bull; Full prepress vector engine &bull; 30 days
-                  </div>
-                </button>
-
-                {/* Enterprise Annual */}
-                <button
-                  type="button"
-                  onClick={() => handleApplyPlan('enterprise', 'annual', '365')}
-                  disabled={isSubmitting}
-                  className="group p-3.5 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 hover:border-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-black text-xs uppercase text-purple-950 group-hover:text-white transition-colors">
-                      🚀 ENTERPRISE - ANNUAL
-                    </span>
-                    <span className="text-[10px] font-black bg-purple-900 text-white group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-purple-950 group-hover:border-black transition-colors">
-                      365 DAYS
-                    </span>
-                  </div>
-                  <div className="text-[11px] text-zinc-600 group-hover:text-purple-200 font-sans transition-colors">
-                    $249.00/yr rate &bull; Unlimited prepress license &bull; 1-year expiration
-                  </div>
-                </button>
+                  <Sliders className="w-3 h-3" />
+                  <span>Configure Rates &amp; Packages</span>
+                </Link>
               </div>
 
-              {/* Lifetime Options */}
-              <div className="pt-2 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleApplyPlan('pro', 'annual', 'lifetime')}
-                  disabled={isSubmitting}
-                  className="flex-1 py-2.5 px-3 border-2 border-black bg-zinc-100 hover:bg-black text-black hover:text-[#ccff00] text-xs font-black uppercase transition-all cursor-pointer text-center shadow-[2px_2px_0px_#000000]"
-                >
-                  Pro Lifetime (No Expiry)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleApplyPlan('enterprise', 'annual', 'lifetime')}
-                  disabled={isSubmitting}
-                  className="flex-1 py-2.5 px-3 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 text-purple-950 hover:text-white hover:border-black text-xs font-black uppercase transition-all cursor-pointer text-center shadow-[2px_2px_0px_#000000]"
-                >
-                  Enterprise Lifetime (No Expiry)
-                </button>
-              </div>
+              {(() => {
+                const proPlan = managedPlans.find((p) => p.id === 'pro') || DEFAULT_PLANS[1];
+                const entPlan = managedPlans.find((p) => p.id === 'enterprise') || DEFAULT_PLANS[2];
+
+                const proMonthlySub = proPlan.cycles?.monthly?.subtitle || '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days';
+                const proAnnualSub = proPlan.cycles?.yearly?.subtitle || '$99.00/yr rate • Full annual Pro access • 1-year expiration';
+                const proLifetimeSub = proPlan.cycles?.lifetime?.subtitle || 'Pro Lifetime (No Expiry)';
+
+                const entMonthlySub = entPlan.cycles?.monthly?.subtitle || '$29.00/mo rate • Full prepress vector engine • 30 days';
+                const entAnnualSub = entPlan.cycles?.yearly?.subtitle || '$249.00/yr rate • Unlimited prepress license • 1-year expiration';
+                const entLifetimeSub = entPlan.cycles?.lifetime?.subtitle || 'Enterprise Lifetime (No Expiry)';
+
+                return (
+                  <>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {/* Pro Monthly */}
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPlan('pro', 'monthly', '30')}
+                        disabled={isSubmitting}
+                        className="group p-3.5 border-2 border-black bg-white hover:bg-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs uppercase text-black group-hover:text-[#ccff00] transition-colors">
+                            ⚡ PRO - MONTHLY
+                          </span>
+                          <span className="text-[10px] font-black bg-black text-[#ccff00] group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-black transition-colors">
+                            30 DAYS
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-600 group-hover:text-zinc-200 font-sans transition-colors">
+                          {proMonthlySub}
+                        </div>
+                      </button>
+
+                      {/* Pro Annual */}
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPlan('pro', 'annual', '365')}
+                        disabled={isSubmitting}
+                        className="group p-3.5 border-2 border-black bg-white hover:bg-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs uppercase text-black group-hover:text-[#ccff00] transition-colors">
+                            🌟 PRO - ANNUAL
+                          </span>
+                          <span className="text-[10px] font-black bg-black text-[#ccff00] group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-black transition-colors">
+                            365 DAYS
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-600 group-hover:text-zinc-200 font-sans transition-colors">
+                          {proAnnualSub}
+                        </div>
+                      </button>
+
+                      {/* Enterprise Monthly */}
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPlan('enterprise', 'monthly', '30')}
+                        disabled={isSubmitting}
+                        className="group p-3.5 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 hover:border-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs uppercase text-purple-950 group-hover:text-white transition-colors">
+                            🏢 ENTERPRISE - MONTHLY
+                          </span>
+                          <span className="text-[10px] font-black bg-purple-900 text-white group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-purple-950 group-hover:border-black transition-colors">
+                            30 DAYS
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-600 group-hover:text-purple-200 font-sans transition-colors">
+                          {entMonthlySub}
+                        </div>
+                      </button>
+
+                      {/* Enterprise Annual */}
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPlan('enterprise', 'annual', '365')}
+                        disabled={isSubmitting}
+                        className="group p-3.5 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 hover:border-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs uppercase text-purple-950 group-hover:text-white transition-colors">
+                            🚀 ENTERPRISE - ANNUAL
+                          </span>
+                          <span className="text-[10px] font-black bg-purple-900 text-white group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-purple-950 group-hover:border-black transition-colors">
+                            365 DAYS
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-zinc-600 group-hover:text-purple-200 font-sans transition-colors">
+                          {entAnnualSub}
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Lifetime Options */}
+                    <div className="pt-2 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPlan('pro', 'lifetime', 'lifetime')}
+                        disabled={isSubmitting}
+                        className="flex-1 py-2.5 px-3 border-2 border-black bg-zinc-100 hover:bg-black text-black hover:text-[#ccff00] text-xs font-black uppercase transition-all cursor-pointer text-center shadow-[2px_2px_0px_#000000]"
+                      >
+                        {proLifetimeSub}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPlan('enterprise', 'lifetime', 'lifetime')}
+                        disabled={isSubmitting}
+                        className="flex-1 py-2.5 px-3 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 text-purple-950 hover:text-white hover:border-black text-xs font-black uppercase transition-all cursor-pointer text-center shadow-[2px_2px_0px_#000000]"
+                      >
+                        {entLifetimeSub}
+                      </button>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* DANGER ZONE: CANCEL SUBSCRIPTION */}

@@ -75,7 +75,7 @@ export default function AdminPlansPage() {
   const handlePriceChange = (
     index: number,
     curr: SupportedCurrency,
-    interval: 'monthly' | 'yearly',
+    interval: 'monthly' | 'yearly' | 'lifetime',
     amount: number
   ) => {
     setPlans((prev) => {
@@ -89,6 +89,30 @@ export default function AdminPlansPage() {
         },
       };
       next[index] = plan;
+      return next;
+    });
+  };
+
+  // Update cycle metadata
+  const handleCycleSubtitleChange = (
+    planIndex: number,
+    cycle: 'monthly' | 'yearly' | 'lifetime',
+    subtitle: string
+  ) => {
+    setPlans((prev) => {
+      const next = [...prev];
+      const plan = { ...next[planIndex] };
+      const defaultCycle = DEFAULT_PLANS.find((p) => p.id === plan.id)?.cycles?.[cycle];
+      plan.cycles = {
+        ...plan.cycles,
+        [cycle]: {
+          durationDays: cycle === 'lifetime' ? null : cycle === 'yearly' ? 365 : 30,
+          label: cycle === 'lifetime' ? 'NO EXPIRY' : cycle === 'yearly' ? '365 DAYS' : '30 DAYS',
+          ...(defaultCycle || {}),
+          subtitle,
+        },
+      };
+      next[planIndex] = plan;
       return next;
     });
   };
@@ -218,7 +242,14 @@ export default function AdminPlansPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <Link
+            href="/admin/users"
+            className="px-3.5 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000]"
+          >
+            <Sliders className="w-4 h-4" />
+            <span>USERS &amp; SET PLAN DIALOG</span>
+          </Link>
           <Link
             href="/pay-to-use"
             target="_blank"
@@ -395,12 +426,12 @@ export default function AdminPlansPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                   {CURRENCIES.map((curr) => {
-                    const price = plan.pricing?.[curr] || { monthly: 0, yearly: 0 };
+                    const price = plan.pricing?.[curr] || { monthly: 0, yearly: 0, lifetime: 0 };
                     const isPreview = previewCurrency === curr;
                     return (
                       <div
                         key={curr}
-                        className={`border-2 border-black p-3 space-y-2 ${
+                        className={`border-2 border-black p-3 space-y-2.5 ${
                           isPreview ? 'bg-[#ccff00]/15 ring-2 ring-black' : 'bg-zinc-50'
                         }`}
                       >
@@ -415,7 +446,7 @@ export default function AdminPlansPage() {
 
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-600 block">
-                            MONTHLY:
+                            MONTHLY (30D):
                           </label>
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 pl-2 flex items-center text-xs font-black text-zinc-500">
@@ -435,7 +466,7 @@ export default function AdminPlansPage() {
 
                         <div className="space-y-1">
                           <label className="text-[10px] font-bold text-zinc-600 block">
-                            YEARLY:
+                            YEARLY (365D):
                           </label>
                           <div className="relative">
                             <span className="absolute inset-y-0 left-0 pl-2 flex items-center text-xs font-black text-zinc-500">
@@ -452,9 +483,106 @@ export default function AdminPlansPage() {
                             />
                           </div>
                         </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-zinc-600 block">
+                            LIFETIME (NO EXPIRY):
+                          </label>
+                          <div className="relative">
+                            <span className="absolute inset-y-0 left-0 pl-2 flex items-center text-xs font-black text-zinc-500">
+                              {CURRENCY_SYMBOLS[curr]}
+                            </span>
+                            <input
+                              type="number"
+                              disabled={plan.id === 'free'}
+                              value={price.lifetime ?? 0}
+                              onChange={(e) =>
+                                handlePriceChange(planIdx, curr, 'lifetime', Number(e.target.value))
+                              }
+                              className="w-full pl-6 pr-2 py-1 text-xs font-black border border-black bg-white focus:outline-none"
+                            />
+                          </div>
+                        </div>
                       </div>
                     );
                   })}
+                </div>
+
+                {/* TARGET PACKAGE CYCLE DETAILS & PRESETS */}
+                <div className="border border-black bg-zinc-50 p-3.5 space-y-3 mt-3">
+                  <div className="flex items-center justify-between border-b border-black/20 pb-1.5">
+                    <span className="font-black text-xs uppercase text-black">
+                      TARGET PLAN &amp; BILLING CYCLE CONFIGURATOR
+                    </span>
+                    <span className="text-[10px] text-zinc-500 font-bold uppercase">
+                      Synchronized with &quot;Set Plan&quot; Dialog &amp; /pay-to-use
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+                    <div className="space-y-1">
+                      <label className="font-bold text-[10px] uppercase text-zinc-600 block">
+                        MONTHLY (30 DAYS) SUBTITLE / PERKS:
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          plan.cycles?.monthly?.subtitle ||
+                          (plan.id === 'pro'
+                            ? '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days'
+                            : plan.id === 'enterprise'
+                            ? '$29.00/mo rate • Full prepress vector engine • 30 days'
+                            : '2 Guest / 10 Auth Generations • Active for 30 days')
+                        }
+                        onChange={(e) =>
+                          handleCycleSubtitleChange(planIdx, 'monthly', e.target.value)
+                        }
+                        className="w-full border border-black bg-white px-2.5 py-1 text-xs font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-[10px] uppercase text-zinc-600 block">
+                        ANNUAL (365 DAYS) SUBTITLE / PERKS:
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          plan.cycles?.yearly?.subtitle ||
+                          (plan.id === 'pro'
+                            ? '$99.00/yr rate • Full annual Pro access • 1-year expiration'
+                            : plan.id === 'enterprise'
+                            ? '$249.00/yr rate • Unlimited prepress license • 1-year expiration'
+                            : 'Standard free access • 1-year renewal')
+                        }
+                        onChange={(e) =>
+                          handleCycleSubtitleChange(planIdx, 'yearly', e.target.value)
+                        }
+                        className="w-full border border-black bg-white px-2.5 py-1 text-xs font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="font-bold text-[10px] uppercase text-zinc-600 block">
+                        LIFETIME (NO EXPIRY) SUBTITLE / PERKS:
+                      </label>
+                      <input
+                        type="text"
+                        value={
+                          plan.cycles?.lifetime?.subtitle ||
+                          (plan.id === 'pro'
+                            ? 'Pro Lifetime (No Expiry)'
+                            : plan.id === 'enterprise'
+                            ? 'Enterprise Lifetime (No Expiry)'
+                            : 'Free Tier (No Expiry)')
+                        }
+                        onChange={(e) =>
+                          handleCycleSubtitleChange(planIdx, 'lifetime', e.target.value)
+                        }
+                        className="w-full border border-black bg-white px-2.5 py-1 text-xs font-mono"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -55,8 +55,12 @@ export async function POST(req: NextRequest) {
       ? (currency as SupportedCurrency)
       : 'USD';
 
-    const planPrices = managedPlan.pricing?.[targetCurrency] || managedPlan.pricing?.USD || { monthly: 9, yearly: 79 };
-    const price = billingCycle === 'yearly' ? planPrices.yearly : planPrices.monthly;
+    const planPrices = managedPlan.pricing?.[targetCurrency] || managedPlan.pricing?.USD || { monthly: 9.99, yearly: 99.0, lifetime: 199.0 };
+    const price = billingCycle === 'yearly' || billingCycle === 'annual'
+      ? planPrices.yearly
+      : billingCycle === 'lifetime'
+      ? (planPrices.lifetime || planPrices.yearly * 2)
+      : planPrices.monthly;
 
     let finalPrice = price;
     let appliedCoupon: any = null;
