@@ -253,7 +253,7 @@ export default function UserProfilePage() {
               <span>BACK TO STUDIO</span>
             </Link>
             <Link
-              href="/payment"
+              href="/pay-to-use"
               className="hidden sm:flex items-center gap-1.5 font-black text-xs uppercase bg-[#ccff00] hover:bg-black hover:text-[#ccff00] px-3 py-1.5 border-2 border-black transition-colors shadow-[2px_2px_0px_#000000]"
             >
               <Sparkles className="w-3.5 h-3.5" />
@@ -318,7 +318,7 @@ export default function UserProfilePage() {
                 <span>ORDER HISTORY</span>
               </a>
               <Link
-                href="/payment"
+                href="/pay-to-use"
                 className="px-4 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all"
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -599,7 +599,7 @@ export default function UserProfilePage() {
           </Link>
 
           <Link
-            href="/payment"
+            href="/pay-to-use"
             className="border-4 border-black bg-[#f4fde8] p-5 hover:bg-[#ccff00] transition-colors shadow-[6px_6px_0px_#000000] flex flex-col justify-between space-y-3"
           >
             <div className="flex items-center justify-between">

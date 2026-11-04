@@ -220,7 +220,7 @@ export const UserProfileModal: React.FC<UserProfileModalProps> = ({
           </div>
 
           <a
-            href="/payment"
+            href="/pay-to-use"
             onClick={onClose}
             className="px-3 py-1.5 border-2 border-black font-mono text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] cursor-pointer shrink-0 flex items-center gap-1 bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black"
           >

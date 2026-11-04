@@ -26,9 +26,9 @@ function LoginFormContent() {
   const searchParams = useSearchParams();
   const { data: session, status } = useSession();
 
-  const callbackUrl = searchParams?.get('callbackUrl') || searchParams?.get('redirect') || '/payment';
+  const callbackUrl = searchParams?.get('callbackUrl') || searchParams?.get('redirect') || '/pay-to-use';
   const planParam = searchParams?.get('plan');
-  const isFromPayment = callbackUrl.includes('/payment');
+  const isFromPayment = callbackUrl.includes('/pay-to-use') || callbackUrl.includes('/payment');
 
   const [tab, setTab] = useState<'signin' | 'signup' | 'forgot'>('signin');
   const [loading, setLoading] = useState<boolean>(false);

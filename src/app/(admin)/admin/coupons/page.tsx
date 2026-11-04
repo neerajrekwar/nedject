@@ -31,6 +31,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { Coupon } from '@/lib/coupons';
+import { getAdminHeaders } from '@/lib/admin-auth';
 
 export default function AdminCouponsPage() {
   const [coupons, setCoupons] = useState<Coupon[]>([]);
@@ -71,7 +72,11 @@ export default function AdminCouponsPage() {
   const fetchCoupons = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/coupons');
+      const res = await fetch('/api/admin/coupons', {
+        headers: getAdminHeaders(),
+        credentials: 'include',
+        cache: 'no-store',
+      });
       const data = await res.json();
       if (res.ok && data.success) {
         setCoupons(data.coupons || []);
@@ -211,13 +216,15 @@ export default function AdminCouponsPage() {
       if (editingCoupon) {
         res = await fetch(`/api/admin/coupons/${editingCoupon.id}`, {
           method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAdminHeaders(),
+          credentials: 'include',
           body: JSON.stringify(payload),
         });
       } else {
         res = await fetch('/api/admin/coupons', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAdminHeaders(),
+          credentials: 'include',
           body: JSON.stringify(payload),
         });
       }
@@ -247,7 +254,8 @@ export default function AdminCouponsPage() {
 
       const res = await fetch(`/api/admin/coupons/${c.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ isPinned: newPinned }),
       });
 
@@ -258,11 +266,16 @@ export default function AdminCouponsPage() {
         );
         showNotify('error', data.error || 'Failed to toggle checkout pin status');
       } else {
+        if (data.coupon) {
+          setCoupons((prev) =>
+            prev.map((item) => (item.id === c.id ? { ...item, ...data.coupon, isPinned: newPinned } : item))
+          );
+        }
         showNotify(
           'success',
           newPinned
-            ? `Coupon "${c.code}" PINNED: Now visible on public /payment page!`
-            : `Coupon "${c.code}" UNPINNED: Hidden from public /payment checkout chips.`
+            ? `Coupon "${c.code}" PINNED: Now visible on public /pay-to-use page!`
+            : `Coupon "${c.code}" UNPINNED: Hidden from public /pay-to-use checkout chips.`
         );
       }
     } catch (err: any) {
@@ -281,7 +294,8 @@ export default function AdminCouponsPage() {
 
       const res = await fetch(`/api/admin/coupons/${c.id}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
+        credentials: 'include',
         body: JSON.stringify({ isActive: newStatus }),
       });
 
@@ -293,6 +307,11 @@ export default function AdminCouponsPage() {
         );
         showNotify('error', data.error || 'Failed to update status');
       } else {
+        if (data.coupon) {
+          setCoupons((prev) =>
+            prev.map((item) => (item.id === c.id ? { ...item, ...data.coupon, isActive: newStatus } : item))
+          );
+        }
         showNotify('success', `Coupon ${c.code} is now ${newStatus ? 'ACTIVE' : 'DEACTIVATED'}`);
       }
     } catch (e: any) {
@@ -309,6 +328,8 @@ export default function AdminCouponsPage() {
     try {
       const res = await fetch(`/api/admin/coupons/${c.id}`, {
         method: 'DELETE',
+        headers: getAdminHeaders(),
+        credentials: 'include',
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -400,7 +421,8 @@ export default function AdminCouponsPage() {
 
       const res = await fetch('/api/admin/coupons/bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAdminHeaders(),
+        credentials: 'include',
         body: JSON.stringify({
           ids: selectedIds,
           action: pin ? 'pin' : 'unpin',
@@ -653,7 +675,7 @@ export default function AdminCouponsPage() {
                   ? 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] cursor-pointer'
                   : 'bg-zinc-200 text-zinc-400 border-zinc-400 cursor-not-allowed shadow-none'
               }`}
-              title="Pin all selected coupons to checkout /payment promotion banner"
+              title="Pin all selected coupons to checkout /pay-to-use promotion banner"
             >
               {isBulkPinning ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -892,8 +914,8 @@ export default function AdminCouponsPage() {
                           onClick={() => handleTogglePinned(c)}
                           title={
                             c.isPinned
-                              ? 'Currently pinned on public /payment page (Click to unpin)'
-                              : 'Hidden from public /payment chips (Click to pin)'
+                              ? 'Currently pinned on public /pay-to-use page (Click to unpin)'
+                              : 'Hidden from public /pay-to-use chips (Click to pin)'
                           }
                           className={`border-2 border-black px-2 py-1 text-[10px] font-black uppercase shadow-[1px_1px_0px_#000000] transition-colors flex items-center gap-1 mx-auto cursor-pointer ${
                             c.isPinned
@@ -1150,7 +1172,7 @@ export default function AdminCouponsPage() {
                       className="w-4 h-4 border-2 border-black accent-black"
                     />
                     <label htmlFor="formIsPinned" className="font-black uppercase cursor-pointer text-xs text-amber-950">
-                      PIN TO PUBLIC CHECKOUT PAGE (FEATURED CHIP ON /payment)
+                      PIN TO PUBLIC CHECKOUT PAGE (FEATURED CHIP ON /pay-to-use)
                     </label>
                   </div>
                   {formIsPinned && (

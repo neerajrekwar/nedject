@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAllCoupons, createCoupon } from '@/lib/coupons';
+import { getAllCoupons, createCoupon, updateCoupon } from '@/lib/coupons';
 
 export const dynamic = 'force-dynamic';
 
@@ -60,3 +60,39 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function PUT(req: NextRequest) {
+  try {
+    const body = await req.json().catch(() => ({}));
+    const targetId = body.id || body.code;
+
+    if (!targetId || typeof targetId !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'A coupon ID or code is required for update' },
+        { status: 400 }
+      );
+    }
+
+    const updated = await updateCoupon(targetId, body);
+    if (!updated) {
+      return NextResponse.json(
+        { success: false, error: `Coupon "${targetId}" not found for update` },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `Coupon "${updated.code}" updated successfully`,
+      coupon: updated,
+    });
+  } catch (error: any) {
+    console.error('[Admin Coupons] PUT error:', error);
+    return NextResponse.json(
+      { success: false, error: error.message || 'Failed to update coupon' },
+      { status: 400 }
+    );
+  }
+}
+
+export const PATCH = PUT;

@@ -119,9 +119,9 @@ const PAGES_LIST: PageMetaItem[] = [
   },
   {
     id: 'payment',
-    name: 'Pro Plans & Pricing',
-    path: '/payment',
-    title: 'Pricing & Pro Quota Subscriptions // Nedject',
+    name: 'Pay to Use & Plans Pricing',
+    path: '/pay-to-use',
+    title: 'Pay to Use & Plans Pricing // Nedject',
     description:
       'Unlock unlimited 300 DPI high-resolution exports, batch matrix generators, vector barcode downloads, and raw API telemetry with priority SLA.',
     badge: 'COMMERCIAL ENTERPRISE PASS',

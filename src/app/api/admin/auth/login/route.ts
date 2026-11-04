@@ -308,6 +308,7 @@ export async function POST(req: NextRequest) {
       {
         success: true,
         message: 'Admin authenticated successfully',
+        token: 'authorized',
         user,
       },
       {

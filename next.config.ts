@@ -59,6 +59,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/payment',
+        destination: '/pay-to-use',
+        permanent: true,
+      },
+      {
+        source: '/payment/:path*',
+        destination: '/pay-to-use/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

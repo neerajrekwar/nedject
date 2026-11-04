@@ -186,7 +186,7 @@ export const MonetizationBanner: React.FC<MonetizationBannerProps> = ({
           </div>
 
           <Link
-            href="/payment"
+            href="/pay-to-use"
             className="w-full mt-2 py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all cursor-pointer shadow-[2px_2px_0px_#000000] flex items-center justify-center gap-2"
           >
             <CreditCard className="w-3.5 h-3.5" />

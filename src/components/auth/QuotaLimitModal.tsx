@@ -233,10 +233,10 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
               </div>
 
               <Link
-                href="/payment?plan=pro"
+                href="/pay-to-use?plan=pro"
                 onClick={() => {
                   if (isGuest) {
-                    setClientRedirectDestination('/payment?plan=pro');
+                    setClientRedirectDestination('/pay-to-use?plan=pro');
                   }
                   handleClose();
                 }}
@@ -299,10 +299,10 @@ export const QuotaLimitModal: React.FC<QuotaLimitModalProps> = ({
               </div>
 
               <Link
-                href="/payment?plan=enterprise"
+                href="/pay-to-use?plan=enterprise"
                 onClick={() => {
                   if (isGuest) {
-                    setClientRedirectDestination('/payment?plan=enterprise');
+                    setClientRedirectDestination('/pay-to-use?plan=enterprise');
                   }
                   handleClose();
                 }}

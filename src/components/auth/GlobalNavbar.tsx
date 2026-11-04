@@ -123,7 +123,7 @@ export function GlobalNavbar() {
     { href: '/fitness-glass/winter-arc-2026', label: 'WINTER ARC 2026' },
     { href: '/fitness-glass', label: 'FITNESS GLASS' },
     { href: '/blog', label: 'BLOG' },
-    { href: '/payment', label: 'PLANS & PRICING' },
+    { href: '/pay-to-use', label: 'PAY TO USE' },
   ];
 
   // Exclude navbar inside admin or standalone login
@@ -138,7 +138,7 @@ export function GlobalNavbar() {
   const isInstaClip = pathname?.startsWith('/insta-clip');
   const isWinterArc = pathname?.startsWith('/fitness-glass/winter-arc-2026');
   const isFitnessGlass = !isWinterArc && pathname?.startsWith('/fitness-glass');
-  const isPayment = pathname?.startsWith('/payment');
+  const isPayment = pathname?.startsWith('/pay-to-use') || pathname?.startsWith('/payment');
   const isBlog = pathname?.startsWith('/blog');
 
   const userProfileUrl = `/${encodeURIComponent((session?.user as any)?.id || session?.user?.email?.split('@')[0] || 'profile')}`;
@@ -189,7 +189,7 @@ export function GlobalNavbar() {
 
                 {/* Right Action Bar */}
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  {/* MY CREDITS Navlink Item - Recreated with dynamic plan base color and unlimited support */}
+                  {/* CREDITS Navlink Item - Recreated with dynamic plan base color and unlimited support */}
                   {session?.user ? (
                     <Link
                       href={userProfileUrl}
@@ -219,8 +219,8 @@ export function GlobalNavbar() {
                       />
                       <span className="tracking-tight">
                         {isUnlimited
-                          ? 'MY CREDITS: ∞ UNLIMITED'
-                          : `MY CREDITS: ${remainingCredits} / 10 AVAILABLE`}
+                          ? 'CREDITS: ∞ UNLIMITED'
+                          : `CREDITS: ${remainingCredits} / 10 AVAILABLE`}
                       </span>
                       <span
                         className={`px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black ${
@@ -247,7 +247,7 @@ export function GlobalNavbar() {
                     >
                       <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full inline-block" />
                       <span className="tracking-tight">
-                        MY CREDITS: {remainingCredits} INITIAL USES
+                        CREDITS: {remainingCredits} INITIAL USES
                       </span>
                       <span className="bg-[#00875a] text-white px-1.5 py-0.5 text-[10px] font-black uppercase tracking-wider border border-black hover:bg-black transition-colors">
                         UNLOCK 10
@@ -265,7 +265,7 @@ export function GlobalNavbar() {
                   {/* Plan / Upgrade button */}
                   {activePlan === 'enterprise' ? (
                     <Link
-                      href="/payment"
+                      href="/pay-to-use"
                       className="flex items-center gap-1.5 border-2 border-black bg-purple-950 text-[#f3e8ff] hover:bg-purple-900 px-3 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
                       title="Enterprise Plan Active • View Plans & Capabilities"
                     >
@@ -274,7 +274,7 @@ export function GlobalNavbar() {
                     </Link>
                   ) : activePlan === 'pro' ? (
                     <Link
-                      href="/payment?plan=enterprise"
+                      href="/pay-to-use?plan=enterprise"
                       className="flex items-center gap-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-3 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
                       title="Upgrade to Enterprise for 1200 DPI & Bulk Generations"
                     >
@@ -283,7 +283,7 @@ export function GlobalNavbar() {
                     </Link>
                   ) : (
                     <Link
-                      href="/payment"
+                      href="/pay-to-use"
                       className="flex items-center gap-1.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black px-3 py-1 text-xs font-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000] cursor-pointer"
                       title="Upgrade to Pro Studio for Unlimited Generations"
                     >
@@ -710,14 +710,14 @@ export function GlobalNavbar() {
                 <>
                   <div className="flex items-center gap-3">
                     <Link
-                      href="/payment"
+                      href="/pay-to-use"
                       className="border-2 border-black bg-white px-3 py-1 text-sm font-black tracking-wider shadow-[3px_3px_0px_#000000] hover:bg-[#ccff00] transition-colors whitespace-nowrap uppercase"
                     >
                       NEDJECT
                     </Link>
                     <div className="flex flex-col">
                       <div className="flex items-center gap-1.5 text-xs font-black text-black">
-                        <span>PLANS &amp; PRICING</span>
+                        <span>PAY TO USE // PLANS</span>
                         <span className="w-2 h-2 bg-[#ccff00] border border-black inline-block animate-pulse" />
                       </div>
                       <span className="text-[10px] text-zinc-500 tracking-wider uppercase leading-none">
@@ -856,7 +856,7 @@ export function GlobalNavbar() {
             {/* Right: Dynamic buttons depending on screen size */}
             <div className="flex items-center gap-1.5 sm:gap-2">
               
-              {/* Tablet only: MY CREDITS Item */}
+              {/* Tablet only: CREDITS Item */}
               {session?.user ? (
                 <Link
                   href={userProfileUrl}
@@ -884,7 +884,7 @@ export function GlobalNavbar() {
                         : 'bg-emerald-500'
                     }`}
                   />
-                  <span>{isUnlimited ? 'MY CREDITS: ∞' : `MY CREDITS: ${remainingCredits}`}</span>
+                  <span>{isUnlimited ? 'CREDITS: ∞' : `CREDITS: ${remainingCredits}`}</span>
                   <span
                     className={`text-[9px] px-1 py-0.2 font-black uppercase border border-black ${
                       activePlan === 'enterprise'
@@ -905,7 +905,7 @@ export function GlobalNavbar() {
                   title="Guest initial uses. Sign in for 10 credits!"
                 >
                   <span className="w-2 h-2 bg-emerald-500 border border-black inline-block" />
-                  <span>MY CREDITS: {remainingCredits}</span>
+                  <span>CREDITS: {remainingCredits}</span>
                   <span className="bg-[#00875a] text-white text-[9px] px-1 py-0.2 font-black uppercase border border-black">
                     UNLOCK 10
                   </span>
@@ -914,7 +914,7 @@ export function GlobalNavbar() {
 
               {/* Standard Mobile & Tablet: ✨ PLANS (Neon #ccff00) */}
               <Link
-                href="/payment"
+                href="/pay-to-use"
                 className="hidden sm:flex items-center gap-1 border-2 border-black bg-[#ccff00] text-black px-2.5 py-1 text-xs font-black shadow-[3px_3px_0px_#000000] hover:bg-black hover:text-[#ccff00] transition-colors whitespace-nowrap cursor-pointer"
               >
                 <Sparkles className="w-3.5 h-3.5" />
@@ -1000,10 +1000,10 @@ export function GlobalNavbar() {
                 />
                 <span>
                   {isUnlimited
-                    ? 'MY CREDITS: ∞ UNLIMITED'
+                    ? 'CREDITS: ∞ UNLIMITED'
                     : session?.user
-                    ? `MY CREDITS: ${remainingCredits} / 10 AVAILABLE`
-                    : `MY CREDITS: ${remainingCredits} INITIAL USES`}
+                    ? `CREDITS: ${remainingCredits} / 10 AVAILABLE`
+                    : `CREDITS: ${remainingCredits} INITIAL USES`}
                 </span>
               </div>
               {!session?.user ? (
@@ -1042,7 +1042,7 @@ export function GlobalNavbar() {
                 className="w-full justify-center text-xs py-2"
               />
               <Link
-                href="/payment"
+                href="/pay-to-use"
                 onClick={() => setIsMobileMenuOpen(false)}
                 className="flex items-center justify-center gap-1.5 border-2 border-black bg-black text-[#ccff00] p-2 font-black shadow-[2px_2px_0px_#000000]"
               >

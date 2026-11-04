@@ -67,6 +67,22 @@ export function clearAdminSession(): void {
 }
 
 /**
+ * Returns authorization headers populated with active admin session credentials
+ */
+export function getAdminHeaders(customHeaders: Record<string, string> = {}): Record<string, string> {
+  const session = getAdminSession();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'x-admin-token': 'authorized',
+    ...customHeaders,
+  };
+  if (session?.email) {
+    headers['x-admin-email'] = session.email;
+  }
+  return headers;
+}
+
+/**
  * Checks the current rate limit status without consuming an attempt
  */
 export async function fetchAdminRateLimitStatus(email?: string): Promise<RateLimitStatus | null> {

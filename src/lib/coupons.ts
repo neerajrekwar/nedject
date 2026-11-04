@@ -14,7 +14,7 @@ export interface Coupon {
   timesRedeemed: number;
   expiresAt: string | null; // ISO string or null
   isActive: boolean;
-  isPinned?: boolean; // Only coupons with isPinned === true are displayed on public /payment checkout
+  isPinned?: boolean; // Only coupons with isPinned === true are displayed on public /pay-to-use checkout
   pinnedTag?: string; // Optional chip tag (e.g. "OFFICIAL", "LIMITED TIME")
   createdAt: string;
   updatedAt: string;
@@ -112,19 +112,28 @@ function readLocalCoupons(): Coupon[] {
     const content = fs.readFileSync(COUPONS_FILE, 'utf8');
     const parsed = JSON.parse(content);
     if (Array.isArray(parsed) && parsed.length > 0) {
-      // Backfill missing schema fields from DEFAULT_COUPONS for seamless migration
+      // Backfill missing schema fields for seamless migration
       let changed = false;
       const hydrated = parsed.map((c: Coupon) => {
         const def = DEFAULT_COUPONS.find((d) => d.code === c.code || d.id === c.id);
-        if (def && c.isPinned === undefined && def.isPinned !== undefined) {
+        const hasPinned = c.isPinned !== undefined;
+        const resolvedPinned = hasPinned
+          ? (c.isPinned === true || String(c.isPinned).toLowerCase() === 'true')
+          : (def?.isPinned !== undefined ? Boolean(def.isPinned) : false);
+        const resolvedTag = c.pinnedTag || def?.pinnedTag || 'OFFICIAL';
+
+        if (!hasPinned || c.pinnedTag === undefined) {
           changed = true;
           return {
             ...c,
-            isPinned: def.isPinned,
-            pinnedTag: c.pinnedTag || def.pinnedTag || 'OFFICIAL',
+            isPinned: resolvedPinned,
+            pinnedTag: resolvedTag,
           };
         }
-        return c;
+        return {
+          ...c,
+          isPinned: resolvedPinned,
+        };
       });
       if (changed) {
         fs.writeFileSync(COUPONS_FILE, JSON.stringify(hydrated, null, 2), 'utf8');
@@ -263,21 +272,29 @@ export async function updateCoupon(id: string, updates: Partial<Coupon>): Promis
     cleanUpdates.code = cleanUpdates.code.trim().toUpperCase();
   }
   if (cleanUpdates.isPinned !== undefined) {
-    cleanUpdates.isPinned = Boolean(cleanUpdates.isPinned);
+    cleanUpdates.isPinned =
+      cleanUpdates.isPinned === true ||
+      cleanUpdates.isPinned === 1 ||
+      String(cleanUpdates.isPinned).trim().toLowerCase() === 'true';
   }
   if (cleanUpdates.pinnedTag !== undefined) {
     cleanUpdates.pinnedTag = String(cleanUpdates.pinnedTag).trim().toUpperCase();
   }
   if (cleanUpdates.isActive !== undefined) {
-    cleanUpdates.isActive = Boolean(cleanUpdates.isActive);
+    cleanUpdates.isActive =
+      cleanUpdates.isActive === true ||
+      cleanUpdates.isActive === 1 ||
+      String(cleanUpdates.isActive).trim().toLowerCase() === 'true';
   }
+
+  const normalizedLookup = (id || '').trim().toUpperCase();
 
   let mongoDoc: Coupon | null = null;
   try {
     const db = await getDb();
     if (db) {
       const { ObjectId } = await import('mongodb');
-      const orClauses: any[] = [{ id }];
+      const orClauses: any[] = [{ id }, { code: normalizedLookup }];
       if (ObjectId.isValid(id)) {
         try {
           orClauses.push({ _id: new ObjectId(id) });
@@ -300,7 +317,12 @@ export async function updateCoupon(id: string, updates: Partial<Coupon>): Promis
   }
 
   const local = readLocalCoupons();
-  const index = local.findIndex((c) => c.id === id || (c as any)._id?.toString() === id);
+  const index = local.findIndex(
+    (c) =>
+      c.id === id ||
+      (c as any)._id?.toString() === id ||
+      c.code.toUpperCase() === normalizedLookup
+  );
   if (index >= 0) {
     local[index] = { ...local[index], ...cleanUpdates };
     writeLocalCoupons(local);
@@ -574,7 +596,16 @@ export async function getPinnedPublicCoupons(): Promise<
 
   return all
     .filter((c) => {
-      if (!c.isActive || !c.isPinned) return false;
+      const isPinned =
+        c.isPinned === true ||
+        (c as any).isPinned === 1 ||
+        String(c.isPinned).trim().toLowerCase() === 'true';
+      const isActive =
+        c.isActive === true ||
+        (c as any).isActive === 1 ||
+        String(c.isActive).trim().toLowerCase() === 'true';
+
+      if (!isActive || !isPinned) return false;
       if (c.expiresAt && new Date(c.expiresAt) < now) return false;
       if (c.maxRedemptions > 0 && c.timesRedeemed >= c.maxRedemptions) return false;
       return true;

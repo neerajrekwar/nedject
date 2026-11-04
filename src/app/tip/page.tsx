@@ -1,1 +1,1 @@
-export { default } from '../payment/page';
+export { default } from '../pay-to-use/page';

@@ -138,7 +138,7 @@ export function TechnicalFooter({ onOpenSocialCards }: TechnicalFooterProps) {
                 </li>
                 <li>
                   <Link
-                    href="/payment"
+                    href="/pay-to-use"
                     className="hover:text-[#ccff00] transition-colors text-left flex items-center gap-1 cursor-pointer"
                   >
                     <span>[07]</span> <span>UPGRADE &amp; PLANS</span>

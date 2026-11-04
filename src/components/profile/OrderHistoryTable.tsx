@@ -215,7 +215,7 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
           </button>
 
           <Link
-            href="/payment"
+            href="/pay-to-use"
             className="px-4 py-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black text-xs font-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] transition-all"
           >
             <Sparkles className="w-3.5 h-3.5" />
@@ -340,7 +340,7 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
           </div>
           <div className="pt-2">
             <Link
-              href="/payment"
+              href="/pay-to-use"
               className="inline-flex items-center gap-2 px-5 py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[3px_3px_0px_#000000] transition-all"
             >
               <Sparkles className="w-4 h-4" />

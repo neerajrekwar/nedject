@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import { createPageMetadata, buildBreadcrumbJsonLd, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Pricing & Pro Quota Subscriptions',
+  title: 'Pay to Use & Plans Pricing | Nedject Studio',
   description:
     'Flexible plans for industrial QR generation, 300 DPI high-resolution exports, unlimited batch processing, and vector barcode downloads.',
-  path: '/payment',
+  path: '/pay-to-use',
   keywords: [
-    'Nedject pro pricing',
+    'Nedject pay to use',
     'QR studio plans',
     '300 DPI export license',
     'barcode vector commercial license',
@@ -15,7 +15,7 @@ export const metadata: Metadata = createPageMetadata({
   ],
 });
 
-export default function PaymentLayout({
+export default function PayToUseLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -39,7 +39,7 @@ export default function PaymentLayout({
           price: '9.00',
           priceCurrency: 'USD',
           availability: 'https://schema.org/InStock',
-          url: `${siteUrl}/payment`,
+          url: `${siteUrl}/pay-to-use`,
         },
         {
           '@type': 'Offer',
@@ -47,13 +47,13 @@ export default function PaymentLayout({
           price: '49.00',
           priceCurrency: 'USD',
           availability: 'https://schema.org/InStock',
-          url: `${siteUrl}/payment`,
+          url: `${siteUrl}/pay-to-use`,
         },
       ],
     },
     buildBreadcrumbJsonLd([
       { name: 'Home', path: '/' },
-      { name: 'Pricing & Plans', path: '/payment' },
+      { name: 'Pricing & Plans', path: '/pay-to-use' },
     ]),
   ];
 

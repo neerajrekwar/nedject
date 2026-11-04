@@ -220,12 +220,12 @@ export default function AdminPlansPage() {
 
         <div className="flex items-center gap-2.5">
           <Link
-            href="/payment"
+            href="/pay-to-use"
             target="_blank"
             className="px-3.5 py-2 border-2 border-black bg-white hover:bg-zinc-100 font-black text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000]"
           >
             <Eye className="w-4 h-4" />
-            <span>VIEW LIVE /PAYMENT</span>
+            <span>VIEW LIVE /PAY-TO-USE</span>
           </Link>
           <button
             type="button"

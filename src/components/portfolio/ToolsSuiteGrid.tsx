@@ -273,7 +273,7 @@ export function ToolsSuiteGrid() {
 
             <div className="flex flex-col sm:flex-row items-center gap-3 shrink-0">
               <Link
-                href="/payment"
+                href="/pay-to-use"
                 className="w-full sm:w-auto px-5 py-3 border-2 border-[#ccff00] bg-[#ccff00] text-black hover:bg-white hover:text-black hover:border-white font-mono text-xs font-black uppercase transition-all shadow-[3px_3px_0px_#ffffff] text-center"
               >
                 UPGRADE TO PRO →

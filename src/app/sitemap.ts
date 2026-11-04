@@ -70,7 +70,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
-      url: `${siteUrl}/payment`,
+      url: `${siteUrl}/pay-to-use`,
       lastModified: lastMod,
       changeFrequency: 'monthly',
       priority: 0.6,
