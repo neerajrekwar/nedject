@@ -16,6 +16,8 @@ import {
   X,
   ShieldAlert,
   ArrowLeft,
+  Minimize2,
+  Maximize2,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { getUsageStats, UsageStats, getCachedActivePlan } from '@/lib/usage-limits';
@@ -29,6 +31,28 @@ export function GlobalNavbar() {
   const [showAuthModal, setShowAuthModal] = useState<boolean>(false);
   const [showSocialCardsModal, setShowSocialCardsModal] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [isDesktopMinimized, setIsDesktopMinimized] = useState<boolean>(false);
+
+  // Restore desktop minimized preference
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('nedject_desktop_navbar_minimized');
+      if (saved === 'true') {
+        setIsDesktopMinimized(true);
+      }
+    } catch {}
+  }, []);
+
+  const toggleDesktopMinimize = () => {
+    setIsDesktopMinimized((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('nedject_desktop_navbar_minimized', String(next));
+      } catch {}
+      return next;
+    });
+  };
+
   const [activePlan, setActivePlan] = useState<'guest' | 'free' | 'pro' | 'enterprise'>('guest');
 
   const [usageStats, setUsageStats] = useState<UsageStats>({
@@ -180,19 +204,30 @@ export function GlobalNavbar() {
         <div className="hidden lg:block w-full">
           {/* TIER 1: Top White Header */}
           <div className="w-full bg-white border-b-2 border-black">
-            <div className="w-full max-w-[1700px] mx-auto px-4 py-2 flex flex-col gap-2">
+            <div className={`w-full max-w-[1700px] mx-auto px-4 ${isDesktopMinimized ? 'py-1.5' : 'py-2 flex flex-col gap-2'}`}>
               
               {/* Row 1: Brand badge + Action Buttons */}
               <div className="flex items-center justify-between gap-3">
                 {/* Brand box: Black with #ccff00 text */}
-                <Link
-                  href="/"
-                  className="bg-black text-[#ccff00] border-2 border-black font-black text-xs sm:text-sm px-3 py-1.5 flex items-center gap-2 hover:bg-[#ccff00] hover:text-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000]"
-                  title="Nedject // genQRstudio"
-                >
-                  <QrCode className="w-4 h-4 text-[#ccff00]" />
-                  <span>Nedject // genQRstudio</span>
-                </Link>
+                <div className="flex items-center gap-2.5">
+                  <Link
+                    href="/"
+                    className="bg-black text-[#ccff00] border-2 border-black font-black text-xs sm:text-sm px-3 py-1.5 flex items-center gap-2 hover:bg-[#ccff00] hover:text-black transition-colors whitespace-nowrap shadow-[2px_2px_0px_#000000]"
+                    title="Nedject // genQRstudio"
+                  >
+                    <QrCode className="w-4 h-4 text-[#ccff00]" />
+                    <span>Nedject // genQRstudio</span>
+                  </Link>
+
+                  {isDesktopMinimized && (
+                    <span className="hidden xl:inline-flex items-center gap-1.5 text-[11px] font-black uppercase text-zinc-600 bg-zinc-100 border border-black/40 px-2 py-0.5">
+                      <span>ACTIVE:</span>
+                      <span className="text-black">
+                        {navLinks.find((l) => l.href === pathname)?.label || (isHomePage ? 'QR STUDIO' : 'WORKSPACE')}
+                      </span>
+                    </span>
+                  )}
+                </div>
 
                 {/* Right Action Bar */}
                 <div className="flex items-center gap-2.5 flex-wrap">
@@ -332,34 +367,66 @@ export function GlobalNavbar() {
                       <span>ADMIN</span>
                     </Link>
                   )}
+
+                  {/* MINIMIZE / EXPAND TOGGLE ONLY FOR DESKTOP */}
+                  <button
+                    type="button"
+                    onClick={toggleDesktopMinimize}
+                    className={`flex items-center gap-1.5 border-2 border-black px-2.5 py-1 text-xs font-black shadow-[2px_2px_0px_#000000] cursor-pointer transition-all select-none ${
+                      isDesktopMinimized
+                        ? 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00]'
+                        : 'bg-zinc-100 text-zinc-900 hover:bg-black hover:text-[#ccff00]'
+                    }`}
+                    title={
+                      isDesktopMinimized
+                        ? 'Expand full desktop navigation & studio controls'
+                        : 'Minimize desktop navbar to reduce screen space'
+                    }
+                    aria-label={isDesktopMinimized ? 'Expand desktop navbar' : 'Minimize desktop navbar'}
+                  >
+                    {isDesktopMinimized ? (
+                      <>
+                        <Maximize2 className="w-3.5 h-3.5" />
+                        <span>EXPAND</span>
+                      </>
+                    ) : (
+                      <>
+                        <Minimize2 className="w-3.5 h-3.5" />
+                        <span>MINIMIZE</span>
+                      </>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              {/* Row 2: Full Tool Navigation Strip */}
-              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
-                {navLinks.map((link) => {
-                  const isActive = pathname === link.href || (link.href === '/' && pathname === '/photo-qr');
-                  return (
-                    <Link
-                      key={link.href}
-                      href={link.href}
-                      className={`border-2 border-black font-black text-xs px-2.5 py-1 uppercase transition-all whitespace-nowrap shadow-[1px_1px_0px_#000000] ${
-                        isActive
-                          ? 'bg-black text-[#ccff00]'
-                          : 'bg-white text-black hover:bg-zinc-100'
-                      }`}
-                    >
-                      {link.label}
-                    </Link>
-                  );
-                })}
-              </div>
+              {/* Row 2: Full Tool Navigation Strip (Hidden when minimized) */}
+              {!isDesktopMinimized && (
+                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pt-1">
+                  {navLinks.map((link) => {
+                    const isActive = pathname === link.href || (link.href === '/' && pathname === '/photo-qr');
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        className={`border-2 border-black font-black text-xs px-2.5 py-1 uppercase transition-all whitespace-nowrap shadow-[1px_1px_0px_#000000] ${
+                          isActive
+                            ? 'bg-black text-[#ccff00]'
+                            : 'bg-white text-black hover:bg-zinc-100'
+                        }`}
+                      >
+                        {link.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
 
             </div>
           </div>
 
-          {/* TIER 2: Bottom Studio Bar (Cream/Off-White #f5f5f0) - DYNAMIC CONTEXT PER PAGE */}
-          <div className="w-full bg-[#f5f5f0] border-b-2 border-black">
+          {/* TIER 2: Bottom Studio Bar (Cream/Off-White #f5f5f0) - DYNAMIC CONTEXT PER PAGE (Hidden when minimized) */}
+          {!isDesktopMinimized && (
+            <div className="w-full bg-[#f5f5f0] border-b-2 border-black">
             <div className="w-full max-w-[1700px] mx-auto px-4 py-2 flex items-center justify-between gap-3">
               
               {/* ------------------------------------------------------------- */}
@@ -829,7 +896,8 @@ export function GlobalNavbar() {
 
             </div>
           </div>
-        </div>
+        )}
+      </div>
 
         {/* ========================================================================================= */}
         {/* 2. TABLET & MOBILE NAVBAR (< lg: md, sm, xs)                                              */}
