@@ -1,6 +1,12 @@
 import { getDb } from './mongodb';
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
+import {
+  validateEmailForAuth,
+  getCanonicalEmail,
+  generateVerificationCode,
+} from './email-security';
+import { sendVerificationCodeEmail } from './email';
 
 export interface GoogleFitUserTokens {
   accessToken: string;
@@ -14,6 +20,7 @@ export interface UserProfile {
   _id?: string;
   name: string;
   email: string;
+  canonicalEmail?: string;
   dob: string; // Date of Birth YYYY-MM-DD
   occupation: string;
   passwordHash?: string;
@@ -26,6 +33,9 @@ export interface UserProfile {
   googleFitTokens?: GoogleFitUserTokens;
   resetPasswordToken?: string;
   resetPasswordExpires?: string;
+  isEmailVerified: boolean;
+  emailVerificationCode?: string;
+  emailVerificationExpires?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -35,11 +45,17 @@ const memoryUsers = new Map<string, UserProfile>();
 
 export async function findUserByEmail(email: string): Promise<UserProfile | null> {
   const normalizedEmail = email.toLowerCase().trim();
+  const canonical = getCanonicalEmail(normalizedEmail);
   const db = await getDb();
 
   if (db) {
     try {
-      const user = await db.collection<UserProfile>('users').findOne({ email: normalizedEmail });
+      const user = await db.collection<UserProfile>('users').findOne({
+        $or: [
+          { email: normalizedEmail },
+          { canonicalEmail: canonical },
+        ],
+      });
       if (user) {
         return {
           ...user,
@@ -51,7 +67,13 @@ export async function findUserByEmail(email: string): Promise<UserProfile | null
     }
   }
 
-  return memoryUsers.get(normalizedEmail) || null;
+  for (const u of memoryUsers.values()) {
+    if (u.email === normalizedEmail || (u.canonicalEmail && u.canonicalEmail === canonical)) {
+      return u;
+    }
+  }
+
+  return null;
 }
 
 export async function findUserById(idOrEmail: string): Promise<UserProfile | null> {
@@ -90,7 +112,20 @@ export async function createUser(data: {
   providerAccountId?: string;
   image?: string;
 }): Promise<UserProfile> {
-  const normalizedEmail = data.email.toLowerCase().trim();
+  const emailVal = validateEmailForAuth(data.email);
+  if (!emailVal.valid) {
+    throw new Error(emailVal.error || 'Invalid email address provided.');
+  }
+
+  const normalizedEmail = emailVal.normalizedEmail;
+  const canonicalEmail = emailVal.canonicalEmail;
+
+  // Check for duplicate account using standard email or canonical alias
+  const existing = await findUserByEmail(normalizedEmail);
+  if (existing) {
+    throw new Error('An account with this email address already exists. Please sign in or use another email.');
+  }
+
   const now = new Date().toISOString();
 
   let passwordHash: string | undefined;
@@ -98,9 +133,20 @@ export async function createUser(data: {
     passwordHash = await bcrypt.hash(data.password, 10);
   }
 
+  // Mandatory verification: OAuth users are pre-verified by provider; credentials users require verification code
+  const isEmailVerified = data.provider !== 'credentials';
+  let emailVerificationCode: string | undefined;
+  let emailVerificationExpires: string | undefined;
+
+  if (!isEmailVerified) {
+    emailVerificationCode = generateVerificationCode();
+    emailVerificationExpires = new Date(Date.now() + 15 * 60 * 1000).toISOString(); // 15 mins
+  }
+
   const newUser: UserProfile = {
     name: data.name || 'Anonymous User',
     email: normalizedEmail,
+    canonicalEmail,
     dob: data.dob || '',
     occupation: data.occupation || '',
     passwordHash,
@@ -110,6 +156,9 @@ export async function createUser(data: {
     plan: 'free',
     generationsLimit: 10, // 10 limit with auth
     generationsUsed: 0,
+    isEmailVerified,
+    emailVerificationCode,
+    emailVerificationExpires,
     createdAt: now,
     updatedAt: now,
   };
@@ -128,6 +177,128 @@ export async function createUser(data: {
 
   memoryUsers.set(normalizedEmail, newUser);
   return newUser;
+}
+
+/**
+ * Verifies a 6-digit email verification code for a user
+ */
+export async function verifyUserEmailCode(
+  email: string,
+  code: string
+): Promise<{ success: boolean; error?: string; user?: UserProfile }> {
+  const normalizedEmail = (email || '').toLowerCase().trim();
+  const cleanCode = (code || '').trim();
+
+  if (!normalizedEmail || !cleanCode) {
+    return { success: false, error: 'Email and 6-digit verification code are required.' };
+  }
+
+  const user = await findUserByEmail(normalizedEmail);
+  if (!user) {
+    return { success: false, error: 'No account found with this email address.' };
+  }
+
+  if (user.isEmailVerified) {
+    return { success: true, user };
+  }
+
+  if (!user.emailVerificationCode || !user.emailVerificationExpires) {
+    return { success: false, error: 'No active verification code found. Please request a new code.' };
+  }
+
+  // Check expiration
+  if (new Date() > new Date(user.emailVerificationExpires)) {
+    return { success: false, error: 'Verification code has expired. Please click "Resend Code" to receive a fresh code.' };
+  }
+
+  if (user.emailVerificationCode !== cleanCode) {
+    return { success: false, error: 'Incorrect verification code. Please check your inbox and enter the 6-digit code.' };
+  }
+
+  // Code matches! Mark account as verified and clear temporary verification credentials
+  const now = new Date().toISOString();
+
+  const db = await getDb();
+  if (db) {
+    try {
+      await db.collection('users').updateOne(
+        { email: user.email },
+        {
+          $set: { isEmailVerified: true, updatedAt: now },
+          $unset: { emailVerificationCode: '', emailVerificationExpires: '' },
+        }
+      );
+    } catch (e) {
+      console.warn('Failed to update email verification status in MongoDB:', e);
+    }
+  }
+
+  user.isEmailVerified = true;
+  user.emailVerificationCode = undefined;
+  user.emailVerificationExpires = undefined;
+  user.updatedAt = now;
+  memoryUsers.set(user.email, user);
+
+  return { success: true, user };
+}
+
+/**
+ * Issues and sends a new 6-digit email verification code to the user's inbox
+ */
+export async function issueAndSendVerificationCode(
+  email: string
+): Promise<{ success: boolean; error?: string; simulatedCode?: string }> {
+  const emailVal = validateEmailForAuth(email);
+  if (!emailVal.valid) {
+    return { success: false, error: emailVal.error };
+  }
+
+  const user = await findUserByEmail(emailVal.normalizedEmail);
+  if (!user) {
+    return { success: false, error: 'No account found with this email address.' };
+  }
+
+  if (user.isEmailVerified) {
+    return { success: false, error: 'This email address is already verified. You may sign in directly.' };
+  }
+
+  const newCode = generateVerificationCode();
+  const newExpiry = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const now = new Date().toISOString();
+
+  const db = await getDb();
+  if (db) {
+    try {
+      await db.collection('users').updateOne(
+        { email: user.email },
+        {
+          $set: {
+            emailVerificationCode: newCode,
+            emailVerificationExpires: newExpiry,
+            updatedAt: now,
+          },
+        }
+      );
+    } catch (e) {
+      console.warn('Failed to update verification code in MongoDB:', e);
+    }
+  }
+
+  user.emailVerificationCode = newCode;
+  user.emailVerificationExpires = newExpiry;
+  user.updatedAt = now;
+  memoryUsers.set(user.email, user);
+
+  const sendResult = await sendVerificationCodeEmail({
+    to: user.email,
+    code: newCode,
+    userName: user.name,
+  });
+
+  return {
+    success: true,
+    simulatedCode: sendResult.simulated ? newCode : undefined,
+  };
 }
 
 export async function updateUserProfile(

@@ -15,6 +15,8 @@ import {
   ArrowRight,
   ArrowLeft,
   KeyRound,
+  ShieldCheck,
+  RefreshCw,
 } from 'lucide-react';
 import {
   getClientRedirectDestination,
@@ -24,7 +26,7 @@ import {
 interface AuthModalProps {
   isOpen: boolean;
   onClose: () => void;
-  defaultTab?: 'signin' | 'signup' | 'forgot';
+  defaultTab?: 'signin' | 'signup' | 'forgot' | 'verify';
   onSuccess?: () => void;
 }
 
@@ -34,7 +36,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   defaultTab = 'signin',
   onSuccess,
 }) => {
-  const [tab, setTab] = useState<'signin' | 'signup' | 'forgot'>(defaultTab);
+  const [tab, setTab] = useState<'signin' | 'signup' | 'forgot' | 'verify'>(defaultTab);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -55,6 +57,30 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   const [password, setPassword] = useState('');
   const [dob, setDob] = useState('');
   const [occupation, setOccupation] = useState('');
+
+  // Email Verification state
+  const [verifyEmail, setVerifyEmail] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyPassword, setVerifyPassword] = useState('');
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+  const [simulatedDevCode, setSimulatedDevCode] = useState<string | null>(null);
+
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
+
+  // Helper to detect '+' plus-addressing aliases
+  const isPlusSubaddress = (emailStr: string) => {
+    if (!emailStr) return false;
+    const atIdx = emailStr.indexOf('@');
+    if (atIdx === -1) return emailStr.includes('+');
+    return emailStr.substring(0, atIdx).includes('+');
+  };
 
   // Detect any intended payment destination from cookie or URL on open
   useEffect(() => {
@@ -93,15 +119,39 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
+
+    const emailTrimmed = signInEmail.trim().toLowerCase();
+
+    if (!emailTrimmed || !signInPassword) {
+      setError('Please provide both your email address and password.');
+      setLoading(false);
+      return;
+    }
+
+    if (isPlusSubaddress(emailTrimmed)) {
+      setError('Email aliases with "+" (e.g. name+alias@...) are prohibited. Please use your standard email.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await signIn('credentials', {
         redirect: false,
-        email: signInEmail,
+        email: emailTrimmed,
         password: signInPassword,
       });
 
       if (res?.error) {
+        if (res.error.includes('EMAIL_NOT_VERIFIED') || res.error.includes('verify your email')) {
+          setVerifyEmail(emailTrimmed);
+          setVerifyPassword(signInPassword);
+          setTab('verify');
+          setResendCooldown(25);
+          setError('Email verification required! A fresh 6-digit verification code has been dispatched to your inbox.');
+          setLoading(false);
+          return;
+        }
         setError(res.error || 'Invalid email or password');
         setLoading(false);
       } else {
@@ -133,14 +183,35 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setSuccessMessage(null);
+
+    const emailTrimmed = email.trim().toLowerCase();
+
+    if (!emailTrimmed || !password) {
+      setError('Email and password are required to register.');
+      setLoading(false);
+      return;
+    }
+
+    if (isPlusSubaddress(emailTrimmed)) {
+      setError('Email aliases with "+" are blocked to prevent loop exploits. Please use your root address.');
+      setLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setError('Password must contain at least 6 characters.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name,
-          email,
+          name: name.trim() || 'Athlete User',
+          email: emailTrimmed,
           password,
           dob,
           occupation,
@@ -153,38 +224,113 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         throw new Error(data.error || 'Registration failed');
       }
 
-      // Auto sign in after registration
-      const loginRes = await signIn('credentials', {
-        redirect: false,
-        email,
-        password,
-      });
-
-      if (loginRes?.error) {
-        setTab('signin');
-        setSignInEmail(email);
-        setSuccessMessage('Account registered in MongoDB! Please enter your password to sign in.');
-      } else {
-        const target = intendedDestination || getClientRedirectDestination();
-        if (target) {
-          clearClientRedirectDestination();
-          setSuccessMessage('Account created! Redirecting to your destination...');
-          if (onSuccess) onSuccess();
-          setTimeout(() => {
-            onClose();
-            window.location.href = target;
-          }, 450);
-        } else {
-          setSuccessMessage('Account created and logged in! 10 generations quota unlocked.');
-          if (onSuccess) onSuccess();
-          setTimeout(() => {
-            onClose();
-            window.location.reload();
-          }, 800);
-        }
+      // Transition to mandatory 6-digit verification code screen
+      setVerifyEmail(emailTrimmed);
+      setVerifyPassword(password);
+      setVerifyCode('');
+      setResendCooldown(30);
+      if (data?.simulatedCode) {
+        setSimulatedDevCode(data.simulatedCode);
       }
+      setTab('verify');
+      setSuccessMessage('A mandatory 6-digit verification code has been dispatched to your inbox. Please enter it below.');
     } catch (err: any) {
       setError(err?.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    const cleanCode = verifyCode.trim().replace(/\D/g, '');
+    if (cleanCode.length !== 6) {
+      setError('Please enter the complete 6-digit verification code.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: verifyEmail.trim().toLowerCase(),
+          code: cleanCode,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Invalid or expired verification code.');
+      }
+
+      setSuccessMessage('Email verified successfully! Logging you in...');
+
+      // Auto sign in user if password is known
+      if (verifyPassword) {
+        const signinRes = await signIn('credentials', {
+          redirect: false,
+          email: verifyEmail.trim().toLowerCase(),
+          password: verifyPassword,
+        });
+
+        if (signinRes?.ok) {
+          const target = intendedDestination || getClientRedirectDestination();
+          if (target) {
+            clearClientRedirectDestination();
+            setTimeout(() => {
+              onClose();
+              window.location.href = target;
+            }, 350);
+          } else {
+            setTimeout(() => {
+              onClose();
+              window.location.reload();
+            }, 500);
+          }
+          return;
+        }
+      }
+
+      setTab('signin');
+      setSignInEmail(verifyEmail);
+      setSuccessMessage('Email verified! Please enter your password to sign in.');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to verify code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    if (resendCooldown > 0 || !verifyEmail) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/auth/resend-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verifyEmail.trim().toLowerCase() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to resend code.');
+      }
+
+      setResendCooldown(25);
+      if (data?.simulatedCode) {
+        setSimulatedDevCode(data.simulatedCode);
+      }
+      setSuccessMessage(`A fresh verification code has been dispatched to ${verifyEmail}. Check your inbox.`);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to resend code.');
     } finally {
       setLoading(false);
     }
@@ -197,11 +343,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setSuccessMessage(null);
     setDevResetUrl(null);
 
+    const emailTrimmed = forgotEmail.trim().toLowerCase();
+
+    if (!emailTrimmed) {
+      setError('Please provide your account email address.');
+      setLoading(false);
+      return;
+    }
+
+    if (isPlusSubaddress(emailTrimmed)) {
+      setError('Email aliases with "+" are prohibited. Please use your standard email.');
+      setLoading(false);
+      return;
+    }
+
     try {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail }),
+        body: JSON.stringify({ email: emailTrimmed }),
       });
 
       const data = await res.json();
@@ -264,7 +424,25 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* Tab Switcher */}
-        {tab === 'forgot' ? (
+        {tab === 'verify' ? (
+          <div className="flex items-center justify-between border-2 border-black bg-[#ccff00]/25 p-2 text-xs font-black">
+            <button
+              type="button"
+              onClick={() => {
+                setTab('signin');
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className="flex items-center gap-1.5 text-black hover:underline cursor-pointer uppercase transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Back to Sign In</span>
+            </button>
+            <span className="text-[10px] font-bold text-black uppercase tracking-wider bg-[#ccff00] px-2 py-0.5 border border-black">
+              CODE VERIFICATION
+            </span>
+          </div>
+        ) : tab === 'forgot' ? (
           <div className="flex items-center justify-between border-2 border-black bg-zinc-100 p-2 text-xs font-black">
             <button
               type="button"
@@ -333,7 +511,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         )}
 
         {/* 1. OAUTH PROVIDERS (Only displayed on signin / signup) */}
-        {tab !== 'forgot' && (
+        {tab !== 'forgot' && tab !== 'verify' && (
           <>
             <div className="space-y-2">
               <div className="text-[10px] font-black uppercase text-zinc-500 tracking-wider">
@@ -421,8 +599,18 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={signInEmail}
                 onChange={(e) => setSignInEmail(e.target.value)}
                 placeholder="athlete@example.com"
-                className="w-full p-2 border-2 border-black bg-white font-bold"
+                className={`w-full p-2 border-2 font-bold ${
+                  isPlusSubaddress(signInEmail)
+                    ? 'border-rose-500 bg-rose-50'
+                    : 'border-black bg-white'
+                }`}
               />
+              {isPlusSubaddress(signInEmail) && (
+                <div className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-300 p-1.5 mt-1 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Email aliases with &apos;+&apos; are prohibited to prevent account loops.</span>
+                </div>
+              )}
             </div>
 
             <div>
@@ -458,7 +646,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isPlusSubaddress(signInEmail)}
               className="w-full py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span>{loading ? 'AUTHENTICATING...' : 'SIGN IN & UNLOCK QUOTA'}</span>
@@ -467,7 +655,92 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </form>
         )}
 
-        {/* 3. FORGOT PASSWORD FORM */}
+        {/* 3. MANDATORY 6-DIGIT EMAIL VERIFICATION */}
+        {tab === 'verify' && (
+          <div className="space-y-3 text-xs">
+            <div className="bg-zinc-100 border border-black p-2.5 space-y-1.5">
+              <div className="flex items-center gap-1.5 font-black text-black text-xs uppercase">
+                <Mail className="w-3.5 h-3.5" />
+                <span>INBOX VERIFICATION REQUIRED</span>
+              </div>
+              <p className="text-[11px] text-zinc-600 font-bold leading-relaxed">
+                A mandatory 6-digit confirmation code was sent to:
+              </p>
+              <div className="p-1.5 border border-black bg-white font-mono text-xs font-black text-black break-all flex items-center justify-between">
+                <span>{verifyEmail}</span>
+                <span className="text-[10px] text-zinc-500 font-bold uppercase">15m expiry</span>
+              </div>
+            </div>
+
+            {simulatedDevCode && (
+              <div className="bg-[#ccff00] border-2 border-black p-2 text-xs font-bold space-y-0.5">
+                <span className="font-black text-black block uppercase text-[10px]">LOCAL DEV OTP CODE:</span>
+                <span className="font-mono text-base font-black text-black tracking-widest">{simulatedDevCode}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyCode} className="space-y-3">
+              <div>
+                <label className="block font-black mb-1 text-black text-center text-xs uppercase">
+                  ENTER 6-DIGIT VERIFICATION CODE
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  autoFocus
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="••••••"
+                  className="w-full text-center py-2.5 border-4 border-black bg-white font-mono text-2xl font-black tracking-[0.3em] text-black focus:outline-none focus:ring-4 focus:ring-[#ccff00]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || verifyCode.trim().length !== 6}
+                className="w-full py-2.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                    <span>CHECKING CODE...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>VERIFY CODE &amp; ACTIVATE ACCOUNT</span>
+                  </>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between pt-1">
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={loading || resendCooldown > 0}
+                  className="text-[11px] font-black uppercase text-zinc-700 hover:text-black underline cursor-pointer disabled:opacity-40 disabled:no-underline"
+                >
+                  {resendCooldown > 0 ? `RESEND IN ${resendCooldown}s` : 'RESEND CODE'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('signin');
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="text-[11px] font-bold uppercase text-zinc-600 hover:text-black underline cursor-pointer"
+                >
+                  CHANGE EMAIL
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* 4. FORGOT PASSWORD FORM */}
         {tab === 'forgot' && (
           <div className="space-y-3 text-xs">
             <div className="bg-zinc-100 border border-black p-2.5 space-y-1">
@@ -492,13 +765,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
                   placeholder="athlete@example.com"
-                  className="w-full p-2 border-2 border-black bg-white font-bold"
+                  className={`w-full p-2 border-2 font-bold ${
+                    isPlusSubaddress(forgotEmail)
+                      ? 'border-rose-500 bg-rose-50'
+                      : 'border-black bg-white'
+                  }`}
                 />
+                {isPlusSubaddress(forgotEmail) && (
+                  <div className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-300 p-1.5 mt-1 flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                    <span>Email aliases with &apos;+&apos; are prohibited.</span>
+                  </div>
+                )}
               </div>
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || isPlusSubaddress(forgotEmail)}
                 className="w-full py-2.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <KeyRound className="w-3.5 h-3.5" />
@@ -541,7 +824,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           </div>
         )}
 
-        {/* 3. SIGN UP FORM (Only storing name, email, dob, occupation as specified) */}
+        {/* 5. SIGN UP FORM (Only storing name, email, dob, occupation as specified) */}
         {tab === 'signup' && (
           <form onSubmit={handleSignUp} className="space-y-3 text-xs">
             <div>
@@ -562,7 +845,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({
             <div>
               <label className="block font-black mb-1 text-black flex items-center gap-1">
                 <Mail className="w-3.5 h-3.5" />
-                <span>EMAIL ADDRESS</span>
+                <span>EMAIL ADDRESS (PRIMARY INBOX)</span>
               </label>
               <input
                 type="email"
@@ -570,8 +853,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="athlete@example.com"
-                className="w-full p-2 border-2 border-black bg-white font-bold"
+                className={`w-full p-2 border-2 font-bold ${
+                  isPlusSubaddress(email)
+                    ? 'border-rose-500 bg-rose-50'
+                    : 'border-black bg-white'
+                }`}
               />
+              {isPlusSubaddress(email) ? (
+                <div className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-300 p-1.5 mt-1 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Email aliases with &apos;+&apos; are prohibited to prevent account looping.</span>
+                </div>
+              ) : (
+                <span className="text-[10px] text-zinc-500 font-bold block mt-1">
+                  A 6-digit confirmation code will be sent to your inbox.
+                </span>
+              )}
             </div>
 
             <div>
@@ -627,11 +924,11 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isPlusSubaddress(email)}
               className="w-full py-2.5 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>{loading ? 'SAVING TO MONGODB...' : 'REGISTER & UNLOCK 10 LIMITS'}</span>
+              <span>{loading ? 'SENDING VERIFICATION...' : 'CREATE ACCOUNT & VERIFY'}</span>
             </button>
           </form>
         )}

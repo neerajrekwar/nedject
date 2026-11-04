@@ -30,7 +30,7 @@ function LoginFormContent() {
   const planParam = searchParams?.get('plan');
   const isFromPayment = callbackUrl.includes('/pay-to-use') || callbackUrl.includes('/payment');
 
-  const [tab, setTab] = useState<'signin' | 'signup' | 'forgot'>('signin');
+  const [tab, setTab] = useState<'signin' | 'signup' | 'forgot' | 'verify'>('signin');
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -50,6 +50,22 @@ function LoginFormContent() {
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotSent, setForgotSent] = useState(false);
   const [devResetUrl, setDevResetUrl] = useState<string | null>(null);
+
+  // Email Verification inputs & state
+  const [verifyEmail, setVerifyEmail] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [lastPassword, setLastPassword] = useState('');
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
+  const [simulatedDevCode, setSimulatedDevCode] = useState<string | null>(null);
+
+  // Cooldown countdown timer for resending code
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // If already authenticated, redirect immediately to intended destination
   useEffect(() => {
@@ -71,6 +87,14 @@ function LoginFormContent() {
       }
     }
   }, [searchParams]);
+
+  // Helper to detect '+' plus-addressing
+  const isPlusSubaddress = (emailStr: string) => {
+    if (!emailStr) return false;
+    const atIdx = emailStr.indexOf('@');
+    if (atIdx === -1) return emailStr.includes('+');
+    return emailStr.substring(0, atIdx).includes('+');
+  };
 
   // Handle Google OAuth
   const handleGoogleSignIn = async () => {
@@ -94,8 +118,16 @@ function LoginFormContent() {
     setError(null);
     setSuccessMessage(null);
 
-    if (!signInEmail || !signInPassword) {
+    const emailTrimmed = signInEmail.trim().toLowerCase();
+
+    if (!emailTrimmed || !signInPassword) {
       setError('Please provide both your email address and password.');
+      setLoading(false);
+      return;
+    }
+
+    if (isPlusSubaddress(emailTrimmed)) {
+      setError('Email aliases with "+" (e.g. name+test@...) are not allowed. Please enter your primary email.');
       setLoading(false);
       return;
     }
@@ -103,13 +135,24 @@ function LoginFormContent() {
     try {
       const res = await signIn('credentials', {
         redirect: false,
-        email: signInEmail.trim().toLowerCase(),
+        email: emailTrimmed,
         password: signInPassword,
         callbackUrl,
       });
 
       if (!res?.ok) {
-        throw new Error(res?.error || 'Invalid email or password. Please verify your credentials.');
+        const errorMsg = res?.error || 'Invalid email or password.';
+        // Detect mandatory unverified email response
+        if (errorMsg.includes('EMAIL_NOT_VERIFIED') || errorMsg.includes('verify your email')) {
+          setVerifyEmail(emailTrimmed);
+          setLastPassword(signInPassword);
+          setTab('verify');
+          setResendCooldown(25);
+          setError('Email verification required! A fresh 6-digit verification code has been dispatched to your email.');
+          setLoading(false);
+          return;
+        }
+        throw new Error(errorMsg);
       }
 
       setSuccessMessage('Authentication verified! Redirecting to your destination...');
@@ -129,8 +172,16 @@ function LoginFormContent() {
     setError(null);
     setSuccessMessage(null);
 
-    if (!signUpEmail || !signUpPassword) {
+    const emailTrimmed = signUpEmail.trim().toLowerCase();
+
+    if (!emailTrimmed || !signUpPassword) {
       setError('Email and password are required to register.');
+      setLoading(false);
+      return;
+    }
+
+    if (isPlusSubaddress(emailTrimmed)) {
+      setError('Email aliases with "+" (e.g. user+alias@...) are prohibited. Please provide your direct email address.');
       setLoading(false);
       return;
     }
@@ -147,7 +198,7 @@ function LoginFormContent() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim() || 'Athlete User',
-          email: signUpEmail.trim().toLowerCase(),
+          email: emailTrimmed,
           password: signUpPassword,
           dob: dob.trim(),
           occupation: occupation.trim(),
@@ -159,28 +210,110 @@ function LoginFormContent() {
         throw new Error(data?.error || 'Failed to create your account.');
       }
 
-      // Automatically sign in upon registration
-      const signinRes = await signIn('credentials', {
-        redirect: false,
-        email: signUpEmail.trim().toLowerCase(),
-        password: signUpPassword,
-        callbackUrl,
-      });
-
-      if (!signinRes?.ok) {
-        setSuccessMessage('Account registered! Please sign in with your new password.');
-        setTab('signin');
-        setSignInEmail(signUpEmail);
-        setLoading(false);
-        return;
+      // Mandatory Email Verification Transition
+      setVerifyEmail(emailTrimmed);
+      setLastPassword(signUpPassword);
+      setVerifyCode('');
+      setResendCooldown(30);
+      if (data?.simulatedCode) {
+        setSimulatedDevCode(data.simulatedCode);
       }
-
-      setSuccessMessage('Account created and authenticated! Redirecting to payment...');
-      setTimeout(() => {
-        window.location.href = callbackUrl;
-      }, 700);
+      setTab('verify');
+      setSuccessMessage(
+        'Account registered! Please enter the 6-digit verification code sent to your email inbox to activate your account.'
+      );
     } catch (err: any) {
       setError(err?.message || 'Registration failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Verify Code
+  const handleVerifyCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    const cleanCode = verifyCode.trim().replace(/\D/g, '');
+    if (cleanCode.length !== 6) {
+      setError('Please enter the complete 6-digit numeric verification code.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/auth/verify-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: verifyEmail.trim().toLowerCase(),
+          code: cleanCode,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Invalid verification code.');
+      }
+
+      setSuccessMessage('Email verified successfully! Logging you in...');
+
+      // If we have the user's password cached, auto sign them in
+      if (lastPassword) {
+        const signinRes = await signIn('credentials', {
+          redirect: false,
+          email: verifyEmail.trim().toLowerCase(),
+          password: lastPassword,
+          callbackUrl,
+        });
+
+        if (signinRes?.ok) {
+          setTimeout(() => {
+            window.location.href = callbackUrl;
+          }, 600);
+          return;
+        }
+      }
+
+      // Fallback: switch to sign in tab prefilled
+      setTab('signin');
+      setSignInEmail(verifyEmail);
+      setSuccessMessage('Email verified successfully! You can now sign in with your password.');
+    } catch (err: any) {
+      setError(err?.message || 'Failed to verify code.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Resend Verification Code
+  const handleResendCode = async () => {
+    if (resendCooldown > 0 || !verifyEmail) return;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const res = await fetch('/api/auth/resend-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verifyEmail.trim().toLowerCase() }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data?.error || 'Failed to resend code.');
+      }
+
+      setResendCooldown(25);
+      if (data?.simulatedCode) {
+        setSimulatedDevCode(data.simulatedCode);
+      }
+      setSuccessMessage(`A fresh verification code has been dispatched to ${verifyEmail}. Please check your inbox.`);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to resend verification code.');
+    } finally {
       setLoading(false);
     }
   };
@@ -192,8 +325,16 @@ function LoginFormContent() {
     setError(null);
     setSuccessMessage(null);
 
-    if (!forgotEmail) {
+    const emailTrimmed = forgotEmail.trim().toLowerCase();
+
+    if (!emailTrimmed) {
       setError('Please provide your account email address.');
+      setLoading(false);
+      return;
+    }
+
+    if (isPlusSubaddress(emailTrimmed)) {
+      setError('Email aliases with "+" are not allowed. Please enter your primary email.');
       setLoading(false);
       return;
     }
@@ -202,7 +343,7 @@ function LoginFormContent() {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: forgotEmail.trim().toLowerCase() }),
+        body: JSON.stringify({ email: emailTrimmed }),
       });
 
       const data = await res.json();
@@ -239,6 +380,8 @@ function LoginFormContent() {
               ? 'ACCOUNT LOGIN'
               : tab === 'signup'
               ? 'CREATE ACCOUNT'
+              : tab === 'verify'
+              ? 'VERIFY YOUR EMAIL'
               : 'RESET PASSWORD'}
           </h1>
 
@@ -257,43 +400,65 @@ function LoginFormContent() {
               ? 'Sign in to access your quota, saved matrices, and subscription passes'
               : tab === 'signup'
               ? 'Register with your name, date of birth, and occupation'
+              : tab === 'verify'
+              ? 'Mandatory security check: enter the 6-digit code sent to your inbox'
               : 'Enter your email to receive a secure password reset link'}
           </p>
         </div>
 
         {/* TAB SWITCHER */}
-        <div className="grid grid-cols-2 border-2 border-black bg-zinc-100 shadow-[3px_3px_0px_#000000]">
-          <button
-            type="button"
-            onClick={() => {
-              setTab('signin');
-              setError(null);
-              setSuccessMessage(null);
-            }}
-            className={`py-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${
-              tab === 'signin'
-                ? 'bg-black text-[#ccff00]'
-                : 'text-black hover:bg-zinc-200'
-            }`}
-          >
-            SIGN IN
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setTab('signup');
-              setError(null);
-              setSuccessMessage(null);
-            }}
-            className={`py-2 text-xs font-black uppercase tracking-wider transition-colors border-l-2 border-black cursor-pointer ${
-              tab === 'signup'
-                ? 'bg-black text-[#ccff00]'
-                : 'text-black hover:bg-zinc-200'
-            }`}
-          >
-            REGISTER
-          </button>
-        </div>
+        {tab === 'verify' ? (
+          <div className="flex items-center justify-between border-2 border-black bg-[#ccff00]/20 p-2 text-xs font-black">
+            <button
+              type="button"
+              onClick={() => {
+                setTab('signin');
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className="flex items-center gap-1.5 text-black hover:underline cursor-pointer uppercase transition-colors"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              <span>Return to Sign In</span>
+            </button>
+            <span className="text-[10px] font-bold text-zinc-700 uppercase tracking-wider bg-black text-[#ccff00] px-2 py-0.5 border border-black">
+              CODE VERIFICATION
+            </span>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 border-2 border-black bg-zinc-100 shadow-[3px_3px_0px_#000000]">
+            <button
+              type="button"
+              onClick={() => {
+                setTab('signin');
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className={`py-2 text-xs font-black uppercase tracking-wider transition-colors cursor-pointer ${
+                tab === 'signin'
+                  ? 'bg-black text-[#ccff00]'
+                  : 'text-black hover:bg-zinc-200'
+              }`}
+            >
+              SIGN IN
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setTab('signup');
+                setError(null);
+                setSuccessMessage(null);
+              }}
+              className={`py-2 text-xs font-black uppercase tracking-wider transition-colors border-l-2 border-black cursor-pointer ${
+                tab === 'signup'
+                  ? 'bg-black text-[#ccff00]'
+                  : 'text-black hover:bg-zinc-200'
+              }`}
+            >
+              REGISTER
+            </button>
+          </div>
+        )}
 
         {/* FEEDBACK MESSAGES */}
         {error && (
@@ -310,8 +475,8 @@ function LoginFormContent() {
           </div>
         )}
 
-        {/* GOOGLE ONE-CLICK AUTH */}
-        {tab !== 'forgot' && (
+        {/* GOOGLE ONE-CLICK AUTH (Only on signin / signup) */}
+        {tab !== 'forgot' && tab !== 'verify' && (
           <div className="space-y-3">
             <button
               type="button"
@@ -366,9 +531,19 @@ function LoginFormContent() {
                   value={signInEmail}
                   onChange={(e) => setSignInEmail(e.target.value)}
                   placeholder="athlete@studio.com"
-                  className="w-full pl-9 pr-3 py-2 border-2 border-black bg-zinc-50 font-mono text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#ccff00]"
+                  className={`w-full pl-9 pr-3 py-2 border-2 font-mono text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#ccff00] ${
+                    isPlusSubaddress(signInEmail)
+                      ? 'border-rose-500 bg-rose-50'
+                      : 'border-black bg-zinc-50'
+                  }`}
                 />
               </div>
+              {isPlusSubaddress(signInEmail) && (
+                <div className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-300 p-1.5 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Email aliases with &apos;+&apos; are prohibited to prevent looping. Use your primary address.</span>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -405,7 +580,7 @@ function LoginFormContent() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isPlusSubaddress(signInEmail)}
               className="w-full py-3 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs sm:text-sm uppercase transition-all shadow-[4px_4px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
@@ -447,7 +622,7 @@ function LoginFormContent() {
 
             <div className="space-y-1">
               <label className="text-[11px] font-black uppercase text-zinc-700 block">
-                EMAIL ADDRESS
+                EMAIL ADDRESS (PRIMARY INBOX)
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-zinc-500">
@@ -459,9 +634,23 @@ function LoginFormContent() {
                   value={signUpEmail}
                   onChange={(e) => setSignUpEmail(e.target.value)}
                   placeholder="alex@example.com"
-                  className="w-full pl-9 pr-3 py-2 border-2 border-black bg-zinc-50 font-mono text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#ccff00]"
+                  className={`w-full pl-9 pr-3 py-2 border-2 font-mono text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#ccff00] ${
+                    isPlusSubaddress(signUpEmail)
+                      ? 'border-rose-500 bg-rose-50'
+                      : 'border-black bg-zinc-50'
+                  }`}
                 />
               </div>
+              {isPlusSubaddress(signUpEmail) ? (
+                <div className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-300 p-1.5 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Email aliases with &apos;+&apos; are blocked to prevent loop exploits. Enter your standard address.</span>
+                </div>
+              ) : (
+                <span className="text-[10px] text-zinc-500 font-bold block">
+                  A mandatory 6-digit verification code will be dispatched to this inbox.
+                </span>
+              )}
             </div>
 
             <div className="space-y-1">
@@ -523,22 +712,111 @@ function LoginFormContent() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isPlusSubaddress(signUpEmail)}
               className="w-full py-3 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] font-black text-xs sm:text-sm uppercase transition-all shadow-[4px_4px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 mt-2"
             >
               {loading ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>CREATING ACCOUNT...</span>
+                  <span>DISPATCHING VERIFICATION...</span>
                 </>
               ) : (
                 <>
-                  <span>CREATE ACCOUNT &amp; PROCEED</span>
+                  <span>CREATE ACCOUNT &amp; VERIFY</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
+        )}
+
+        {/* TAB: MANDATORY 6-DIGIT EMAIL VERIFICATION */}
+        {tab === 'verify' && (
+          <div className="space-y-4">
+            <div className="border-2 border-black bg-zinc-50 p-3.5 space-y-2">
+              <div className="flex items-center gap-2 font-black text-xs uppercase text-black">
+                <Mail className="w-4 h-4 text-black" />
+                <span>INBOX VERIFICATION REQUIRED</span>
+              </div>
+              <p className="text-[11px] text-zinc-700 leading-relaxed font-bold">
+                We sent a 6-digit confirmation code to:
+              </p>
+              <div className="p-2 border border-black bg-white font-mono text-xs font-black text-black break-all flex items-center justify-between">
+                <span>{verifyEmail}</span>
+                <span className="text-[10px] text-zinc-500 uppercase font-bold">15m expiry</span>
+              </div>
+            </div>
+
+            {/* Development fallback preview badge */}
+            {simulatedDevCode && (
+              <div className="border-2 border-black bg-[#ccff00] p-2.5 text-xs font-bold space-y-1">
+                <span className="font-black text-black uppercase block">LOCAL DEV OTP PREVIEW:</span>
+                <span className="font-mono text-base font-black text-black tracking-widest">{simulatedDevCode}</span>
+                <span className="text-[10px] text-zinc-800 block">
+                  (Simulated because SMTP credentials are unset in this environment)
+                </span>
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyCode} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[11px] font-black uppercase text-zinc-700 block text-center">
+                  ENTER 6-DIGIT VERIFICATION CODE
+                </label>
+                <input
+                  type="text"
+                  maxLength={6}
+                  required
+                  autoFocus
+                  value={verifyCode}
+                  onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                  placeholder="••••••"
+                  className="w-full text-center py-3 border-4 border-black bg-white font-mono text-2xl font-black tracking-[0.35em] text-black focus:outline-none focus:ring-4 focus:ring-[#ccff00]"
+                />
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading || verifyCode.trim().length !== 6}
+                className="w-full py-3 border-2 border-black bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00] font-black text-xs sm:text-sm uppercase transition-all shadow-[4px_4px_0px_#000000] hover:translate-x-[1px] hover:translate-y-[1px] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    <span>CHECKING CODE...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>VERIFY CODE &amp; ACTIVATE ACCOUNT</span>
+                  </>
+                )}
+              </button>
+
+              <div className="flex items-center justify-between pt-2">
+                <button
+                  type="button"
+                  onClick={handleResendCode}
+                  disabled={loading || resendCooldown > 0}
+                  className="text-xs font-black uppercase text-zinc-700 hover:text-black underline cursor-pointer disabled:opacity-40 disabled:no-underline"
+                >
+                  {resendCooldown > 0 ? `RESEND CODE (${resendCooldown}s)` : 'RESEND FRESH CODE'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('signin');
+                    setError(null);
+                    setSuccessMessage(null);
+                  }}
+                  className="text-xs font-bold uppercase text-zinc-600 hover:text-black underline cursor-pointer"
+                >
+                  CHANGE EMAIL
+                </button>
+              </div>
+            </form>
+          </div>
         )}
 
         {/* TAB 3: FORGOT PASSWORD FORM */}
@@ -558,9 +836,19 @@ function LoginFormContent() {
                   value={forgotEmail}
                   onChange={(e) => setForgotEmail(e.target.value)}
                   placeholder="athlete@studio.com"
-                  className="w-full pl-9 pr-3 py-2 border-2 border-black bg-zinc-50 font-mono text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#ccff00]"
+                  className={`w-full pl-9 pr-3 py-2 border-2 font-mono text-xs focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#ccff00] ${
+                    isPlusSubaddress(forgotEmail)
+                      ? 'border-rose-500 bg-rose-50'
+                      : 'border-black bg-zinc-50'
+                  }`}
                 />
               </div>
+              {isPlusSubaddress(forgotEmail) && (
+                <div className="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-300 p-1.5 flex items-center gap-1.5">
+                  <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <span>Email aliases with &apos;+&apos; are not permitted.</span>
+                </div>
+              )}
             </div>
 
             {devResetUrl && (
@@ -577,7 +865,7 @@ function LoginFormContent() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || isPlusSubaddress(forgotEmail)}
               className="w-full py-2.5 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase transition-all shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
             >
               <KeyRound className="w-4 h-4" />

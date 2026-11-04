@@ -241,3 +241,187 @@ Nedject Studio
     };
   }
 }
+
+interface SendVerificationCodeParams {
+  to: string;
+  code: string;
+  userName?: string;
+}
+
+/**
+ * Sends a mandatory 6-digit email verification code to the user's inbox
+ */
+export async function sendVerificationCodeEmail({
+  to,
+  code,
+  userName,
+}: SendVerificationCodeParams): Promise<SendEmailResult & { code?: string }> {
+  const config = getEmailConfig();
+  const displayName = userName || 'Nedject Athlete';
+
+  // If SMTP is not yet configured, log verification code prominently to terminal
+  if (!config.isConfigured) {
+    console.log('\n======================================================');
+    console.log('   NEDJECT MANDATORY INBOX VERIFICATION DISPATCH');
+    console.log('======================================================');
+    console.log(`[RECIPIENT INBOX] : ${to}`);
+    console.log(`[VERIFY 6-DIGIT CODE] : >>>  ${code}  <<<`);
+    console.log(`[VALIDITY] : 15 Minutes`);
+    console.log('To deliver real Gmail/SMTP emails, configure SMTP_KEY in .env.local');
+    console.log('======================================================\n');
+
+    return {
+      success: true,
+      simulated: true,
+      code,
+    };
+  }
+
+  const transporter = createTransporter();
+  if (!transporter) {
+    return {
+      success: false,
+      error: 'Transporter initialization failed',
+      code,
+    };
+  }
+
+  const emailHtml = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Your Nedject Verification Code</title>
+</head>
+<body style="margin: 0; padding: 24px; background-color: #0d0e12; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #111111;">
+  <table width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width: 580px; margin: 0 auto; background-color: #ffffff; border: 4px solid #000000; box-shadow: 8px 8px 0px #ccff00;">
+    <!-- Header -->
+    <tr>
+      <td style="padding: 24px 28px; background-color: #000000; border-bottom: 3px solid #ccff00;">
+        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+          <tr>
+            <td>
+              <div style="font-family: monospace; font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #ccff00; text-transform: uppercase;">
+                NEDJECT
+              </div>
+              <div style="font-family: monospace; font-size: 11px; font-weight: 700; color: #888888; letter-spacing: 1px; margin-top: 4px;">
+                IDENTITY &amp; ACCOUNT VERIFICATION GATEWAY
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- Body Content -->
+    <tr>
+      <td style="padding: 32px 28px 24px 28px;">
+        <div style="display: inline-block; background-color: #ccff00; color: #000000; border: 2px solid #000000; padding: 4px 10px; font-family: monospace; font-size: 11px; font-weight: 900; letter-spacing: 1px; margin-bottom: 16px; text-transform: uppercase;">
+          MANDATORY INBOX VERIFICATION
+        </div>
+
+        <h1 style="font-size: 22px; font-weight: 900; margin: 0 0 16px 0; color: #000000; text-transform: uppercase; font-family: monospace; letter-spacing: 0.5px;">
+          Verify Your Email Address
+        </h1>
+
+        <p style="font-size: 14px; line-height: 1.6; color: #333333; margin: 0 0 16px 0;">
+          Hello <strong>${displayName}</strong>,
+        </p>
+
+        <p style="font-size: 14px; line-height: 1.6; color: #333333; margin: 0 0 24px 0;">
+          To complete your account registration and prevent duplicate loops, enter the following 6-digit verification code on the verification screen:
+        </p>
+
+        <!-- 6-Digit Code Display Box -->
+        <table border="0" cellspacing="0" cellpadding="0" style="margin: 28px 0; width: 100%;">
+          <tr>
+            <td align="center" style="background-color: #fafaf5; border: 3px solid #000000; box-shadow: 6px 6px 0px #000000; padding: 24px 16px;">
+              <div style="font-family: monospace; font-size: 11px; font-weight: 900; color: #666666; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px;">
+                YOUR 6-DIGIT VERIFICATION CODE
+              </div>
+              <div style="font-family: monospace; font-size: 38px; font-weight: 900; letter-spacing: 10px; color: #000000; padding-left: 10px;">
+                ${code}
+              </div>
+              <div style="font-family: monospace; font-size: 11px; font-weight: 700; color: #dc2626; margin-top: 10px;">
+                &#9200; EXPIRES IN 15 MINUTES
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <!-- Security Details Box -->
+        <div style="background-color: #fefce8; border: 2px solid #ca8a04; padding: 14px; margin-top: 24px;">
+          <p style="font-size: 12px; font-weight: 900; color: #854d0e; margin: 0 0 6px 0; font-family: monospace;">
+            SECURITY POLICY &amp; RULES:
+          </p>
+          <ul style="font-size: 12px; color: #713f12; margin: 0; padding-left: 18px; line-height: 1.5;">
+            <li>This verification code is strictly intended for <strong>${to}</strong>.</li>
+            <li>Nedject accounts enforce strict single-identity verification without alias loops.</li>
+            <li>Never share this code with anyone. Staff will never ask for your verification code.</li>
+          </ul>
+        </div>
+      </td>
+    </tr>
+
+    <!-- Footer -->
+    <tr>
+      <td style="padding: 20px 28px; background-color: #f8fafc; border-top: 2px solid #e2e8f0; font-size: 11px; color: #64748b; font-family: monospace; text-align: center;">
+        <div>&copy; ${new Date().getFullYear()} NEDJECT // GENQRSTUDIO. ALL RIGHTS RESERVED.</div>
+        <div style="margin-top: 4px;">High-performance Identity &amp; QR Barcode Engineering Studio</div>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;
+
+  const emailText = `
+NEDJECT - MANDATORY EMAIL VERIFICATION
+======================================
+
+Hello ${displayName},
+
+Your 6-digit email verification code for ${to} is:
+
+>>>  ${code}  <<<
+
+This code is valid for 15 minutes. Enter it on the verification screen to activate your account.
+
+If you did not request this verification code, please ignore this email.
+
+--
+Nedject Studio
+© ${new Date().getFullYear()} Nedject. All rights reserved.
+`;
+
+  try {
+    const info = await transporter.sendMail({
+      from: config.from,
+      to,
+      subject: `Your Nedject Verification Code: ${code}`,
+      text: emailText,
+      html: emailHtml,
+    });
+
+    console.log(`[SMTP SUCCESS] Verification code sent to ${to}. MessageId: ${info.messageId}`);
+    return {
+      success: true,
+      messageId: info.messageId,
+      code,
+    };
+  } catch (error: any) {
+    console.error('[SMTP ERROR] Failed to send verification code email:', error);
+    console.log('\n======================================================');
+    console.log('   FALLBACK SIMULATION - VERIFICATION CODE DISPATCH');
+    console.log(`[RECIPIENT INBOX] : ${to}`);
+    console.log(`[VERIFY 6-DIGIT CODE] : >>>  ${code}  <<<`);
+    console.log('======================================================\n');
+    return {
+      success: true,
+      simulated: true,
+      error: error?.message || 'SMTP delivery failed; fallback simulated',
+      code,
+    };
+  }
+}

@@ -53,9 +53,25 @@ export const authOptions: NextAuthOptions = {
           throw new Error('Please enter your email and password');
         }
 
-        const user = await verifyUserPassword(credentials.email, credentials.password);
+        const rawEmail = credentials.email.trim();
+        if (rawEmail.includes('+')) {
+          throw new Error('Email aliases with "+" are prohibited. Please sign in with your root email.');
+        }
+
+        const user = await verifyUserPassword(rawEmail, credentials.password);
         if (!user) {
           throw new Error('Invalid email or password');
+        }
+
+        // MANDATORY EMAIL VERIFICATION CHECK
+        if (!user.isEmailVerified) {
+          try {
+            const { issueAndSendVerificationCode } = await import('./db-users');
+            await issueAndSendVerificationCode(user.email);
+          } catch (e) {
+            console.warn('Note: Failed to re-issue verification code on login attempt:', e);
+          }
+          throw new Error('EMAIL_NOT_VERIFIED: Please verify your email before signing in. A 6-digit verification code has been sent to your inbox.');
         }
 
         return {
