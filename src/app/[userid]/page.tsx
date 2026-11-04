@@ -29,6 +29,7 @@ import {
   Percent,
   Check,
   RefreshCw,
+  Key,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
 import { getUsageStats, UsageStats, setCachedActivePlan } from '@/lib/usage-limits';
@@ -259,6 +260,13 @@ export default function UserProfilePage() {
               <Sparkles className="w-3.5 h-3.5" />
               <span>UPGRADE / PLANS</span>
             </Link>
+            <Link
+              href={`/${useridParam}/pear`}
+              className="flex items-center gap-1.5 font-black text-xs uppercase bg-white hover:bg-[#ccff00] px-3 py-1.5 border-2 border-black transition-colors shadow-[2px_2px_0px_#000000]"
+            >
+              <Key className="w-3.5 h-3.5 text-black" />
+              <span>PEAR API</span>
+            </Link>
           </div>
 
           <div className="flex items-center gap-3">
@@ -317,6 +325,13 @@ export default function UserProfilePage() {
                 <Receipt className="w-3.5 h-3.5" />
                 <span>ORDER HISTORY</span>
               </a>
+              <Link
+                href={`/${useridParam}/pear`}
+                className="px-3.5 py-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all"
+              >
+                <Key className="w-3.5 h-3.5" />
+                <span>PEAR API GATEWAY</span>
+              </Link>
               <Link
                 href="/pay-to-use"
                 className="px-4 py-2 border-2 border-black bg-black text-[#ccff00] hover:bg-[#ccff00] hover:text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all"

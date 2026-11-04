@@ -3,11 +3,13 @@
 export {
   GUEST_GENERATION_LIMIT,
   AUTH_FREE_GENERATION_LIMIT,
+  STARTER_GENERATION_LIMIT,
   PRO_GENERATION_LIMIT,
 } from './usage-constants';
 import {
   GUEST_GENERATION_LIMIT,
   AUTH_FREE_GENERATION_LIMIT,
+  STARTER_GENERATION_LIMIT,
   PRO_GENERATION_LIMIT,
 } from './usage-constants';
 
@@ -29,7 +31,7 @@ export interface UsageStats {
   isLoggedIn: boolean;
   isAdmin?: boolean;
   isUnlimited?: boolean;
-  plan: 'guest' | 'free' | 'pro' | 'enterprise';
+  plan: 'guest' | 'free' | 'starter' | 'pro' | 'enterprise' | string;
   badgeColor?: 'green' | 'yellow' | 'purple';
   badgeLabel?: string;
   displayRemaining?: string;
@@ -90,12 +92,12 @@ export function setLocalUsageCount(count: number, toolKey?: ToolKey): void {
 
 export const STORAGE_PLAN_KEY = 'nedject_active_plan';
 
-export function getCachedActivePlan(): 'free' | 'pro' | 'enterprise' | null {
+export function getCachedActivePlan(): 'free' | 'starter' | 'pro' | 'enterprise' | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(STORAGE_PLAN_KEY);
-    if (raw === 'enterprise' || raw === 'pro' || raw === 'free') {
-      return raw as 'free' | 'pro' | 'enterprise';
+    if (raw === 'enterprise' || raw === 'pro' || raw === 'starter' || raw === 'free') {
+      return raw as 'free' | 'starter' | 'pro' | 'enterprise';
     }
     return null;
   } catch {
@@ -103,7 +105,7 @@ export function getCachedActivePlan(): 'free' | 'pro' | 'enterprise' | null {
   }
 }
 
-export function setCachedActivePlan(plan: 'free' | 'pro' | 'enterprise'): void {
+export function setCachedActivePlan(plan: 'free' | 'starter' | 'pro' | 'enterprise' | string): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_PLAN_KEY, plan);
@@ -116,7 +118,7 @@ export function setCachedActivePlan(plan: 'free' | 'pro' | 'enterprise'): void {
 
 export function getUsageStats(
   isLoggedIn: boolean,
-  plan: 'free' | 'pro' | 'enterprise' | string = 'free',
+  plan: 'free' | 'starter' | 'pro' | 'enterprise' | string = 'free',
   isAdminOverride?: boolean
 ): UsageStats {
   const used = getLocalUsageCount();
@@ -151,16 +153,16 @@ export function getUsageStats(
   const isAdmin = Boolean(isAdminOverride ?? isClientAdmin());
   const cachedPlan = getCachedActivePlan();
   const effectivePlan =
-    plan === 'enterprise' || plan === 'pro'
+    plan === 'enterprise' || plan === 'pro' || plan === 'starter'
       ? plan
       : cachedPlan || plan;
 
-  const normalizedPlan: 'free' | 'pro' | 'enterprise' = isAdmin
+  const normalizedPlan: 'free' | 'starter' | 'pro' | 'enterprise' = isAdmin
     ? 'enterprise'
-    : (effectivePlan === 'pro' || effectivePlan === 'enterprise' ? effectivePlan : 'free');
+    : (effectivePlan === 'enterprise' || effectivePlan === 'pro' || effectivePlan === 'starter' ? effectivePlan : 'free');
 
-  const isPaidPlan = normalizedPlan === 'pro' || normalizedPlan === 'enterprise';
-  const isUnlimited = isAdmin || isPaidPlan;
+  const isPaidUnlimited = normalizedPlan === 'pro' || normalizedPlan === 'enterprise';
+  const isUnlimited = isAdmin || isPaidUnlimited;
 
   if (isUnlimited) {
     // 3. PAID TIER (PRO / ENTERPRISE) OR ADMIN: UNLIMITED CREDITS
@@ -182,7 +184,28 @@ export function getUsageStats(
     };
   }
 
-  // 4. FREE AUTHENTICATED TIER: 10 CREDITS
+  if (normalizedPlan === 'starter') {
+    // 4. STARTER CREDIT-BASED TIER: 500 CREDITS
+    const limit = STARTER_GENERATION_LIMIT; // 500
+    const remaining = Math.max(0, limit - used);
+    return {
+      used,
+      limit,
+      remaining,
+      canGenerate: remaining > 0,
+      isLoggedIn: true,
+      isAdmin: false,
+      isUnlimited: false,
+      plan: 'starter',
+      badgeColor: 'green',
+      badgeLabel: 'Starter 500 Credits',
+      displayRemaining: `${remaining} / ${limit}`,
+      displayLimit: `${limit}`,
+      toolBreakdown: getLocalToolBreakdown(),
+    };
+  }
+
+  // 5. FREE AUTHENTICATED TIER: 10 CREDITS
   const limit = AUTH_FREE_GENERATION_LIMIT; // 10
   const remaining = Math.max(0, limit - used);
   return {

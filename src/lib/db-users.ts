@@ -27,7 +27,7 @@ export interface UserProfile {
   provider: 'google' | 'x' | 'instagram' | 'credentials';
   providerAccountId?: string;
   image?: string;
-  plan: 'free' | 'pro' | 'enterprise';
+  plan: 'free' | 'starter' | 'pro' | 'enterprise' | string;
   subscriptionBillingCycle?: 'monthly' | 'annual' | 'lifetime' | string | null;
   subscriptionStatus?: 'active' | 'none' | 'cancelled' | string;
   subscriptionExpiresAt?: string | null;
@@ -313,7 +313,7 @@ export async function updateUserProfile(
     occupation?: string;
     generationsUsed?: number;
     generationsLimit?: number;
-    plan?: 'free' | 'pro' | 'enterprise';
+    plan?: 'free' | 'starter' | 'pro' | 'enterprise' | string;
     subscriptionBillingCycle?: 'monthly' | 'annual' | 'lifetime' | string | null;
     subscriptionStatus?: 'active' | 'none' | 'cancelled' | string;
     subscriptionExpiresAt?: string | null;

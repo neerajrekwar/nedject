@@ -8,7 +8,7 @@ export interface PlanFeature {
 }
 
 export interface PlanConfig {
-  id: 'free' | 'pro' | 'enterprise';
+  id: 'free' | 'starter' | 'pro' | 'enterprise' | string;
   name: string;
   badge?: string;
   description: string;
@@ -18,7 +18,7 @@ export interface PlanConfig {
   monthlyUsd: number;
   yearlyUsd: number;
   lifetimeUsd?: number;
-  generationLimit: number; // 2 or 10 or 99999
+  generationLimit: number; // 2 or 10 or 500 or 99999
   features: PlanFeature[];
 }
 
@@ -40,9 +40,32 @@ export const NEDJECT_PLANS: Record<string, PlanConfig> = {
       { text: 'High-contrast B/W Print Calibration', included: true },
       { text: 'Basic Barcode Pick (Code128, EAN-13, UPC)', included: true },
       { text: 'Normal Photo DPI Upscaler (150-300 DPI)', included: true },
+      { text: 'Pear API Gateway Trial (20 RPM, 1 Domain)', included: true },
       { text: '600 DPI Vector PDF & CMYK Color Separation', included: false },
-      { text: 'Batch ZIP Matrix & Event Pass Generator', included: false },
       { text: 'Priority Server Queue & Unlimited Generations', included: false },
+    ],
+  },
+  starter: {
+    id: 'starter',
+    name: 'Nedject Creator Credits',
+    badge: 'CREDITS BASED',
+    description: '500 high-resolution optical and API generation credits with origin whitelist network security.',
+    monthlyInr: 399,
+    yearlyInr: 3999,
+    lifetimeInr: 7999,
+    monthlyUsd: 4.99,
+    yearlyUsd: 49.0,
+    lifetimeUsd: 89.0,
+    generationLimit: 500,
+    features: [
+      { text: '500 High-Res Canvas & API Generations / Mo', included: true, highlight: true },
+      { text: 'Full Pear API Key Gateway Access', included: true, highlight: true },
+      { text: 'Origin Whitelist Network Defense (Up to 5 Domains)', included: true },
+      { text: 'Standard 300 & 600 DPI PNG Canvas Output', included: true },
+      { text: 'Full Barcode Suite (All 8 Industrial Formats)', included: true },
+      { text: '60-second Sliding Window Rate Limiting (60 RPM)', included: true },
+      { text: 'Zero Watermark & Full Commercial License', included: true },
+      { text: 'Developer Discord & Email Support', included: true },
     ],
   },
   pro: {

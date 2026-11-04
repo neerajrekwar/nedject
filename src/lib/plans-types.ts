@@ -60,11 +60,16 @@ export interface PlanCycleDetails {
 }
 
 export interface ManagedPlan {
-  id: 'free' | 'pro' | 'enterprise' | string;
+  id: 'free' | 'starter' | 'pro' | 'enterprise' | string;
   name: string;
   badge?: string;
   description: string;
   generationLimit: number;
+  creditType?: 'credits' | 'unlimited';
+  monthlyCredits?: number;
+  apiAccess?: boolean;
+  rateLimitRpm?: number;
+  allowedOriginsLimit?: number;
   active: boolean;
   pricing: Record<SupportedCurrency, PlanPricing>;
   cycles?: {
@@ -83,6 +88,11 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
     badge: 'FREE FOREVER',
     description: 'Essential optical tools for casual and hobbyist printing.',
     generationLimit: 10,
+    creditType: 'credits',
+    monthlyCredits: 10,
+    apiAccess: true,
+    rateLimitRpm: 20,
+    allowedOriginsLimit: 1,
     active: true,
     pricing: {
       USD: { monthly: 0, yearly: 0, lifetime: 0 },
@@ -111,12 +121,59 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
     features: [
       { text: '2 Guest / 10 Authenticated Generations', included: true },
       { text: 'Standard 300 DPI PNG Canvas Output', included: true },
-      { text: 'High-contrast B/W Print Calibration', included: true },
       { text: 'Basic Barcode Pick (Code128, EAN-13, UPC)', included: true },
+      { text: 'High-contrast B/W Print Calibration', included: true },
       { text: 'Normal Photo DPI Upscaler (150-300 DPI)', included: true },
+      { text: 'Pear API Gateway Trial (20 RPM, 1 Domain)', included: true },
       { text: '600 DPI Vector PDF & CMYK Color Separation', included: false },
-      { text: 'Batch ZIP Matrix & Event Pass Generator', included: false },
       { text: 'Priority Server Queue & Unlimited Generations', included: false },
+    ],
+  },
+  {
+    id: 'starter',
+    name: 'Nedject Creator Pack',
+    badge: 'CREDITS BASED',
+    description: '500 high-resolution optical and API generation credits with origin whitelist network security.',
+    generationLimit: 500,
+    creditType: 'credits',
+    monthlyCredits: 500,
+    apiAccess: true,
+    rateLimitRpm: 60,
+    allowedOriginsLimit: 5,
+    active: true,
+    pricing: {
+      USD: { monthly: 4.99, yearly: 49.0, lifetime: 89.0 },
+      INR: { monthly: 399, yearly: 3999, lifetime: 7999 },
+      EUR: { monthly: 4.69, yearly: 46.0, lifetime: 85.0 },
+      GBP: { monthly: 3.99, yearly: 39.0, lifetime: 75.0 },
+      RUB: { monthly: 449, yearly: 4499, lifetime: 8499 },
+    },
+    cycles: {
+      monthly: {
+        durationDays: 30,
+        label: '30 DAYS',
+        subtitle: '$4.99/mo rate • 500 Generation Credits • Active for 30 days',
+      },
+      yearly: {
+        durationDays: 365,
+        label: '365 DAYS',
+        subtitle: '$49.00/yr rate • 6,000 Annual Credits • 1-year expiration',
+      },
+      lifetime: {
+        durationDays: null,
+        label: 'NO EXPIRY',
+        subtitle: 'Creator Lifetime • 500 Monthly Renewing Credits',
+      },
+    },
+    features: [
+      { text: '500 High-Res Canvas & API Generations / Mo', included: true, highlight: true },
+      { text: 'Full Pear API Key Gateway Access', included: true, highlight: true },
+      { text: 'Origin Whitelist Network Defense (Up to 5 Domains)', included: true },
+      { text: 'Standard 300 & 600 DPI PNG Canvas Output', included: true },
+      { text: 'Full Barcode Suite (All 8 Industrial Formats)', included: true },
+      { text: '60-second Sliding Window Rate Limiting (60 RPM)', included: true },
+      { text: 'Zero Watermark & Full Commercial License', included: true },
+      { text: 'Developer Discord & Email Support', included: true },
     ],
   },
   {
@@ -125,6 +182,11 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
     badge: 'MOST POPULAR',
     description: 'High-performance optical engine for creators, print designers & businesses.',
     generationLimit: 99999,
+    creditType: 'unlimited',
+    monthlyCredits: 99999,
+    apiAccess: true,
+    rateLimitRpm: 300,
+    allowedOriginsLimit: 10,
     active: true,
     pricing: {
       USD: { monthly: 9.99, yearly: 99.0, lifetime: 199.0 },
@@ -167,6 +229,11 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
     badge: 'ENTERPRISE',
     description: 'Maximum throughput and prepress vector engine for high-volume workflows.',
     generationLimit: 999999,
+    creditType: 'unlimited',
+    monthlyCredits: 999999,
+    apiAccess: true,
+    rateLimitRpm: 1200,
+    allowedOriginsLimit: 50,
     active: true,
     pricing: {
       USD: { monthly: 29.0, yearly: 249.0, lifetime: 499.0 },
@@ -224,6 +291,11 @@ export function getPlanCycleSubtitle(
   const normCycle = cycle === 'annual' ? 'yearly' : cycle;
   if (plan.cycles?.[normCycle]?.subtitle) {
     return plan.cycles[normCycle]!.subtitle;
+  }
+  if (plan.id === 'starter') {
+    if (normCycle === 'monthly') return '$4.99/mo rate • 500 Generation Credits • Active for 30 days';
+    if (normCycle === 'yearly') return '$49.00/yr rate • 6,000 Annual Credits • 1-year expiration';
+    return 'Creator Lifetime • 500 Monthly Renewing Credits';
   }
   if (plan.id === 'pro') {
     if (normCycle === 'monthly') return '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days';

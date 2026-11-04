@@ -10,10 +10,116 @@ import {
   clearAdminRateLimit,
   MAX_ADMIN_LOGIN_ATTEMPTS,
 } from '@/lib/admin-rate-limit';
+import { sendVerificationCodeEmail, isEmailConfigured } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
 
 const CREDS_FILE = path.join(process.cwd(), '.admin-credentials.json');
+
+declare global {
+  // eslint-disable-next-line no-var
+  var _adminVerificationsMap: Map<string, { code: string; expiresAt: number }> | undefined;
+}
+
+if (!global._adminVerificationsMap) {
+  global._adminVerificationsMap = new Map();
+}
+const memoryVerifications = global._adminVerificationsMap;
+
+async function saveAdminVerification(email: string, code: string): Promise<void> {
+  const normalized = email.trim().toLowerCase();
+  const expiresAtMs = Date.now() + 15 * 60 * 1000; // 15 mins
+  memoryVerifications.set(normalized, { code, expiresAt: expiresAtMs });
+
+  try {
+    const db = await getDb();
+    if (db) {
+      await db.collection('admin_verifications').updateOne(
+        { email: normalized },
+        {
+          $set: {
+            email: normalized,
+            code,
+            expiresAt: new Date(expiresAtMs).toISOString(),
+            createdAt: new Date().toISOString(),
+          },
+        },
+        { upsert: true }
+      );
+    }
+  } catch (e) {
+    console.warn('[AdminAuth] Error saving admin verification to DB:', e);
+  }
+}
+
+async function verifyAdminVerification(
+  email: string,
+  inputCode: string
+): Promise<{ valid: boolean; error?: string }> {
+  const normalized = email.trim().toLowerCase();
+  const cleanCode = inputCode.trim().replace(/\D/g, '');
+
+  let storedCode: string | null = null;
+  let expiresAt: number = 0;
+
+  // Check in-memory store
+  const mem = memoryVerifications.get(normalized);
+  if (mem) {
+    storedCode = mem.code;
+    expiresAt = mem.expiresAt;
+  }
+
+  // Check MongoDB store
+  if (!storedCode) {
+    try {
+      const db = await getDb();
+      if (db) {
+        const doc = await db.collection('admin_verifications').findOne({ email: normalized });
+        if (doc) {
+          storedCode = doc.code;
+          expiresAt = new Date(doc.expiresAt).getTime();
+        }
+      }
+    } catch (e) {
+      console.warn('[AdminAuth] Error reading admin verification from DB:', e);
+    }
+  }
+
+  if (!storedCode) {
+    return {
+      valid: false,
+      error: 'No active verification code found for this admin email. Please request a new code.',
+    };
+  }
+
+  if (Date.now() > expiresAt) {
+    memoryVerifications.delete(normalized);
+    try {
+      const db = await getDb();
+      if (db) await db.collection('admin_verifications').deleteOne({ email: normalized });
+    } catch {}
+    return {
+      valid: false,
+      error: 'Verification code has expired (valid for 15 minutes). Please request a new code.',
+    };
+  }
+
+  if (storedCode !== cleanCode) {
+    return {
+      valid: false,
+      error: 'Invalid 6-digit verification code. Please check your email inbox and try again.',
+    };
+  }
+
+  // Delete consumed code
+  memoryVerifications.delete(normalized);
+  try {
+    const db = await getDb();
+    if (db) await db.collection('admin_verifications').deleteOne({ email: normalized });
+  } catch {}
+
+  return { valid: true };
+}
 
 interface AdminRecord {
   id?: string;
@@ -152,7 +258,7 @@ export async function GET(req: NextRequest) {
 }
 
 /**
- * POST: Authenticates admin credentials with strict 3-attempt/hour rate limiting
+ * POST: Authenticates admin credentials with strict 3-attempt/hour rate limiting & email verification
  */
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req);
@@ -161,6 +267,9 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const inputEmail = (body.email || '').trim().toLowerCase();
     const inputPassword = body.password || '';
+    const inputCode = body.code ? String(body.code).trim().replace(/\D/g, '') : '';
+    const isVerifyStep = body.step === 'verify' || Boolean(inputCode);
+    const isResendAction = body.action === 'resend_code';
 
     // 1. Verify Rate Limit (3 attempts per 1 hour)
     const rateLimit = await checkAdminRateLimit(ip, inputEmail);
@@ -186,69 +295,124 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!inputEmail || !inputPassword) {
+    if (!inputEmail) {
       return NextResponse.json(
-        { success: false, error: 'Email and password are required.' },
-        {
-          status: 400,
-          headers: {
-            'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
-            'X-RateLimit-Remaining': String(rateLimit.remainingAttempts),
-            'X-Robots-Tag': 'noindex, nofollow',
-          },
-        }
+        { success: false, error: 'Admin email is required.' },
+        { status: 400 }
       );
     }
 
     const admin = await findAdminCredentials(inputEmail);
-
-    // If admin record does not exist -> count as failed attempt
     if (!admin) {
       const updatedRate = await recordFailedAdminLogin(ip, inputEmail);
-      const isNowLocked = !updatedRate.allowed;
-
-      if (isNowLocked) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: `Access Denied. You have reached the maximum ${MAX_ADMIN_LOGIN_ATTEMPTS} attempts for this hour. Access locked for ${updatedRate.retryAfterMinutes} minutes.`,
-            isLocked: true,
-            remainingAttempts: 0,
-            retryAfterMinutes: updatedRate.retryAfterMinutes,
-          },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': String(updatedRate.retryAfterSeconds),
-              'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
-              'X-RateLimit-Remaining': '0',
-              'X-Robots-Tag': 'noindex, nofollow',
-            },
-          }
-        );
-      }
-
       return NextResponse.json(
         {
           success: false,
-          error: `Authentication failed. No admin account configured for ${inputEmail}. (${updatedRate.remainingAttempts} attempt${updatedRate.remainingAttempts === 1 ? '' : 's'} remaining this hour).`,
+          error: `Authentication failed. No admin account configured for ${inputEmail}. (${updatedRate.remainingAttempts} attempts remaining).`,
           remainingAttempts: updatedRate.remainingAttempts,
         },
+        { status: 403 }
+      );
+    }
+
+    // =========================================================================
+    // 2. RESEND VERIFICATION CODE ACTION
+    // =========================================================================
+    if (isResendAction) {
+      const newCode = crypto.randomInt(100000, 999999).toString();
+      await saveAdminVerification(admin.email, newCode);
+
+      await sendVerificationCodeEmail({
+        to: admin.email,
+        code: newCode,
+        userName: admin.name || 'Console Admin',
+        appUrl: req.nextUrl.origin,
+      });
+
+      return NextResponse.json({
+        success: true,
+        message: `A fresh 6-digit verification code has been dispatched to ${admin.email}.`,
+        devCode: !isEmailConfigured() ? newCode : undefined,
+      });
+    }
+
+    // =========================================================================
+    // 3. STEP 2: VERIFY 6-DIGIT EMAIL CODE
+    // =========================================================================
+    if (isVerifyStep) {
+      if (inputCode.length !== 6) {
+        return NextResponse.json(
+          { success: false, error: 'Please enter the complete 6-digit verification code.' },
+          { status: 400 }
+        );
+      }
+
+      const verifyRes = await verifyAdminVerification(admin.email, inputCode);
+      if (!verifyRes.valid) {
+        const updatedRate = await recordFailedAdminLogin(ip, inputEmail);
+        return NextResponse.json(
+          {
+            success: false,
+            error: verifyRes.error || 'Invalid or expired 6-digit verification code.',
+            remainingAttempts: updatedRate.remainingAttempts,
+          },
+          { status: 401 }
+        );
+      }
+
+      // Code is valid! Clear rate limit and grant admin session
+      await clearAdminRateLimit(ip, inputEmail);
+
+      const user = {
+        id: admin.id || 'admin-terminal-owner',
+        email: admin.email,
+        name: admin.name || 'Neeraj Rekwar',
+        role: (admin.role as any) || 'Super Admin',
+        avatar:
+          admin.avatar ||
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&h=256&q=80',
+        lastLogin: new Date().toISOString(),
+      };
+
+      const response = NextResponse.json(
         {
-          status: 403,
+          success: true,
+          message: 'Admin console verified and authenticated successfully',
+          token: 'authorized',
+          user,
+        },
+        {
           headers: {
-            'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
-            'X-RateLimit-Remaining': String(updatedRate.remainingAttempts),
-            'X-Robots-Tag': 'noindex, nofollow',
+            'X-Robots-Tag': 'noindex, nofollow, noarchive',
           },
         }
+      );
+
+      // Set secure admin cookie
+      response.cookies.set('nedject_admin_token', 'authorized', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 7, // 7 days
+        path: '/',
+      });
+
+      return response;
+    }
+
+    // =========================================================================
+    // 4. STEP 1: VERIFY ADMIN PASSWORD & DISPATCH EMAIL VERIFICATION CODE
+    // =========================================================================
+    if (!inputPassword) {
+      return NextResponse.json(
+        { success: false, error: 'Admin password is required.' },
+        { status: 400 }
       );
     }
 
     // Verify password hash
     const testHash = hashPassword(inputPassword, admin.salt);
     if (testHash !== admin.hash) {
-      // Invalid password -> count as failed attempt
       const updatedRate = await recordFailedAdminLogin(ip, inputEmail);
       const isNowLocked = !updatedRate.allowed;
 
@@ -261,73 +425,38 @@ export async function POST(req: NextRequest) {
             remainingAttempts: 0,
             retryAfterMinutes: updatedRate.retryAfterMinutes,
           },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': String(updatedRate.retryAfterSeconds),
-              'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
-              'X-RateLimit-Remaining': '0',
-              'X-Robots-Tag': 'noindex, nofollow',
-            },
-          }
+          { status: 429 }
         );
       }
 
       return NextResponse.json(
         {
           success: false,
-          error: `Invalid admin password. Security policy: ${updatedRate.remainingAttempts} attempt${updatedRate.remainingAttempts === 1 ? '' : 's'} remaining this hour.`,
+          error: `Invalid admin password. Security policy: ${updatedRate.remainingAttempts} attempts remaining this hour.`,
           remainingAttempts: updatedRate.remainingAttempts,
         },
-        {
-          status: 401,
-          headers: {
-            'X-RateLimit-Limit': String(MAX_ADMIN_LOGIN_ATTEMPTS),
-            'X-RateLimit-Remaining': String(updatedRate.remainingAttempts),
-            'X-Robots-Tag': 'noindex, nofollow',
-          },
-        }
+        { status: 401 }
       );
     }
 
-    // 2. Success: clear failed rate limit counters
-    await clearAdminRateLimit(ip, inputEmail);
+    // Password verified! Generate and dispatch 6-digit code
+    const verificationCode = crypto.randomInt(100000, 999999).toString();
+    await saveAdminVerification(admin.email, verificationCode);
 
-    const user = {
-      id: admin.id || 'admin-terminal-owner',
-      email: admin.email,
-      name: admin.name || 'Neeraj Rekwar',
-      role: (admin.role as any) || 'Super Admin',
-      avatar:
-        admin.avatar ||
-        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&h=256&q=80',
-      lastLogin: new Date().toISOString(),
-    };
-
-    const response = NextResponse.json(
-      {
-        success: true,
-        message: 'Admin authenticated successfully',
-        token: 'authorized',
-        user,
-      },
-      {
-        headers: {
-          'X-Robots-Tag': 'noindex, nofollow, noarchive',
-        },
-      }
-    );
-
-    // Set secure admin cookie
-    response.cookies.set('nedject_admin_token', 'authorized', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7, // 7 days
-      path: '/',
+    await sendVerificationCodeEmail({
+      to: admin.email,
+      code: verificationCode,
+      userName: admin.name || 'Console Admin',
+      appUrl: req.nextUrl.origin,
     });
 
-    return response;
+    return NextResponse.json({
+      success: true,
+      requireVerification: true,
+      email: admin.email,
+      message: `Credentials verified. A 6-digit confirmation code has been dispatched to ${admin.email}.`,
+      devCode: !isEmailConfigured() ? verificationCode : undefined,
+    });
   } catch (err: any) {
     return NextResponse.json(
       { success: false, error: err?.message || 'Internal server error during authentication' },

@@ -11,6 +11,10 @@ export interface AdminUser {
 
 export interface AdminAuthResult {
   success: boolean;
+  requireVerification?: boolean;
+  email?: string;
+  message?: string;
+  devCode?: string;
   user?: AdminUser;
   error?: string;
   isLocked?: boolean;
@@ -115,6 +119,17 @@ export async function authenticateAdmin(
 
     const data = await res.json().catch(() => ({}));
 
+    // Step 1: Verification required
+    if (res.ok && data.success && data.requireVerification) {
+      return {
+        success: true,
+        requireVerification: true,
+        email: data.email || email,
+        message: data.message,
+        devCode: data.devCode,
+      };
+    }
+
     if (res.ok && data.success && data.user) {
       setAdminSession(data.user);
       return {
@@ -142,6 +157,83 @@ export async function authenticateAdmin(
     return {
       success: false,
       error: e?.message || 'Server connection error during authentication.',
+    };
+  }
+}
+
+/**
+ * Step 2: Verifies the 6-digit email verification code for the admin
+ */
+export async function verifyAdminCode(
+  email: string,
+  code: string
+): Promise<AdminAuthResult> {
+  try {
+    const res = await fetch('/api/admin/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, code, step: 'verify' }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (res.ok && data.success && data.user) {
+      setAdminSession(data.user);
+      return {
+        success: true,
+        user: data.user,
+        remainingAttempts: 3,
+      };
+    }
+
+    const isLocked = res.status === 429 || Boolean(data.isLocked);
+
+    return {
+      success: false,
+      error: data.error || 'Invalid or expired 6-digit verification code.',
+      isLocked,
+      remainingAttempts: data.remainingAttempts,
+      retryAfterMinutes: data.retryAfterMinutes,
+      retryAfterSeconds: data.retryAfterSeconds,
+    };
+  } catch (e: any) {
+    return {
+      success: false,
+      error: e?.message || 'Server connection error during code verification.',
+    };
+  }
+}
+
+/**
+ * Resends a fresh 6-digit verification code to the admin's email
+ */
+export async function resendAdminCode(
+  email: string
+): Promise<{ success: boolean; error?: string; devCode?: string; message?: string }> {
+  try {
+    const res = await fetch('/api/admin/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, action: 'resend_code' }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data.success) {
+      return {
+        success: true,
+        message: data.message,
+        devCode: data.devCode,
+      };
+    }
+
+    return {
+      success: false,
+      error: data.error || 'Failed to resend verification code.',
+    };
+  } catch (e: any) {
+    return {
+      success: false,
+      error: e?.message || 'Network error while requesting verification code.',
     };
   }
 }

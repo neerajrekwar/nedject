@@ -22,6 +22,7 @@ import {
   Activity,
   Ticket,
   Layers,
+  Key,
 } from 'lucide-react';
 import { clearAdminSession, AdminUser } from '@/lib/admin-auth';
 
@@ -121,6 +122,13 @@ export function AdminSidebar({ user, isOpen = true, onClose }: AdminSidebarProps
           icon: ShieldCheck,
           badge: 'PBKDF2',
           activeMatch: (p: string) => p === '/admin/security',
+        },
+        {
+          title: 'API Keys & Gateway',
+          href: '/admin/adm/apies',
+          icon: Key,
+          badge: 'GATE',
+          activeMatch: (p: string) => p.startsWith('/admin/adm/apies'),
         },
         {
           title: 'System Diagnostics',
