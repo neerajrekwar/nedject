@@ -148,6 +148,24 @@ const NEDJECT_TOOLS: ToolItem[] = [
     actionText: 'LAUNCH WINTER ARC →',
     accent: '#ccff00',
   },
+  {
+    id: 'nfc-bat',
+    code: 'TOOL // 07',
+    title: 'NFC BAT: NDEF STUDIO & TAG ARCHITECTURE',
+    tag: 'W3C WEB NFC & SMART TAG CRUD',
+    badge: '★ NEW TOOL',
+    description:
+      'W3C standard Web NFC tap-and-scan laboratory. Read, decode, encode, and manage NDEF records (vCard, URL, Text, JSON) across Type 2/4 tags with simulated hardware mode and educational Secure Element comparisons.',
+    features: [
+      'Live W3C NDEFReader Scan & Hardware Detection',
+      'NDEF Encoder for vCards, URLs, Text & JSON Badges',
+      'Local Tag Profile CRUD Management & JSON Export',
+      'Interactive Architecture: NDEF Memory vs Secure Elements',
+    ],
+    href: '/nfc-bat',
+    actionText: 'LAUNCH NFC STUDIO →',
+    accent: '#ccff00',
+  },
 ];
 
 export function ToolsSuiteGrid() {

@@ -600,7 +600,7 @@ export default function PearGatewayPage() {
               </div>
               <h4 className="font-black uppercase text-sm">No Pear API Keys Created Yet</h4>
               <p className="text-xs text-zinc-600 max-w-md mx-auto">
-                Generate your first API key to connect your websites, point-of-sale systems, or backend microservices to Nedject's optical engine.
+                Generate your first API key to connect your websites, point-of-sale systems, or backend microservices to Nedject&apos;s optical engine.
               </p>
               <button
                 onClick={() => setShowCreateModal(true)}

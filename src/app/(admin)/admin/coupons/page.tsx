@@ -46,6 +46,11 @@ export default function AdminCouponsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isBulkPinning, setIsBulkPinning] = useState(false);
 
+  // Confirmation Dialog States for PIN and UNPIN actions
+  const [pinConfirmCoupon, setPinConfirmCoupon] = useState<Coupon | null>(null);
+  const [isTogglingPin, setIsTogglingPin] = useState(false);
+  const [bulkPinConfirm, setBulkPinConfirm] = useState<{ pin: boolean; count: number } | null>(null);
+
   // Modal State for Create / Edit
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
@@ -668,7 +673,7 @@ export default function AdminCouponsPage() {
             {/* Bulk Pin Button */}
             <button
               type="button"
-              onClick={() => handleBulkPin(true)}
+              onClick={() => setBulkPinConfirm({ pin: true, count: selectedIds.length })}
               disabled={selectedIds.length === 0 || isBulkPinning}
               className={`flex items-center gap-2 px-3 py-1.5 border-2 border-black font-mono text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 ${
                 selectedIds.length > 0 && !isBulkPinning
@@ -688,7 +693,7 @@ export default function AdminCouponsPage() {
             {/* Bulk Unpin Button */}
             <button
               type="button"
-              onClick={() => handleBulkPin(false)}
+              onClick={() => setBulkPinConfirm({ pin: false, count: selectedIds.length })}
               disabled={selectedIds.length === 0 || isBulkPinning}
               className={`flex items-center gap-2 px-3 py-1.5 border-2 border-black font-mono text-xs font-black uppercase transition-all shadow-[2px_2px_0px_#000000] active:translate-x-0.5 active:translate-y-0.5 ${
                 selectedIds.length > 0 && !isBulkPinning
@@ -911,11 +916,12 @@ export default function AdminCouponsPage() {
                       {/* CHECKOUT PIN TOGGLE */}
                       <td className="p-3.5 text-center whitespace-nowrap">
                         <button
-                          onClick={() => handleTogglePinned(c)}
+                          type="button"
+                          onClick={() => setPinConfirmCoupon(c)}
                           title={
                             c.isPinned
-                              ? 'Currently pinned on public /pay-to-use page (Click to unpin)'
-                              : 'Hidden from public /pay-to-use chips (Click to pin)'
+                              ? 'Currently pinned on public /pay-to-use page (Click to confirm unpin)'
+                              : 'Hidden from public /pay-to-use chips (Click to confirm pin)'
                           }
                           className={`border-2 border-black px-2 py-1 text-[10px] font-black uppercase shadow-[1px_1px_0px_#000000] transition-colors flex items-center gap-1 mx-auto cursor-pointer ${
                             c.isPinned
@@ -1272,6 +1278,259 @@ export default function AdminCouponsPage() {
               </div>
 
             </form>
+          </div>
+        </div>
+      )}
+      {/* ========================================================================= */}
+      {/* CONFIRMATION DIALOG: SINGLE PIN / UNPIN ACTION                          */}
+      {/* ========================================================================= */}
+      {pinConfirmCoupon && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 font-mono">
+          <div className="relative w-full max-w-md border-4 border-black bg-white shadow-[10px_10px_0px_#000000] p-6 space-y-4">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`p-2 border-2 border-black inline-flex items-center justify-center shadow-[2px_2px_0px_#000000] ${
+                    pinConfirmCoupon.isPinned
+                      ? 'bg-amber-300 text-black'
+                      : 'bg-[#ccff00] text-black'
+                  }`}
+                >
+                  {pinConfirmCoupon.isPinned ? (
+                    <PinOff className="w-5 h-5 stroke-[2.5]" />
+                  ) : (
+                    <Pin className="w-5 h-5 stroke-[2.5] fill-current" />
+                  )}
+                </span>
+                <div>
+                  <h3 className="font-black text-sm uppercase text-black">
+                    {pinConfirmCoupon.isPinned
+                      ? 'CONFIRM UNPIN PROMOTION'
+                      : 'CONFIRM PIN PROMOTION'}
+                  </h3>
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    SAFETY GUARD // PREVENT ACCIDENTAL CHANGES
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPinConfirmCoupon(null)}
+                disabled={isTogglingPin}
+                className="p-1 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+                aria-label="Close dialog"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div className="space-y-3 text-xs">
+              <p className="text-zinc-800 font-bold leading-relaxed">
+                {pinConfirmCoupon.isPinned ? (
+                  <>
+                    Are you sure you want to <span className="bg-amber-200 px-1 py-0.5 border border-black text-black uppercase font-black">UNPIN</span> coupon{' '}
+                    <strong className="text-black font-black uppercase underline decoration-2">
+                      &quot;{pinConfirmCoupon.code}&quot;
+                    </strong>
+                    ? It will be removed from the public featured promotion banner and quick-apply chips on{' '}
+                    <span className="font-mono bg-zinc-100 px-1 py-0.5 border border-black text-black">
+                      /pay-to-use
+                    </span>
+                    .
+                  </>
+                ) : (
+                  <>
+                    Are you sure you want to <span className="bg-[#ccff00] px-1 py-0.5 border border-black text-black uppercase font-black">PIN</span> coupon{' '}
+                    <strong className="text-black font-black uppercase underline decoration-2">
+                      &quot;{pinConfirmCoupon.code}&quot;
+                    </strong>
+                    ? This promo voucher will immediately be highlighted on public{' '}
+                    <span className="font-mono bg-zinc-100 px-1 py-0.5 border border-black text-black">
+                      /pay-to-use
+                    </span>{' '}
+                    with the <strong>[{pinConfirmCoupon.pinnedTag || 'OFFICIAL'}]</strong> badge for all visitors.
+                  </>
+                )}
+              </p>
+
+              {/* Coupon Detail Spec Box */}
+              <div className="border-2 border-black bg-zinc-50 p-3 space-y-1.5 text-[11px]">
+                <div className="flex justify-between border-b border-black/10 pb-1">
+                  <span className="text-zinc-500 font-bold uppercase">PROMO CODE:</span>
+                  <span className="font-black text-black uppercase">{pinConfirmCoupon.code}</span>
+                </div>
+                <div className="flex justify-between border-b border-black/10 pb-1">
+                  <span className="text-zinc-500 font-bold uppercase">DISCOUNT RATE:</span>
+                  <span className="font-black text-black">
+                    {pinConfirmCoupon.discountType === 'percentage'
+                      ? `${pinConfirmCoupon.discountValue}% OFF`
+                      : `${pinConfirmCoupon.discountType.includes('inr') ? '₹' : '$'}${pinConfirmCoupon.discountValue} FLAT OFF`}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-black/10 pb-1">
+                  <span className="text-zinc-500 font-bold uppercase">APPLIES TO PLANS:</span>
+                  <span className="font-black text-black uppercase">
+                    {(pinConfirmCoupon.applicablePlans || ['all']).join(', ')}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-zinc-500 font-bold uppercase">CURRENT STATUS:</span>
+                  <span
+                    className={`font-black uppercase px-1 border border-black text-[10px] ${
+                      pinConfirmCoupon.isActive
+                        ? 'bg-[#ccff00] text-black'
+                        : 'bg-zinc-200 text-zinc-600'
+                    }`}
+                  >
+                    {pinConfirmCoupon.isActive ? 'ACTIVE' : 'DISABLED'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setPinConfirmCoupon(null)}
+                disabled={isTogglingPin}
+                className="flex-1 py-2.5 border-2 border-black bg-white hover:bg-zinc-100 font-black text-xs uppercase cursor-pointer transition-colors shadow-[2px_2px_0px_#000000] disabled:opacity-50"
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  setIsTogglingPin(true);
+                  await handleTogglePinned(pinConfirmCoupon);
+                  setIsTogglingPin(false);
+                  setPinConfirmCoupon(null);
+                }}
+                disabled={isTogglingPin}
+                className={`flex-1 py-2.5 border-2 border-black font-black text-xs uppercase cursor-pointer transition-colors shadow-[2px_2px_0px_#000000] flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+                  pinConfirmCoupon.isPinned
+                    ? 'bg-amber-300 text-black hover:bg-black hover:text-[#ccff00]'
+                    : 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00]'
+                }`}
+              >
+                {isTogglingPin ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>SAVING...</span>
+                  </>
+                ) : pinConfirmCoupon.isPinned ? (
+                  <>
+                    <PinOff className="w-3.5 h-3.5" />
+                    <span>YES, UNPIN COUPON</span>
+                  </>
+                ) : (
+                  <>
+                    <Pin className="w-3.5 h-3.5 fill-current" />
+                    <span>YES, PIN COUPON</span>
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* CONFIRMATION DIALOG: BATCH PIN / UNPIN ACTION                           */}
+      {/* ========================================================================= */}
+      {bulkPinConfirm && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150 font-mono">
+          <div className="relative w-full max-w-md border-4 border-black bg-white shadow-[10px_10px_0px_#000000] p-6 space-y-4">
+            <div className="flex items-start justify-between gap-3 border-b-2 border-black pb-3">
+              <div className="flex items-center gap-2.5">
+                <span
+                  className={`p-2 border-2 border-black inline-flex items-center justify-center shadow-[2px_2px_0px_#000000] ${
+                    bulkPinConfirm.pin ? 'bg-[#ccff00] text-black' : 'bg-amber-300 text-black'
+                  }`}
+                >
+                  {bulkPinConfirm.pin ? (
+                    <Pin className="w-5 h-5 stroke-[2.5] fill-current" />
+                  ) : (
+                    <PinOff className="w-5 h-5 stroke-[2.5]" />
+                  )}
+                </span>
+                <div>
+                  <h3 className="font-black text-sm uppercase text-black">
+                    {bulkPinConfirm.pin ? 'CONFIRM BULK PIN' : 'CONFIRM BULK UNPIN'}
+                  </h3>
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">
+                    {bulkPinConfirm.count} SELECTED COUPONS
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setBulkPinConfirm(null)}
+                disabled={isBulkPinning}
+                className="p-1 border-2 border-black bg-white hover:bg-black hover:text-white transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs">
+              <p className="text-zinc-800 font-bold leading-relaxed">
+                Are you sure you want to{' '}
+                <strong className="text-black uppercase underline decoration-2">
+                  {bulkPinConfirm.pin ? 'PIN ALL' : 'UNPIN ALL'} {bulkPinConfirm.count} SELECTED COUPONS
+                </strong>
+                ?
+              </p>
+              <p className="text-zinc-600 font-sans text-xs">
+                {bulkPinConfirm.pin
+                  ? 'All selected coupons will be pinned and featured simultaneously on the public /pay-to-use promotion banner.'
+                  : 'All selected coupons will be unpinned and removed from the public checkout featured banner.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setBulkPinConfirm(null)}
+                disabled={isBulkPinning}
+                className="flex-1 py-2.5 border-2 border-black bg-white hover:bg-zinc-100 font-black text-xs uppercase cursor-pointer transition-colors shadow-[2px_2px_0px_#000000] disabled:opacity-50"
+              >
+                CANCEL
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const pinAction = bulkPinConfirm.pin;
+                  setBulkPinConfirm(null);
+                  await handleBulkPin(pinAction);
+                }}
+                disabled={isBulkPinning}
+                className={`flex-1 py-2.5 border-2 border-black font-black text-xs uppercase cursor-pointer transition-colors shadow-[2px_2px_0px_#000000] flex items-center justify-center gap-1.5 disabled:opacity-50 ${
+                  bulkPinConfirm.pin
+                    ? 'bg-[#ccff00] text-black hover:bg-black hover:text-[#ccff00]'
+                    : 'bg-amber-300 text-black hover:bg-black hover:text-[#ccff00]'
+                }`}
+              >
+                {isBulkPinning ? (
+                  <>
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    <span>UPDATING...</span>
+                  </>
+                ) : bulkPinConfirm.pin ? (
+                  <>
+                    <Pin className="w-3.5 h-3.5 fill-current" />
+                    <span>YES, PIN ALL</span>
+                  </>
+                ) : (
+                  <>
+                    <PinOff className="w-3.5 h-3.5" />
+                    <span>YES, UNPIN ALL</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

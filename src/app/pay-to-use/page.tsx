@@ -283,7 +283,7 @@ function PaymentContent() {
     const planConfig =
       dynamicPlans.find((p) => p.id === planId) ||
       DEFAULT_PLANS.find((p) => p.id === planId) ||
-      DEFAULT_PLANS[1];
+      (planId === 'enterprise' ? DEFAULT_PLANS[3] : DEFAULT_PLANS[2]);
 
     const currPricing = planConfig.pricing?.[currency] || planConfig.pricing?.USD || { monthly: 9.99, yearly: 99.0, lifetime: 199.0 };
     const orig = billingCycle === 'yearly'
@@ -1268,7 +1268,10 @@ function PaymentContent() {
 
           {/* TIER 2: PRO STUDIO (YELLOW BASE) */}
           {(() => {
-            const proPlan = dynamicPlans.find((p) => p.id === 'pro') || DEFAULT_PLANS[1];
+            const proPlan =
+              dynamicPlans.find((p) => p.id === 'pro') ||
+              DEFAULT_PLANS.find((p) => p.id === 'pro') ||
+              DEFAULT_PLANS[2];
             const proSub = billingCycle === 'monthly'
               ? (proPlan.cycles?.monthly?.subtitle || '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days')
               : billingCycle === 'yearly'
@@ -1364,7 +1367,10 @@ function PaymentContent() {
 
           {/* TIER 3: ENTERPRISE PACK / MATRIX (PURPLE BASE) */}
           {(() => {
-            const entPlan = dynamicPlans.find((p) => p.id === 'enterprise') || DEFAULT_PLANS[2];
+            const entPlan =
+              dynamicPlans.find((p) => p.id === 'enterprise') ||
+              DEFAULT_PLANS.find((p) => p.id === 'enterprise') ||
+              DEFAULT_PLANS[3];
             const entSub = billingCycle === 'monthly'
               ? (entPlan.cycles?.monthly?.subtitle || '$29.00/mo rate • Full prepress vector engine • 30 days')
               : billingCycle === 'yearly'

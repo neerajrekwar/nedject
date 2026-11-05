@@ -567,16 +567,57 @@ export default function AdminUsersPage() {
               </div>
 
               {(() => {
-                const proPlan = managedPlans.find((p) => p.id === 'pro') || DEFAULT_PLANS[1];
-                const entPlan = managedPlans.find((p) => p.id === 'enterprise') || DEFAULT_PLANS[2];
+                const proPlan =
+                  managedPlans.find((p) => p.id === 'pro') ||
+                  DEFAULT_PLANS.find((p) => p.id === 'pro') ||
+                  DEFAULT_PLANS[2];
+                const entPlan =
+                  managedPlans.find((p) => p.id === 'enterprise') ||
+                  DEFAULT_PLANS.find((p) => p.id === 'enterprise') ||
+                  DEFAULT_PLANS[3];
 
-                const proMonthlySub = proPlan.cycles?.monthly?.subtitle || '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days';
-                const proAnnualSub = proPlan.cycles?.yearly?.subtitle || '$99.00/yr rate • Full annual Pro access • 1-year expiration';
-                const proLifetimeSub = proPlan.cycles?.lifetime?.subtitle || 'Pro Lifetime (No Expiry)';
+                const proMonthlySub =
+                  proPlan.cycles?.monthly?.subtitle ||
+                  '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days';
+                const proAnnualSub =
+                  proPlan.cycles?.yearly?.subtitle ||
+                  '$99.00/yr rate • Full annual Pro access • 1-year expiration';
+                const proLifetimeSub =
+                  proPlan.cycles?.lifetime?.subtitle || 'Pro Lifetime (No Expiry)';
 
-                const entMonthlySub = entPlan.cycles?.monthly?.subtitle || '$29.00/mo rate • Full prepress vector engine • 30 days';
-                const entAnnualSub = entPlan.cycles?.yearly?.subtitle || '$249.00/yr rate • Unlimited prepress license • 1-year expiration';
-                const entLifetimeSub = entPlan.cycles?.lifetime?.subtitle || 'Enterprise Lifetime (No Expiry)';
+                const entMonthlySub =
+                  entPlan.cycles?.monthly?.subtitle ||
+                  '$29.00/mo rate • Full prepress vector engine • 30 days';
+                const entAnnualSub =
+                  entPlan.cycles?.yearly?.subtitle ||
+                  '$249.00/yr rate • Unlimited prepress license • 1-year expiration';
+                const entLifetimeSub =
+                  entPlan.cycles?.lifetime?.subtitle || 'Enterprise Lifetime (No Expiry)';
+
+                const isProMonthlyActive =
+                  modalUser.plan === 'pro' &&
+                  modalUser.subscriptionBillingCycle === 'monthly' &&
+                  modalUser.subscriptionStatus === 'active';
+                const isProAnnualActive =
+                  modalUser.plan === 'pro' &&
+                  modalUser.subscriptionBillingCycle === 'annual' &&
+                  modalUser.subscriptionStatus === 'active';
+                const isEntMonthlyActive =
+                  modalUser.plan === 'enterprise' &&
+                  modalUser.subscriptionBillingCycle === 'monthly' &&
+                  modalUser.subscriptionStatus === 'active';
+                const isEntAnnualActive =
+                  modalUser.plan === 'enterprise' &&
+                  modalUser.subscriptionBillingCycle === 'annual' &&
+                  modalUser.subscriptionStatus === 'active';
+                const isProLifetimeActive =
+                  modalUser.plan === 'pro' &&
+                  modalUser.subscriptionBillingCycle === 'lifetime' &&
+                  modalUser.subscriptionStatus === 'active';
+                const isEntLifetimeActive =
+                  modalUser.plan === 'enterprise' &&
+                  modalUser.subscriptionBillingCycle === 'lifetime' &&
+                  modalUser.subscriptionStatus === 'active';
 
                 return (
                   <>
@@ -586,17 +627,38 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={() => handleApplyPlan('pro', 'monthly', '30')}
                         disabled={isSubmitting}
-                        className="group p-3.5 border-2 border-black bg-white hover:bg-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+                        className={`group p-3.5 border-2 text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000] relative ${
+                          isProMonthlyActive
+                            ? 'border-black bg-amber-100 ring-2 ring-black'
+                            : 'border-black bg-white hover:bg-black'
+                        }`}
                       >
+                        {isProMonthlyActive && (
+                          <span className="absolute -top-2.5 right-2 bg-black text-[#ccff00] text-[9px] font-black px-1.5 py-0.2 border border-black uppercase">
+                            ✓ CURRENTLY ACTIVE
+                          </span>
+                        )}
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-xs uppercase text-black group-hover:text-[#ccff00] transition-colors">
+                          <span
+                            className={`font-black text-xs uppercase transition-colors ${
+                              isProMonthlyActive
+                                ? 'text-black'
+                                : 'text-black group-hover:text-[#ccff00]'
+                            }`}
+                          >
                             ⚡ PRO - MONTHLY
                           </span>
                           <span className="text-[10px] font-black bg-black text-[#ccff00] group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-black transition-colors">
                             30 DAYS
                           </span>
                         </div>
-                        <div className="text-[11px] text-zinc-600 group-hover:text-zinc-200 font-sans transition-colors">
+                        <div
+                          className={`text-[11px] font-sans transition-colors ${
+                            isProMonthlyActive
+                              ? 'text-zinc-800 font-bold'
+                              : 'text-zinc-600 group-hover:text-zinc-200'
+                          }`}
+                        >
                           {proMonthlySub}
                         </div>
                       </button>
@@ -606,17 +668,38 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={() => handleApplyPlan('pro', 'annual', '365')}
                         disabled={isSubmitting}
-                        className="group p-3.5 border-2 border-black bg-white hover:bg-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+                        className={`group p-3.5 border-2 text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000] relative ${
+                          isProAnnualActive
+                            ? 'border-black bg-amber-100 ring-2 ring-black'
+                            : 'border-black bg-white hover:bg-black'
+                        }`}
                       >
+                        {isProAnnualActive && (
+                          <span className="absolute -top-2.5 right-2 bg-black text-[#ccff00] text-[9px] font-black px-1.5 py-0.2 border border-black uppercase">
+                            ✓ CURRENTLY ACTIVE
+                          </span>
+                        )}
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-xs uppercase text-black group-hover:text-[#ccff00] transition-colors">
+                          <span
+                            className={`font-black text-xs uppercase transition-colors ${
+                              isProAnnualActive
+                                ? 'text-black'
+                                : 'text-black group-hover:text-[#ccff00]'
+                            }`}
+                          >
                             🌟 PRO - ANNUAL
                           </span>
                           <span className="text-[10px] font-black bg-black text-[#ccff00] group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-black transition-colors">
                             365 DAYS
                           </span>
                         </div>
-                        <div className="text-[11px] text-zinc-600 group-hover:text-zinc-200 font-sans transition-colors">
+                        <div
+                          className={`text-[11px] font-sans transition-colors ${
+                            isProAnnualActive
+                              ? 'text-zinc-800 font-bold'
+                              : 'text-zinc-600 group-hover:text-zinc-200'
+                          }`}
+                        >
                           {proAnnualSub}
                         </div>
                       </button>
@@ -626,17 +709,38 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={() => handleApplyPlan('enterprise', 'monthly', '30')}
                         disabled={isSubmitting}
-                        className="group p-3.5 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 hover:border-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+                        className={`group p-3.5 border-2 text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000] relative ${
+                          isEntMonthlyActive
+                            ? 'border-black bg-purple-100 ring-2 ring-purple-900'
+                            : 'border-purple-800 bg-purple-50 hover:bg-purple-950 hover:border-black'
+                        }`}
                       >
+                        {isEntMonthlyActive && (
+                          <span className="absolute -top-2.5 right-2 bg-purple-900 text-white text-[9px] font-black px-1.5 py-0.2 border border-black uppercase">
+                            ✓ CURRENTLY ACTIVE
+                          </span>
+                        )}
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-xs uppercase text-purple-950 group-hover:text-white transition-colors">
+                          <span
+                            className={`font-black text-xs uppercase transition-colors ${
+                              isEntMonthlyActive
+                                ? 'text-purple-950 font-black'
+                                : 'text-purple-950 group-hover:text-white'
+                            }`}
+                          >
                             🏢 ENTERPRISE - MONTHLY
                           </span>
                           <span className="text-[10px] font-black bg-purple-900 text-white group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-purple-950 group-hover:border-black transition-colors">
                             30 DAYS
                           </span>
                         </div>
-                        <div className="text-[11px] text-zinc-600 group-hover:text-purple-200 font-sans transition-colors">
+                        <div
+                          className={`text-[11px] font-sans transition-colors ${
+                            isEntMonthlyActive
+                              ? 'text-purple-900 font-bold'
+                              : 'text-zinc-600 group-hover:text-purple-200'
+                          }`}
+                        >
                           {entMonthlySub}
                         </div>
                       </button>
@@ -646,17 +750,38 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={() => handleApplyPlan('enterprise', 'annual', '365')}
                         disabled={isSubmitting}
-                        className="group p-3.5 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 hover:border-black text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000]"
+                        className={`group p-3.5 border-2 text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000] relative ${
+                          isEntAnnualActive
+                            ? 'border-black bg-purple-100 ring-2 ring-purple-900'
+                            : 'border-purple-800 bg-purple-50 hover:bg-purple-950 hover:border-black'
+                        }`}
                       >
+                        {isEntAnnualActive && (
+                          <span className="absolute -top-2.5 right-2 bg-purple-900 text-white text-[9px] font-black px-1.5 py-0.2 border border-black uppercase">
+                            ✓ CURRENTLY ACTIVE
+                          </span>
+                        )}
                         <div className="flex items-center justify-between">
-                          <span className="font-black text-xs uppercase text-purple-950 group-hover:text-white transition-colors">
+                          <span
+                            className={`font-black text-xs uppercase transition-colors ${
+                              isEntAnnualActive
+                                ? 'text-purple-950 font-black'
+                                : 'text-purple-950 group-hover:text-white'
+                            }`}
+                          >
                             🚀 ENTERPRISE - ANNUAL
                           </span>
                           <span className="text-[10px] font-black bg-purple-900 text-white group-hover:bg-[#ccff00] group-hover:text-black px-1.5 py-0.5 border border-purple-950 group-hover:border-black transition-colors">
                             365 DAYS
                           </span>
                         </div>
-                        <div className="text-[11px] text-zinc-600 group-hover:text-purple-200 font-sans transition-colors">
+                        <div
+                          className={`text-[11px] font-sans transition-colors ${
+                            isEntAnnualActive
+                              ? 'text-purple-900 font-bold'
+                              : 'text-zinc-600 group-hover:text-purple-200'
+                          }`}
+                        >
                           {entAnnualSub}
                         </div>
                       </button>
@@ -668,17 +793,35 @@ export default function AdminUsersPage() {
                         type="button"
                         onClick={() => handleApplyPlan('pro', 'lifetime', 'lifetime')}
                         disabled={isSubmitting}
-                        className="flex-1 py-2.5 px-3 border-2 border-black bg-zinc-100 hover:bg-black text-black hover:text-[#ccff00] text-xs font-black uppercase transition-all cursor-pointer text-center shadow-[2px_2px_0px_#000000]"
+                        className={`flex-1 py-2.5 px-3 border-2 text-xs font-black uppercase transition-all cursor-pointer text-center shadow-[2px_2px_0px_#000000] relative ${
+                          isProLifetimeActive
+                            ? 'border-black bg-black text-[#ccff00] ring-2 ring-black'
+                            : 'border-black bg-zinc-100 hover:bg-black text-black hover:text-[#ccff00]'
+                        }`}
                       >
-                        {proLifetimeSub}
+                        {isProLifetimeActive && (
+                          <span className="absolute -top-2.5 right-2 bg-[#ccff00] text-black text-[9px] font-black px-1 border border-black uppercase">
+                            ✓ ACTIVE
+                          </span>
+                        )}
+                        <span>{proLifetimeSub}</span>
                       </button>
                       <button
                         type="button"
                         onClick={() => handleApplyPlan('enterprise', 'lifetime', 'lifetime')}
                         disabled={isSubmitting}
-                        className="flex-1 py-2.5 px-3 border-2 border-purple-800 bg-purple-50 hover:bg-purple-950 text-purple-950 hover:text-white hover:border-black text-xs font-black uppercase transition-all cursor-pointer text-center shadow-[2px_2px_0px_#000000]"
+                        className={`flex-1 py-2.5 px-3 border-2 text-xs font-black uppercase transition-all cursor-pointer text-center shadow-[2px_2px_0px_#000000] relative ${
+                          isEntLifetimeActive
+                            ? 'border-black bg-purple-950 text-white ring-2 ring-purple-900'
+                            : 'border-purple-800 bg-purple-50 hover:bg-purple-950 text-purple-950 hover:text-white hover:border-black'
+                        }`}
                       >
-                        {entLifetimeSub}
+                        {isEntLifetimeActive && (
+                          <span className="absolute -top-2.5 right-2 bg-purple-900 text-white text-[9px] font-black px-1 border border-black uppercase">
+                            ✓ ACTIVE
+                          </span>
+                        )}
+                        <span>{entLifetimeSub}</span>
                       </button>
                     </div>
                   </>

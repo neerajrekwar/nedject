@@ -144,6 +144,7 @@ export function GlobalNavbar() {
   // Primary Tool navigation links
   const navLinks = [
     { href: '/', label: '300 DPI PHOTO QR' },
+    { href: '/nfc-bat', label: 'NFC BAT STUDIO' },
     { href: '/insta-clip', label: 'INSTA CLIP STUDIO' },
     { href: '/normal-dpi-photo', label: 'NORMAL DPI' },
     { href: '/barcode-pick', label: 'BARCODE PICK' },
@@ -160,6 +161,7 @@ export function GlobalNavbar() {
   }
 
   const isHomePage = !pathname || pathname === '/' || pathname === '/photo-qr';
+  const isNfcBat = pathname?.startsWith('/nfc-bat');
   const isBarcodePick = pathname?.startsWith('/barcode-pick');
   const isNormalDPI = pathname?.startsWith('/normal-dpi-photo') || pathname?.startsWith('/nomral-dpi-photo');
   const isMockup = pathname?.startsWith('/mochup') || pathname?.startsWith('/mockup');
@@ -182,6 +184,8 @@ export function GlobalNavbar() {
     ? { box: '|||||', title: 'BARCODE PICK & STUDIO' }
     : isNormalDPI
     ? { box: 'NR', title: 'PHOTO DPI MAKER' }
+    : isNfcBat
+    ? { box: 'NFC', title: 'NFC BAT STUDIO' }
     : isWinterArc
     ? { box: '🔥', title: 'WINTER ARC 2026' }
     : isFitnessGlass

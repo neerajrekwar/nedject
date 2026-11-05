@@ -724,7 +724,7 @@ export default function AdminApiesPage() {
                 placeholder="https://clientapp.com, http://localhost:3000"
               />
               <p className="text-[10px] text-zinc-500 mt-1 font-mono">
-                Separate origins with commas or newlines. Entering '*' permits all network origins.
+                Separate origins with commas or newlines. Entering &apos;*&apos; permits all network origins.
               </p>
             </div>
 
