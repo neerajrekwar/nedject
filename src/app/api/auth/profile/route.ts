@@ -28,6 +28,14 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    const userEmail = (user.email || '').toLowerCase();
+    const isIndian =
+      userEmail.includes('neerajrekwar') ||
+      userEmail.endsWith('.in') ||
+      (user as any).currency === 'INR';
+    const currency = (user as any).currency || (isIndian ? 'INR' : 'USD');
+    const country = (user as any).country || (isIndian ? 'India' : 'United States');
+
     return NextResponse.json({
       user: {
         id: user._id,
@@ -36,6 +44,8 @@ export async function GET(req: NextRequest) {
         dob: user.dob,
         occupation: user.occupation,
         plan: user.plan,
+        currency,
+        country,
         generationsLimit: user.generationsLimit,
         generationsUsed: user.generationsUsed,
         provider: user.provider,
@@ -58,19 +68,29 @@ export async function PUT(req: NextRequest) {
     const email = session.user.email;
     const body = await req.json();
 
-    // SECURITY: Users can only update their own display name, dob, and occupation.
+    // SECURITY: Users can only update their own display name, dob, occupation, country, and currency.
     // 'plan' and 'generationsLimit' cannot be modified from profile endpoint (must go through verified payment).
-    const { name, dob, occupation } = body;
+    const { name, dob, occupation, currency, country } = body;
 
     const updated = await updateUserProfile(email, {
       name: typeof name === 'string' ? name.trim() : undefined,
       dob: typeof dob === 'string' ? dob.trim() : undefined,
       occupation: typeof occupation === 'string' ? occupation.trim() : undefined,
+      currency: typeof currency === 'string' ? currency.trim().toUpperCase() : undefined,
+      country: typeof country === 'string' ? country.trim() : undefined,
     });
 
     if (!updated) {
       return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
     }
+
+    const resolvedEmail = (updated.email || '').toLowerCase();
+    const isIndianResolved =
+      resolvedEmail.includes('neerajrekwar') ||
+      resolvedEmail.endsWith('.in') ||
+      (updated as any).currency === 'INR';
+    const finalCurrency = (updated as any).currency || (isIndianResolved ? 'INR' : 'USD');
+    const finalCountry = (updated as any).country || (isIndianResolved ? 'India' : 'United States');
 
     return NextResponse.json({
       message: 'Profile updated successfully in MongoDB database',
@@ -81,6 +101,8 @@ export async function PUT(req: NextRequest) {
         dob: updated.dob,
         occupation: updated.occupation,
         plan: updated.plan,
+        currency: finalCurrency,
+        country: finalCountry,
         generationsLimit: updated.generationsLimit,
         updatedAt: updated.updatedAt,
       },

@@ -175,6 +175,7 @@ export const PHOTO_PRESETS: PhotoPreset[] = [
       </svg>`
     )}`,
   },
+  /* precision optical camera -specimen */
   {
     id: 'bw-vintage-camera',
     name: 'Precision Optical Camera',
@@ -183,6 +184,7 @@ export const PHOTO_PRESETS: PhotoPreset[] = [
     description: 'Iconic mechanical optics and aperture blades rendered with high-contrast precision.',
     dataUrl: `data:image/svg+xml;utf8,${encodeURIComponent(
       `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+        <!-- precision optical camera -specimen -->
         <rect width="400" height="400" fill="#ffffff"/>
         <!-- Camera Body -->
         <rect x="50" y="110" width="300" height="200" rx="16" fill="#111111" stroke="#000000" stroke-width="6"/>
@@ -205,6 +207,44 @@ export const PHOTO_PRESETS: PhotoPreset[] = [
         <!-- Lens Glint Reflex -->
         <path d="M 180 185 Q 200 175 220 185" stroke="#ffffff" stroke-width="4" stroke-linecap="round" fill="none"/>
         <circle cx="178" cy="210" r="7" fill="#ffffff"/>
+      </svg>`
+    )}`,
+  },
+  /* batman bat pattern precision */
+  {
+    id: 'bw-batman-bat-precision',
+    name: 'Batman Bat Pattern Precision',
+    subtitle: 'Dark Knight Precision Silhouette',
+    category: 'Art',
+    description: 'Iconic aerodynamic bat wing insignia and nocturnal Gotham crosshair matrix rendered with mathematical symmetry and 300 DPI edge sharpness.',
+    dataUrl: `data:image/svg+xml;utf8,${encodeURIComponent(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+        <!-- precision optical camera -specimen -->
+        <!-- batman bat pattern precision -->
+        <rect width="400" height="400" fill="#000000"/>
+        
+        <!-- Gotham Nocturnal Radar Grid & Optical Crosshairs -->
+        <circle cx="200" cy="200" r="185" fill="none" stroke="#222222" stroke-width="2"/>
+        <circle cx="200" cy="200" r="150" fill="none" stroke="#333333" stroke-width="1.5" stroke-dasharray="4 6"/>
+        <circle cx="200" cy="200" r="110" fill="none" stroke="#222222" stroke-width="1"/>
+        <line x1="15" y1="200" x2="385" y2="200" stroke="#333333" stroke-width="1" stroke-dasharray="6 6"/>
+        <line x1="200" y1="15" x2="200" y2="385" stroke="#333333" stroke-width="1" stroke-dasharray="6 6"/>
+
+        <!-- High-Luminance Signal Oval (Classic Gotham Bat-Signal) -->
+        <ellipse cx="200" cy="200" rx="170" ry="105" fill="#ffffff" stroke="#ffffff" stroke-width="4"/>
+        <ellipse cx="200" cy="200" rx="164" ry="99" fill="#f8fafc" stroke="#000000" stroke-width="3"/>
+
+        <!-- Precision Aerodynamic Bat Wings Silhouette -->
+        <path d="M 200 138 C 203 138, 206 130, 209 118 L 213 136 C 222 138, 245 142, 280 148 C 318 155, 355 170, 368 184 C 345 192, 318 206, 302 226 C 285 247, 260 252, 246 270 C 236 256, 222 254, 212 268 L 200 286 L 188 268 C 178 254, 164 256, 154 270 C 140 252, 115 247, 98 226 C 82 206, 55 192, 32 184 C 45 170, 82 155, 120 148 C 155 142, 178 138, 187 136 L 191 118 C 194 130, 197 138, 200 138 Z" fill="#000000"/>
+
+        <!-- Micro-Geometry Precision Markings -->
+        <circle cx="200" cy="200" r="4" fill="#ffffff"/>
+        <line x1="200" y1="185" x2="200" y2="215" stroke="#ffffff" stroke-width="1"/>
+        <line x1="185" y1="200" x2="215" y2="200" stroke="#ffffff" stroke-width="1"/>
+
+        <!-- Technical Calibration Badge -->
+        <text x="200" y="338" font-family="monospace, sans-serif" font-weight="900" font-size="11" fill="#ffffff" text-anchor="middle" letter-spacing="3">BATMAN • PRECISION PATTERN</text>
+        <text x="200" y="356" font-family="monospace, sans-serif" font-weight="700" font-size="9" fill="#888888" text-anchor="middle" letter-spacing="2">300 DPI // VECTOR SPECIMEN</text>
       </svg>`
     )}`,
   },

@@ -95,10 +95,24 @@ export async function getPurchasesForUser(
 ): Promise<PurchaseRecord[]> {
   if (!userEmail && !userId) return [];
   const normalizedEmail = (userEmail || '').trim().toLowerCase();
-  const isIndianUser = normalizedEmail.includes('neerajrekwar') || normalizedEmail.endsWith('.in');
 
   try {
     const db = await getDb();
+    let userCurrencyFromDb = '';
+    if (db) {
+      try {
+        const uDoc = await db.collection('users').findOne({
+          email: { $regex: new RegExp(`^${normalizedEmail}$`, 'i') },
+        });
+        if (uDoc?.currency) userCurrencyFromDb = uDoc.currency.toUpperCase();
+      } catch {}
+    }
+
+    const isIndianUser =
+      normalizedEmail.includes('neerajrekwar') ||
+      normalizedEmail.endsWith('.in') ||
+      userCurrencyFromDb === 'INR';
+
     if (db) {
       const query: any = {
         $or: [
@@ -119,8 +133,10 @@ export async function getPurchasesForUser(
 
       if (docs && docs.length > 0) {
         return docs.map((doc: any) => {
-          let currency = (doc.currency || (isIndianUser ? 'INR' : 'USD')).toUpperCase();
+          let currency = (doc.currency || userCurrencyFromDb || (isIndianUser ? 'INR' : 'USD')).toUpperCase();
           if (doc.amountFormatted && doc.amountFormatted.includes('₹')) {
+            currency = 'INR';
+          } else if (isIndianUser && (Number(doc.amount) === 0 || doc.gateway === 'Razorpay' || doc.gateway === 'Admin Override')) {
             currency = 'INR';
           }
           const amount = Number(doc.amount) || 0;
@@ -128,6 +144,8 @@ export async function getPurchasesForUser(
           // If stored formatted amount has dollar sign but user bought in INR, reformat with INR symbol ₹
           if (!amountFormatted || (currency === 'INR' && amountFormatted.startsWith('$'))) {
             amountFormatted = formatCurrencyAmount(amount, currency);
+          } else if (amount === 0 && currency === 'INR' && amountFormatted.includes('$')) {
+            amountFormatted = 'FREE (Admin Granted)';
           }
 
           return {
@@ -260,11 +278,17 @@ export async function createPurchaseRecord(
   const amount = Number(data.amount) || 0;
   const isEnt = data.plan === 'enterprise';
   const planName = data.planName || (isEnt ? 'Enterprise Studio Pass' : 'Pro Athlete Pass');
-  const currency = (data.currency || (data.userEmail.toLowerCase().includes('neerajrekwar') ? 'INR' : 'USD')).toUpperCase();
+  const isIndianUser =
+    data.userEmail.toLowerCase().includes('neerajrekwar') ||
+    data.userEmail.toLowerCase().endsWith('.in');
+  let currency = (data.currency || (isIndianUser ? 'INR' : 'USD')).toUpperCase();
+  if (isIndianUser && (amount === 0 || data.gateway === 'Razorpay' || data.gateway === 'Admin Override')) {
+    currency = 'INR';
+  }
 
   let amountFormatted = data.amountFormatted;
   if (!amountFormatted || (currency === 'INR' && amountFormatted.startsWith('$'))) {
-    amountFormatted = formatCurrencyAmount(amount, currency);
+    amountFormatted = amount === 0 ? 'FREE (Admin Granted)' : formatCurrencyAmount(amount, currency);
   }
 
   const record: PurchaseRecord = {

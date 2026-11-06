@@ -176,6 +176,8 @@ export async function PUT(req: NextRequest) {
       try {
         const userDoc = await db.collection('users').findOne(query);
         if (userDoc) {
+          const isIndian = (userDoc.email || '').toLowerCase().includes('neerajrekwar') || (userDoc.email || '').toLowerCase().endsWith('.in') || userDoc.currency === 'INR';
+          const grantCurrency = (userDoc.currency || (isIndian ? 'INR' : 'USD')).toUpperCase();
           const cycle = isLifetime || billingCycle === 'lifetime' ? 'lifetime' : (billingCycle === 'annual' ? 'annual' : 'monthly');
           await createPurchaseRecord({
             userId: userDoc._id.toString(),
@@ -185,7 +187,7 @@ export async function PUT(req: NextRequest) {
             planName: plan === 'enterprise' ? 'Nedject Enterprise Matrix' : 'Nedject Pro Studio',
             amount: 0,
             amountFormatted: 'FREE (Admin Granted)',
-            currency: 'USD',
+            currency: grantCurrency,
             billingCycle: cycle,
             gateway: 'Admin Override',
             status: 'Paid',

@@ -451,11 +451,13 @@ export function HeroSection({
                   </div>
 
                   {/* Quick Photo Presets */}
+                  {/* precision optical camera -specimen */}
+                  {/* batman bat pattern precision */}
                   <div className="space-y-2">
                     <span className="font-mono text-[11px] font-black uppercase text-zinc-600 block">
                       CURATED B/W PHOTOGRAPHIC SPECIMENS:
                     </span>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                       {PHOTO_PRESETS.map((preset) => {
                         const isSelected = selectedPresetId === preset.id;
                         return (

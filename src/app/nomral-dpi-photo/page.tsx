@@ -1111,11 +1111,13 @@ export default function NormalDPIPhotoPage() {
                 </div>
 
                 {/* Preset Specimens */}
+                {/* precision optical camera -specimen */}
+                {/* batman bat pattern precision */}
                 <div className="pt-2 border-t border-zinc-200">
                   <span className="font-mono text-[10px] font-bold text-zinc-500 uppercase block mb-1.5">
                     OR TEST WITH CURATED SPECIMEN PRESETS:
                   </span>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
                     {PHOTO_PRESETS.map((p) => (
                       <button
                         key={p.id}

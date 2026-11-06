@@ -27,11 +27,15 @@ export function getCurrencySymbol(currency?: string): string {
   return (CURRENCY_SYMBOLS as any)[c] || (c.includes('INR') ? '₹' : '$');
 }
 
-export function formatCurrencyAmount(amount: number, currency: string = 'INR'): string {
+export function formatCurrencyAmount(
+  amount: number,
+  currency: string = 'INR',
+  options?: { showFree?: boolean }
+): string {
   const symbol = getCurrencySymbol(currency);
   const c = (currency || 'INR').trim().toUpperCase();
   const num = Number(amount) || 0;
-  if (num === 0) return `FREE (${symbol}0)`;
+  if (num === 0 && options?.showFree !== false) return `FREE (${symbol}0)`;
   if (c === 'INR') {
     return `${symbol}${num.toLocaleString('en-IN', { maximumFractionDigits: 2 })}`;
   }

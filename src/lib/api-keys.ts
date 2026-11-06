@@ -133,6 +133,18 @@ export function checkRateLimit(keyId: string, limitRpm: number): { allowed: bool
   const windowMs = 60 * 1000; // 60 seconds
   const cutoff = now - windowMs;
 
+  // Memory leak prevention: Periodic cleanup of expired rate limit windows
+  if (rateLimitWindows.size > 1000) {
+    for (const [id, times] of rateLimitWindows.entries()) {
+      const valid = times.filter((t) => t > cutoff);
+      if (valid.length === 0) {
+        rateLimitWindows.delete(id);
+      } else {
+        rateLimitWindows.set(id, valid);
+      }
+    }
+  }
+
   const timestamps = (rateLimitWindows.get(keyId) || []).filter((t) => t > cutoff);
   timestamps.push(now);
   rateLimitWindows.set(keyId, timestamps);

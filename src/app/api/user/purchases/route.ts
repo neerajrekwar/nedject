@@ -56,9 +56,15 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Fetch user profile to cross-reference active plan
+    // Fetch user profile to cross-reference active plan and user currency/country
     const profile = await findUserByEmail(userEmail);
     const activePlan = profile?.plan || (nextAuthToken?.plan as string) || 'free';
+    const isIndian =
+      userEmail.includes('neerajrekwar') ||
+      userEmail.endsWith('.in') ||
+      (profile as any)?.currency === 'INR';
+    const userCurrency = ((profile as any)?.currency || (isIndian ? 'INR' : 'USD')).toUpperCase();
+    const userCountry = (profile as any)?.country || (isIndian ? 'India' : 'United States');
 
     // Query 'purchases' collection
     const purchases = await getPurchasesForUser(userEmail, userId);
@@ -67,6 +73,8 @@ export async function GET(req: NextRequest) {
       success: true,
       userEmail,
       activePlan,
+      userCurrency,
+      userCountry,
       totalCount: purchases.length,
       purchases,
     });

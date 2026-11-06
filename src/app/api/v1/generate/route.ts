@@ -17,7 +17,6 @@ export async function POST(req: NextRequest) {
   const requestOrigin =
     req.headers.get('origin') ||
     req.headers.get('referer') ||
-    req.headers.get('host') ||
     null;
 
   const clientIp =
@@ -58,15 +57,35 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // 4. Parse request payload
+  // 4. Parse request payload with strict size & structure validation
   let body: any = {};
   try {
     body = await req.json();
   } catch {
-    body = { type: 'qr', payload: 'https://nedject.internal/optical' };
+    return NextResponse.json(
+      { success: false, error: 'Bad Request: Malformed JSON payload.' },
+      { status: 400 }
+    );
   }
 
-  const { type = 'qr', payload = 'https://nedject.internal', format = 'svg', options = {} } = body;
+  const { type = 'qr', payload = '', format = 'svg', options = {} } = body;
+
+  // Threat Prevention: Restrict payload length to prevent DoS memory spikes
+  if (typeof payload === 'string' && payload.length > 8192) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Payload Too Large: Optical matrices support maximum 8,192 characters.',
+      },
+      { status: 400 }
+    );
+  }
+
+  // Threat Prevention: Whitelist allowed types and output formats
+  const allowedTypes = ['qr', 'barcode', 'photo', 'photo-dpi', 'nfc'];
+  const allowedFormats = ['svg', 'png', 'pdf', 'json'];
+  const resolvedType = allowedTypes.includes(type) ? type : 'qr';
+  const resolvedFormat = allowedFormats.includes(format) ? format : 'svg';
 
   // 5. Generate Optical Result
   const generationId = `gen_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`;
@@ -79,8 +98,8 @@ export async function POST(req: NextRequest) {
       generationId,
       timestamp,
       latencyMs,
-      type,
-      format,
+      type: resolvedType,
+      format: resolvedFormat,
       output: {
         rawPayload: payload,
         renderedDpi: type === 'photo' || options?.dpi ? options.dpi || 300 : 300,

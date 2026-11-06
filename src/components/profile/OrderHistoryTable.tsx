@@ -32,17 +32,51 @@ interface OrderHistoryTableProps {
   userEmail: string;
   userId?: string;
   activePlan?: string;
+  userCurrency?: string;
+  userCountry?: string;
 }
 
 export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
   userEmail,
   userId,
   activePlan = 'free',
+  userCurrency,
+  userCountry,
 }) => {
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Auto-detect user account currency and regional country
+  const [accountCurrency, setAccountCurrency] = useState<string>(() => {
+    if (userCurrency) return userCurrency.toUpperCase();
+    const isIndian =
+      (userEmail || '').toLowerCase().includes('neerajrekwar') ||
+      (userEmail || '').toLowerCase().endsWith('.in');
+    if (isIndian) return 'INR';
+
+    if (typeof window !== 'undefined') {
+      try {
+        const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        if (tz.includes('Calcutta') || tz.includes('Kolkata') || tz.includes('Asia/Colombo')) {
+          return 'INR';
+        }
+        if (navigator.language === 'en-IN' || (navigator.languages && navigator.languages.includes('en-IN'))) {
+          return 'INR';
+        }
+      } catch {}
+    }
+    return 'INR';
+  });
+
+  const [accountCountry, setAccountCountry] = useState<string>(() => {
+    if (userCountry) return userCountry;
+    const isIndian =
+      (userEmail || '').toLowerCase().includes('neerajrekwar') ||
+      (userEmail || '').toLowerCase().endsWith('.in');
+    return isIndian ? 'India' : 'United States';
+  });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -72,6 +106,12 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
       }
 
       setPurchases(data.purchases || []);
+      if (data.userCurrency && !userCurrency) {
+        setAccountCurrency(data.userCurrency.toUpperCase());
+      }
+      if (data.userCountry && !userCountry) {
+        setAccountCountry(data.userCountry);
+      }
     } catch (err: any) {
       console.error('[OrderHistoryTable] Error loading purchases:', err);
       setError(err?.message || 'Unable to connect to purchases repository.');
@@ -145,15 +185,48 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
     });
   }, [purchases, searchQuery, statusFilter]);
 
-  // Calculations for quick metrics
+  // Robust multi-layered currency resolution hierarchy:
+  // 1. Explicit prop userCurrency if passed
+  // 2. Prioritize non-zero paid purchases (e.g. ₹14,999 in INR must NEVER be overridden by a $0 admin grant)
+  // 3. Check if any purchase was in INR / has ₹ / used Razorpay
+  // 4. Detected user account / geo currency (INR for India)
+  // 5. Fallback to first purchase currency with INR default
   const primaryCurrency = useMemo(() => {
+    if (userCurrency) return userCurrency.toUpperCase();
+
+    const nonZeroPaid = purchases.find((p) => Number(p.amount) > 0 && p.currency);
+    if (nonZeroPaid?.currency) {
+      return nonZeroPaid.currency.toUpperCase();
+    }
+
+    const hasInr = purchases.some(
+      (p) =>
+        p.currency?.toUpperCase() === 'INR' ||
+        p.amountFormatted?.includes('₹') ||
+        p.gateway === 'Razorpay'
+    );
+    if (hasInr) return 'INR';
+
+    if (accountCurrency) return accountCurrency.toUpperCase();
+
+    const isIndian =
+      (userEmail || '').toLowerCase().includes('neerajrekwar') ||
+      (userEmail || '').toLowerCase().endsWith('.in');
+    if (isIndian) return 'INR';
+
     const found = purchases.find((p) => p.currency);
     return (found?.currency || 'INR').toUpperCase();
-  }, [purchases]);
+  }, [userCurrency, purchases, accountCurrency, userEmail]);
 
+  // Total spent calculated specifically in the primary local currency
   const totalSpent = useMemo(() => {
-    return purchases.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-  }, [purchases]);
+    return purchases
+      .filter((p) => {
+        const c = (p.currency || primaryCurrency).toUpperCase();
+        return c === primaryCurrency || Number(p.amount) === 0;
+      })
+      .reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
+  }, [purchases, primaryCurrency]);
 
   const handlePrint = () => {
     if (typeof window !== 'undefined') {
@@ -234,9 +307,18 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
         </div>
 
         <div className="border-2 border-black bg-[#fbfbfa] p-3 shadow-[2px_2px_0px_#000000]">
-          <span className="text-[10px] font-black text-zinc-500 uppercase block">TOTAL EXPENDITURE</span>
-          <span className="text-lg font-black text-emerald-700 block mt-0.5 font-mono">
-            {formatCurrencyAmount(totalSpent, primaryCurrency)}
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-black text-zinc-500 uppercase block">TOTAL EXPENDITURE</span>
+            <span className="text-[9px] font-black bg-black text-[#ccff00] px-1.5 py-0.2 font-mono flex items-center gap-1 border border-black">
+              <span>{primaryCurrency}</span>
+              {primaryCurrency === 'INR' && <span>🇮🇳 INDIA</span>}
+            </span>
+          </div>
+          <span className="text-lg font-black text-emerald-700 block mt-1 font-mono">
+            {formatCurrencyAmount(totalSpent, primaryCurrency, { showFree: false })}
+          </span>
+          <span className="text-[9px] font-bold text-zinc-500 font-mono block mt-0.5">
+            LOCAL CURRENCY: {primaryCurrency} {accountCountry ? `(${accountCountry.toUpperCase()})` : ''}
           </span>
         </div>
 
@@ -727,7 +809,7 @@ export const OrderHistoryTable: React.FC<OrderHistoryTableProps> = ({
                   </div>
                   <div className="flex justify-between text-zinc-600 font-bold">
                     <span>ESTIMATED TAX (0%):</span>
-                    <span>{formatCurrencyAmount(0, selectedInvoice.currency)}</span>
+                    <span>{formatCurrencyAmount(0, selectedInvoice.currency, { showFree: false })}</span>
                   </div>
                   {selectedInvoice.couponCode && (
                     <div className="flex justify-between text-emerald-700 font-black">

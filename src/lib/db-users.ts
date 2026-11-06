@@ -23,6 +23,8 @@ export interface UserProfile {
   canonicalEmail?: string;
   dob: string; // Date of Birth YYYY-MM-DD
   occupation: string;
+  currency?: string;
+  country?: string;
   passwordHash?: string;
   provider: 'google' | 'x' | 'instagram' | 'credentials';
   providerAccountId?: string;
@@ -311,6 +313,8 @@ export async function updateUserProfile(
     name?: string;
     dob?: string;
     occupation?: string;
+    currency?: string;
+    country?: string;
     generationsUsed?: number;
     generationsLimit?: number;
     plan?: 'free' | 'starter' | 'pro' | 'enterprise' | string;

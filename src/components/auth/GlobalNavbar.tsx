@@ -18,6 +18,8 @@ import {
   ArrowLeft,
   Minimize2,
   Maximize2,
+  Radio,
+  BookOpen,
 } from 'lucide-react';
 import { AuthModal } from './AuthModal';
 import { getUsageStats, UsageStats, getCachedActivePlan } from '@/lib/usage-limits';
@@ -152,6 +154,7 @@ export function GlobalNavbar() {
     { href: '/fitness-glass/winter-arc-2026', label: 'WINTER ARC 2026' },
     { href: '/fitness-glass', label: 'FITNESS GLASS' },
     { href: '/blog', label: 'BLOG' },
+    { href: '/docs', label: 'DOCS & API' },
     { href: '/pay-to-use', label: 'PAY TO USE' },
   ];
 
@@ -490,6 +493,22 @@ export function GlobalNavbar() {
                     >
                       <BarcodeIcon className="w-3.5 h-3.5" />
                       <span>BARCODES</span>
+                    </Link>
+
+                    <Link
+                      href="/nfc-bat"
+                      className="px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap"
+                    >
+                      <Radio className="w-3.5 h-3.5" />
+                      <span>NFC BAT</span>
+                    </Link>
+
+                    <Link
+                      href="/docs"
+                      className="px-3 py-1.5 flex items-center gap-1.5 hover:bg-zinc-100 transition-colors whitespace-nowrap"
+                    >
+                      <BookOpen className="w-3.5 h-3.5" />
+                      <span>DOCS</span>
                     </Link>
 
                     <Link

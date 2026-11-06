@@ -393,11 +393,13 @@ export function QRStudio({ options, onOptionsChange, onCodeExported }: QRStudioP
             </div>
 
             {/* Built-in Photo Presets */}
+            {/* precision optical camera -specimen */}
+            {/* batman bat pattern precision */}
             <div>
               <label className="block text-xs font-medium text-slate-300 mb-2">
                 Curated Photographic Presets
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
                 {PHOTO_PRESETS.map((preset) => (
                   <button
                     key={preset.id}

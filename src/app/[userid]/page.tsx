@@ -30,6 +30,7 @@ import {
   Check,
   RefreshCw,
   Key,
+  Sliders,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
 import { getUsageStats, UsageStats, setCachedActivePlan } from '@/lib/usage-limits';
@@ -57,6 +58,8 @@ export default function UserProfilePage() {
   const [provider, setProvider] = useState<string>('credentials');
   const [userId, setUserId] = useState<string>('');
   const [updatedAt, setUpdatedAt] = useState<string>('');
+  const [userCurrency, setUserCurrency] = useState<string>('INR');
+  const [userCountry, setUserCountry] = useState<string>('India');
 
   // Usage stats
   const [usageStats, setUsageStats] = useState<UsageStats>({
@@ -93,6 +96,8 @@ export default function UserProfilePage() {
             setEmail(data.user.email || emailToFetch);
             setDob(data.user.dob || '');
             setOccupation(data.user.occupation || '');
+            if (data.user.currency) setUserCurrency(data.user.currency);
+            if (data.user.country) setUserCountry(data.user.country);
             const resolvedPlan = data.user.plan || currentPlan;
             setUserPlan(resolvedPlan);
             if (resolvedPlan === 'enterprise' || resolvedPlan === 'pro') {
@@ -267,6 +272,13 @@ export default function UserProfilePage() {
               <Key className="w-3.5 h-3.5 text-black" />
               <span>PEAR API</span>
             </Link>
+            <Link
+              href={`/${useridParam}/configration`}
+              className="hidden md:flex items-center gap-1.5 font-black text-xs uppercase bg-white hover:bg-[#ccff00] px-3 py-1.5 border-2 border-black transition-colors shadow-[2px_2px_0px_#000000]"
+            >
+              <Sliders className="w-3.5 h-3.5 text-black" />
+              <span>B2B CONFIG</span>
+            </Link>
           </div>
 
           <div className="flex items-center gap-3">
@@ -307,6 +319,10 @@ export default function UserProfilePage() {
                   <span className="bg-emerald-100 text-emerald-900 text-[10px] font-black px-2 py-0.5 border border-black uppercase">
                     ACTIVE
                   </span>
+                  <span className="bg-zinc-100 text-zinc-900 text-[10px] font-black px-2 py-0.5 border border-black uppercase flex items-center gap-1 font-mono">
+                    <span>{userCurrency === 'INR' ? '🇮🇳' : '🌐'}</span>
+                    <span>{userCurrency} ({userCountry})</span>
+                  </span>
                 </div>
                 <p className="text-xs text-zinc-600 font-mono font-bold flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5 text-zinc-500" />
@@ -331,6 +347,13 @@ export default function UserProfilePage() {
               >
                 <Key className="w-3.5 h-3.5" />
                 <span>PEAR API GATEWAY</span>
+              </Link>
+              <Link
+                href={`/${useridParam}/configration`}
+                className="px-3.5 py-2 border-2 border-black bg-white hover:bg-[#ccff00] text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] flex items-center gap-1.5 transition-all"
+              >
+                <Sliders className="w-3.5 h-3.5" />
+                <span>B2B CONFIGURATION</span>
               </Link>
               <Link
                 href="/pay-to-use"
@@ -576,6 +599,8 @@ export default function UserProfilePage() {
             userEmail={email}
             userId={userId}
             activePlan={userPlan}
+            userCurrency={userCurrency}
+            userCountry={userCountry}
           />
         </div>
 
