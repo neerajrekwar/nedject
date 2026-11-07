@@ -19,7 +19,7 @@ import {
   Cpu,
   UserCheck,
 } from 'lucide-react';
-import { createPageMetadata, SITE_NAME } from '@/lib/seo';
+import { createPageMetadata, SITE_NAME, getSiteUrl } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Privacy Policy | Nedject — 300 DPI Photo QR & Fitness Telemetry Studio',
@@ -36,6 +36,7 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 export default function PrivacyPolicyPage() {
+  const siteUrl = getSiteUrl();
   const lastUpdated = 'February 24, 2026';
   const effectiveDate = 'February 24, 2026';
 

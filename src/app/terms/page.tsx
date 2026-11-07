@@ -12,7 +12,7 @@ import {
   CheckCircle2,
   Lock,
 } from 'lucide-react';
-import { createPageMetadata, SITE_NAME } from '@/lib/seo';
+import { createPageMetadata, SITE_NAME, getSiteUrl } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
   title: 'Terms of Service | Nedject — 300 DPI Photo QR & Fitness Telemetry Studio',
@@ -29,6 +29,7 @@ export const metadata: Metadata = createPageMetadata({
 });
 
 export default function TermsOfServicePage() {
+  const siteUrl = getSiteUrl();
   const lastUpdated = 'February 24, 2026';
 
   return (

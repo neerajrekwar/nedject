@@ -6,6 +6,16 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   turbopack: {},
+  productionBrowserSourceMaps: false,
+  webpack: (config) => {
+    config.parallelism = 1;
+    return config;
+  },
+  experimental: {
+    cpus: 1,
+    staticGenerationMaxConcurrency: 2,
+    staticGenerationMinPagesPerWorker: 25,
+  },
   images: {
     remotePatterns: [
       {
