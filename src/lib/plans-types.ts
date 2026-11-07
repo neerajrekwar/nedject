@@ -274,6 +274,53 @@ export const DEFAULT_PLANS: ManagedPlan[] = [
       { text: 'Custom Contract & GST / VAT Invoice Provisioning', included: true },
     ],
   },
+  {
+    id: 'custom',
+    name: 'Nedject Bespoke Custom Tier',
+    badge: 'TAILORED ARCHITECTURE',
+    description: 'Fully customized volume, dedicated on-premise hardware profiles, custom SLA, and direct engineering consultation.',
+    generationLimit: 9999999,
+    creditType: 'unlimited',
+    monthlyCredits: 9999999,
+    apiAccess: true,
+    rateLimitRpm: 3000,
+    allowedOriginsLimit: 100,
+    active: true,
+    pricing: {
+      USD: { monthly: 99.0, yearly: 899.0, lifetime: 1499.0 },
+      INR: { monthly: 7999, yearly: 69999, lifetime: 119999 },
+      EUR: { monthly: 95.0, yearly: 849.0, lifetime: 1399.0 },
+      GBP: { monthly: 79.0, yearly: 729.0, lifetime: 1199.0 },
+      RUB: { monthly: 9499, yearly: 84999, lifetime: 139999 },
+    },
+    cycles: {
+      monthly: {
+        durationDays: 30,
+        label: '30 DAYS',
+        subtitle: '$99.00/mo rate • Bespoke volume & custom SLA • Tailored monthly billing',
+      },
+      yearly: {
+        durationDays: 365,
+        label: '365 DAYS',
+        subtitle: '$899.00/yr rate • Annual bespoke agreement • Dedicated engineering channel & custom symbology',
+      },
+      lifetime: {
+        durationDays: null,
+        label: 'NO EXPIRY',
+        subtitle: 'Custom Perpetual License (No Expiry)',
+      },
+    },
+    features: [
+      { text: 'Custom Optical Matrix & Proprietary Symbologies', included: true, highlight: true },
+      { text: 'Dedicated High-Throughput Cluster & 3,000+ RPM API Limit', included: true, highlight: true },
+      { text: 'Unlimited Multi-Seat Team Access & Granular RBAC Permissions', included: true },
+      { text: 'Zero Rate-Limiting Overhead & Custom Whitelist Domains (100+)', included: true },
+      { text: 'Custom Hardware Calibration Profile (Laser, Inkjet, Offset Press, Flexo)', included: true },
+      { text: 'Direct 24/7 Slack / WhatsApp Engineering Bridge & 99.99% SLA Guarantee', included: true },
+      { text: 'Bespoke Invoicing, Purchase Orders, GST / VAT & Net-30 Payment Terms', included: true },
+      { text: 'On-Premise Container Deployment / Private VPC Architecture Options', included: true },
+    ],
+  },
 ];
 
 export function getPlanCyclePrice(
@@ -310,6 +357,11 @@ export function getPlanCycleSubtitle(
     if (normCycle === 'monthly') return '$29.00/mo rate • Full prepress vector engine • 30 days';
     if (normCycle === 'yearly') return '$249.00/yr rate • Unlimited prepress license • 1-year expiration';
     return 'Enterprise Lifetime (No Expiry)';
+  }
+  if (plan.id === 'custom') {
+    if (normCycle === 'monthly') return '$99.00/mo rate • Bespoke volume & custom SLA • Tailored monthly billing';
+    if (normCycle === 'yearly') return '$899.00/yr rate • Annual bespoke agreement • Dedicated engineering channel';
+    return 'Custom Perpetual License (No Expiry)';
   }
   return plan.description;
 }

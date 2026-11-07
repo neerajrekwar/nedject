@@ -32,6 +32,7 @@ import {
   Globe,
   Download,
   Clock,
+  Mail,
 } from 'lucide-react';
 import { NEDJECT_PLANS } from '@/lib/razorpay';
 import {
@@ -75,7 +76,9 @@ function PaymentContent() {
   const searchParams = useSearchParams();
   const { data: session, update: updateSession } = useSession();
 
-  const initialPlan = searchParams?.get('plan') === 'enterprise' ? 'enterprise' : 'pro';
+  const planParam = searchParams?.get('plan');
+  const initialPlan: 'pro' | 'enterprise' | 'custom' =
+    planParam === 'custom' ? 'custom' : planParam === 'enterprise' ? 'enterprise' : 'pro';
   const initialCoupon = searchParams?.get('coupon') || '';
 
   const [billingCycle, setBillingCycle] = useState<'monthly' | 'yearly' | 'lifetime'>('monthly');
@@ -88,8 +91,20 @@ function PaymentContent() {
     currency: SupportedCurrency;
     source?: string;
   } | null>(null);
-  const [selectedPlanId, setSelectedPlanId] = useState<'pro' | 'enterprise'>(initialPlan);
+  const [selectedPlanId, setSelectedPlanId] = useState<'pro' | 'enterprise' | 'custom'>(initialPlan);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Custom Quote & Proposal Modal state
+  const [showCustomQuoteModal, setShowCustomQuoteModal] = useState(false);
+  const [customQuoteForm, setCustomQuoteForm] = useState({
+    companyName: '',
+    contactName: '',
+    email: '',
+    estimatedMonthlyUnits: '50,000+ units',
+    deploymentType: 'Cloud High-Throughput Cluster (SaaS)',
+    notes: '',
+  });
+  const [customQuoteSubmitted, setCustomQuoteSubmitted] = useState(false);
 
   // Coupon state
   const [couponInput, setCouponInput] = useState(initialCoupon);
@@ -117,7 +132,7 @@ function PaymentContent() {
     couponCode?: string;
     invoiceId?: string;
     currency?: string;
-    planId?: 'pro' | 'enterprise';
+    planId?: 'pro' | 'enterprise' | 'custom';
   } | null>(null);
   const [downloadingSuccessInvoice, setDownloadingSuccessInvoice] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -128,7 +143,7 @@ function PaymentContent() {
     amount: number;
     currency: string;
     planName: string;
-    planId: 'pro' | 'enterprise';
+    planId: 'pro' | 'enterprise' | 'custom';
     billingCycle: 'monthly' | 'yearly' | 'lifetime';
     displayAmount: string;
     couponCode?: string;
@@ -279,13 +294,13 @@ function PaymentContent() {
   };
 
   // Calculate pricing breakdown for plan using dynamic admin-configured plans and multi-currency rates
-  const getPlanPrice = (planId: 'pro' | 'enterprise') => {
+  const getPlanPrice = (planId: 'pro' | 'enterprise' | 'custom') => {
     const planConfig =
       dynamicPlans.find((p) => p.id === planId) ||
       DEFAULT_PLANS.find((p) => p.id === planId) ||
-      (planId === 'enterprise' ? DEFAULT_PLANS[3] : DEFAULT_PLANS[2]);
+      (planId === 'custom' ? DEFAULT_PLANS[4] : planId === 'enterprise' ? DEFAULT_PLANS[3] : DEFAULT_PLANS[2]);
 
-    const currPricing = planConfig.pricing?.[currency] || planConfig.pricing?.USD || { monthly: 9.99, yearly: 99.0, lifetime: 199.0 };
+    const currPricing = planConfig?.pricing?.[currency] || planConfig?.pricing?.USD || { monthly: 9.99, yearly: 99.0, lifetime: 199.0 };
     const orig = billingCycle === 'yearly'
       ? currPricing.yearly
       : billingCycle === 'lifetime'
@@ -339,7 +354,7 @@ function PaymentContent() {
   };
 
   // Handle Pay / Upgrade trigger for chosen plan
-  const handlePayToPlan = async (planId: 'pro' | 'enterprise') => {
+  const handlePayToPlan = async (planId: 'pro' | 'enterprise' | 'custom') => {
     setErrorMessage(null);
     setPaymentSuccess(null);
     setSelectedPlanId(planId);
@@ -768,7 +783,11 @@ function PaymentContent() {
               <h2 className="text-lg sm:text-xl font-black uppercase text-black tracking-tight flex items-center gap-2">
                 <span>CHOSEN PLAN:</span>
                 <span className="bg-black text-[#ccff00] px-3 py-0.5 border border-black">
-                  {selectedPlanId === 'pro' ? 'PRO STUDIO' : 'ENTERPRISE MATRIX'}
+                  {selectedPlanId === 'custom'
+                    ? 'BESPOKE CUSTOM TIER'
+                    : selectedPlanId === 'pro'
+                    ? 'PRO STUDIO'
+                    : 'ENTERPRISE MATRIX'}
                 </span>
                 <span className="text-zinc-500 text-xs font-bold">
                   ({billingCycle === 'lifetime' ? 'LIFETIME // NO EXPIRY' : `${billingCycle.toUpperCase()} BILLING`})
@@ -776,8 +795,8 @@ function PaymentContent() {
               </h2>
             </div>
 
-            {/* Plan switcher tabs with Yellow / Purple tier color bases */}
-            <div className="flex items-center border-2 border-black bg-white shadow-[3px_3px_0px_#000000]">
+            {/* Plan switcher tabs with Yellow / Purple / Black tier color bases */}
+            <div className="flex items-center border-2 border-black bg-white shadow-[3px_3px_0px_#000000] flex-wrap">
               <button
                 type="button"
                 onClick={() => setSelectedPlanId('pro')}
@@ -793,7 +812,7 @@ function PaymentContent() {
               <button
                 type="button"
                 onClick={() => setSelectedPlanId('enterprise')}
-                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors cursor-pointer flex items-center gap-1.5 ${
+                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors cursor-pointer flex items-center gap-1.5 border-r-2 border-black ${
                   selectedPlanId === 'enterprise'
                     ? 'bg-purple-600 text-white'
                     : 'text-black hover:bg-zinc-100'
@@ -801,6 +820,18 @@ function PaymentContent() {
               >
                 <span className="w-2 h-2 rounded-full bg-purple-300 shrink-0" />
                 <span>ENTERPRISE PACK (PURPLE BASE)</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedPlanId('custom')}
+                className={`px-3.5 py-1.5 text-xs font-black uppercase transition-colors cursor-pointer flex items-center gap-1.5 ${
+                  selectedPlanId === 'custom'
+                    ? 'bg-black text-[#ccff00]'
+                    : 'text-black hover:bg-zinc-100'
+                }`}
+              >
+                <span className="w-2 h-2 rounded-full bg-[#ccff00] shrink-0" />
+                <span>BESPOKE CUSTOM (BLACK BASE)</span>
               </button>
             </div>
           </div>
@@ -1030,7 +1061,7 @@ function PaymentContent() {
 
             <div className="space-y-2 text-xs font-mono">
               <div className="flex justify-between items-center text-zinc-700">
-                <span>Base Plan Price ({selectedPlanId === 'pro' ? 'Pro Studio' : 'Enterprise'}):</span>
+                <span>Base Plan Price ({selectedPlanId === 'custom' ? 'Bespoke Custom' : selectedPlanId === 'pro' ? 'Pro Studio' : 'Enterprise'}):</span>
                 <span className="font-bold">{selectedPriceInfo.origDisplay}</span>
               </div>
 
@@ -1466,6 +1497,189 @@ function PaymentContent() {
           })()}
         </div>
 
+        {/* ========================================================================= */}
+        {/* 3B. BESPOKE CUSTOM PACKAGE & PLAN (HORIZONTAL FULL-WIDTH BOTTOM BOX)      */}
+        {/* ========================================================================= */}
+        {(() => {
+          const customPlan =
+            dynamicPlans.find((p) => p.id === 'custom') ||
+            DEFAULT_PLANS.find((p) => p.id === 'custom') ||
+            DEFAULT_PLANS[4];
+
+          if (!customPlan || customPlan.active === false) return null;
+
+          const customSub = billingCycle === 'monthly'
+            ? (customPlan.cycles?.monthly?.subtitle || '$99.00/mo rate • Bespoke volume & custom SLA • Tailored monthly billing')
+            : billingCycle === 'yearly'
+            ? (customPlan.cycles?.yearly?.subtitle || '$899.00/yr rate • Annual bespoke agreement • Dedicated engineering channel & custom symbology')
+            : (customPlan.cycles?.lifetime?.subtitle || 'Custom Perpetual License (No Expiry)');
+
+          const customPrice = getPlanPrice('custom');
+
+          return (
+            <div
+              id="custom-plan-banner"
+              className={`border-4 border-black bg-[#0d0d0f] text-white p-6 sm:p-8 shadow-[10px_10px_0px_#000000] relative transition-all border-l-[12px] border-l-[#ccff00] ${
+                selectedPlanId === 'custom' ? 'ring-4 ring-[#ccff00] bg-black' : ''
+              }`}
+            >
+              {/* Top Banner Tag & Active Indicator */}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-800 pb-4 mb-6">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <span className="bg-[#ccff00] text-black text-xs font-black tracking-wider px-3 py-1 border-2 border-black uppercase font-mono shadow-[2px_2px_0px_#000000]">
+                    {customPlan.badge || 'CUSTOM PACKAGE // TAILORED ARCHITECTURE'}
+                  </span>
+                  <span className="bg-zinc-800 text-zinc-300 text-[10px] font-bold px-2.5 py-0.5 border border-zinc-700 uppercase font-mono">
+                    TIER 4: BESPOKE HIGH-VOLUME &amp; PRIVATE VPC
+                  </span>
+                </div>
+                {selectedPlanId === 'custom' ? (
+                  <div className="bg-[#ccff00] text-black text-xs font-black px-3 py-1 border border-black uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000]">
+                    <CheckSquare className="w-3.5 h-3.5" />
+                    <span>CHOSEN FOR CHECKOUT (ACTIVE)</span>
+                  </div>
+                ) : (
+                  <div className="text-zinc-400 text-xs font-mono font-bold flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-[#ccff00]" />
+                    <span>ON-PREMISE SLA &amp; DEDICATED INFRASTRUCTURE</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Horizontal Split Grid: Left Specs & CTAs, Right Capabilities Grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                {/* Left Column (5 Cols) */}
+                <div className="lg:col-span-5 space-y-5">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-9 h-9 bg-[#ccff00] text-black border-2 border-black flex items-center justify-center font-black shrink-0 shadow-[2px_2px_0px_#000000]">
+                        <Sliders className="w-5 h-5 text-black" />
+                      </div>
+                      <h3 className="text-xl sm:text-2xl font-black uppercase tracking-tight text-white font-mono">
+                        {customPlan.name}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-zinc-300 font-sans leading-relaxed">
+                      {customPlan.description}
+                    </p>
+                  </div>
+
+                  {/* Quota & Dedicated Node Callout */}
+                  <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-zinc-900 border border-zinc-700 text-[#ccff00] font-black text-xs uppercase font-mono shadow-[2px_2px_0px_#000000]">
+                    <Sparkles className="w-4 h-4 text-[#ccff00]" />
+                    <span>QUOTA: ∞ UNLIMITED + 3,000+ RPM DEDICATED CLUSTER</span>
+                  </div>
+
+                  {/* Subtitle / Perks Box */}
+                  <div className="border border-zinc-700 bg-zinc-900/90 p-3.5 text-xs font-mono text-zinc-200 space-y-1">
+                    <div className="text-[10px] font-black uppercase text-[#ccff00] flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      <span>{billingCycle.toUpperCase()} CONTRACT SPECIFICATION:</span>
+                    </div>
+                    <div className="text-zinc-300 leading-snug">{customSub}</div>
+                  </div>
+
+                  {/* Dynamic Pricing Rate Display */}
+                  <div className="border-t border-zinc-800 pt-3 flex items-baseline justify-between flex-wrap gap-2">
+                    <div>
+                      <span className="text-3xl sm:text-4xl font-black text-[#ccff00] font-mono">
+                        {customPrice.origDisplay}
+                      </span>
+                      <span className="text-xs font-bold text-zinc-400 font-mono ml-1.5">
+                        {customPrice.unitLabel}
+                      </span>
+                    </div>
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase bg-zinc-900 px-2.5 py-1 border border-zinc-800">
+                      CURRENCY: {currency} (LOCALIZED)
+                    </span>
+                  </div>
+
+                  {/* CTAs */}
+                  <div className="flex flex-col sm:flex-row items-stretch gap-3 pt-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedPlanId('custom');
+                        window.scrollTo({ top: 300, behavior: 'smooth' });
+                      }}
+                      className={`flex-1 py-3.5 px-4 border-2 border-black font-black text-xs uppercase transition-all shadow-[4px_4px_0px_#ccff00] cursor-pointer flex items-center justify-center gap-2 ${
+                        selectedPlanId === 'custom'
+                          ? 'bg-[#ccff00] text-black font-black'
+                          : 'bg-white hover:bg-[#ccff00] text-black'
+                      }`}
+                    >
+                      <CheckSquare className="w-4 h-4" />
+                      <span>
+                        {selectedPlanId === 'custom'
+                          ? 'CHOSEN PLAN (CHECKOUT ABOVE)'
+                          : 'SELECT CUSTOM PLAN'}
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowCustomQuoteModal(true)}
+                      className="py-3.5 px-4 border-2 border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white font-black text-xs uppercase flex items-center justify-center gap-2 shadow-[2px_2px_0px_#000000] cursor-pointer transition-colors"
+                    >
+                      <Mail className="w-4 h-4 text-[#ccff00]" />
+                      <span>REQUEST BESPOKE QUOTE</span>
+                    </button>
+                  </div>
+
+                  <p className="text-[10px] text-zinc-400 font-mono">
+                    Instant activation via cards/UPI, or contact our enterprise desk for Net-30 purchase orders.
+                  </p>
+                </div>
+
+                {/* Right Column (7 Cols): Architectural Features Grid */}
+                <div className="lg:col-span-7 border-t lg:border-t-0 lg:border-l border-zinc-800 lg:pl-8 pt-5 lg:pt-0 space-y-4">
+                  <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5">
+                    <span className="text-xs font-black uppercase text-[#ccff00] font-mono flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-[#ccff00]" />
+                      <span>BESPOKE ARCHITECTURAL CAPABILITIES ({customPlan.features.length})</span>
+                    </span>
+                    <span className="text-[10px] text-zinc-400 font-mono uppercase bg-zinc-900 px-2 py-0.5 border border-zinc-800">
+                      ENTERPRISE GRADE INFRASTRUCTURE
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    {customPlan.features.map((feat, i) => (
+                      <div
+                        key={i}
+                        className={`p-2.5 border text-xs font-mono flex items-start gap-2.5 transition-colors ${
+                          feat.highlight
+                            ? 'bg-zinc-900/90 border-[#ccff00]/60 text-white'
+                            : 'bg-zinc-950/60 border-zinc-800 text-zinc-300'
+                        }`}
+                      >
+                        <div className="w-4 h-4 rounded-full bg-[#ccff00] text-black flex items-center justify-center shrink-0 mt-0.5">
+                          <Check className="w-3 h-3 stroke-[3]" />
+                        </div>
+                        <span className={feat.highlight ? 'font-bold text-[#ccff00]' : 'font-medium'}>
+                          {feat.text}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Trust & Guarantee Banner */}
+                  <div className="border border-zinc-800 bg-zinc-950 p-3.5 flex flex-wrap items-center justify-between gap-3 text-[11px] font-mono text-zinc-400 mt-4">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-[#ccff00]" />
+                      <span className="text-white font-bold">99.99% Optical Uptime SLA</span>
+                    </div>
+                    <span className="text-zinc-600 hidden sm:inline">|</span>
+                    <div>Private VPC &amp; Kubernetes Helm Charts Ready</div>
+                    <span className="text-zinc-600 hidden sm:inline">|</span>
+                    <div className="text-[#ccff00] font-bold">Dedicated Engineering Channel</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* 4. PAYMENT METHODS & TRUST BADGES */}
         <div className="border-4 border-black bg-white p-6 shadow-[6px_6px_0px_#000000] space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-black pb-3">
@@ -1611,6 +1825,185 @@ function PaymentContent() {
           }
         }}
       />
+
+      {/* 9. BESPOKE CUSTOM QUOTE & ARCHITECTURE PROPOSAL MODAL */}
+      {showCustomQuoteModal && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="border-4 border-black bg-white p-6 sm:p-8 max-w-xl w-full shadow-[10px_10px_0px_#000000] space-y-5 font-mono max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b-2 border-black pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-black text-[#ccff00] flex items-center justify-center font-black">
+                  <Sliders className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-black text-base uppercase text-black">
+                    REQUEST BESPOKE CUSTOM PROPOSAL
+                  </h3>
+                  <p className="text-[11px] text-zinc-600 font-sans">
+                    Nedject Custom Architecture &amp; Dedicated Deployment
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowCustomQuoteModal(false);
+                  setCustomQuoteSubmitted(false);
+                }}
+                className="w-8 h-8 border-2 border-black bg-white hover:bg-rose-50 text-black flex items-center justify-center font-black cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {customQuoteSubmitted ? (
+              <div className="space-y-4 py-4 text-center">
+                <div className="w-12 h-12 bg-[#ccff00] border-2 border-black text-black flex items-center justify-center mx-auto shadow-[3px_3px_0px_#000000]">
+                  <Check className="w-6 h-6 stroke-[3]" />
+                </div>
+                <h4 className="text-base font-black uppercase text-black">
+                  PROPOSAL SPECIFICATION DISPATCHED
+                </h4>
+                <p className="text-xs text-zinc-700 font-sans max-w-md mx-auto">
+                  Thank you! Our solutions architecture desk has received your request. An assigned technical account director will reach out within 4 business hours with custom pricing, VPC deployment blueprints, and NDA contracts.
+                </p>
+                <div className="border-2 border-black bg-zinc-50 p-3 text-xs font-mono font-bold">
+                  REFERENCE TICKET: #NED-CUSTOM-{Date.now().toString(36).toUpperCase()}
+                </div>
+                <div className="pt-2 flex justify-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCustomQuoteModal(false);
+                      setCustomQuoteSubmitted(false);
+                    }}
+                    className="px-5 py-2.5 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black font-black text-xs uppercase shadow-[2px_2px_0px_#000000] cursor-pointer"
+                  >
+                    CLOSE WINDOW
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setCustomQuoteSubmitted(true);
+                }}
+                className="space-y-4 text-xs font-mono"
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-700 uppercase block text-[10px]">
+                      ORGANIZATION / COMPANY:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Acme Industrial Press"
+                      value={customQuoteForm.companyName}
+                      onChange={(e) => setCustomQuoteForm({ ...customQuoteForm, companyName: e.target.value })}
+                      className="w-full border-2 border-black px-3 py-2 bg-zinc-50 focus:bg-white text-xs font-mono focus:outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-700 uppercase block text-[10px]">
+                      CONTACT PERSON:
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Chief Technology Officer"
+                      value={customQuoteForm.contactName}
+                      onChange={(e) => setCustomQuoteForm({ ...customQuoteForm, contactName: e.target.value })}
+                      className="w-full border-2 border-black px-3 py-2 bg-zinc-50 focus:bg-white text-xs font-mono focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-zinc-700 uppercase block text-[10px]">
+                    BUSINESS EMAIL ADDRESS:
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="architect@company.com"
+                    value={customQuoteForm.email}
+                    onChange={(e) => setCustomQuoteForm({ ...customQuoteForm, email: e.target.value })}
+                    className="w-full border-2 border-black px-3 py-2 bg-zinc-50 focus:bg-white text-xs font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-700 uppercase block text-[10px]">
+                      ESTIMATED MONTHLY VOLUME:
+                    </label>
+                    <select
+                      value={customQuoteForm.estimatedMonthlyUnits}
+                      onChange={(e) => setCustomQuoteForm({ ...customQuoteForm, estimatedMonthlyUnits: e.target.value })}
+                      className="w-full border-2 border-black px-3 py-2 bg-zinc-50 focus:bg-white text-xs font-mono focus:outline-none"
+                    >
+                      <option value="50,000+ units">50,000+ units / mo</option>
+                      <option value="250,000+ units">250,000+ units / mo</option>
+                      <option value="1,000,000+ units">1,000,000+ units / mo</option>
+                      <option value="10,000,000+ units (Hyper-Scale)">10,000,000+ units (Hyper-Scale)</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="font-bold text-zinc-700 uppercase block text-[10px]">
+                      DEPLOYMENT ARCHITECTURE:
+                    </label>
+                    <select
+                      value={customQuoteForm.deploymentType}
+                      onChange={(e) => setCustomQuoteForm({ ...customQuoteForm, deploymentType: e.target.value })}
+                      className="w-full border-2 border-black px-3 py-2 bg-zinc-50 focus:bg-white text-xs font-mono focus:outline-none"
+                    >
+                      <option value="Cloud High-Throughput Cluster (SaaS)">Dedicated Cloud Cluster</option>
+                      <option value="Private VPC (AWS / GCP / Azure)">Private VPC</option>
+                      <option value="On-Premise Air-Gapped Kubernetes">On-Premise Kubernetes</option>
+                      <option value="Hybrid Dedicated Node">Hybrid Edge Node</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="font-bold text-zinc-700 uppercase block text-[10px]">
+                    SPECIFIC TECHNICAL REQUIREMENTS / SYMBOLOGIES:
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Describe custom symbology needs, hardware DPI calibration curve, SLA guarantees, or invoicing requirements..."
+                    value={customQuoteForm.notes}
+                    onChange={(e) => setCustomQuoteForm({ ...customQuoteForm, notes: e.target.value })}
+                    className="w-full border-2 border-black px-3 py-2 bg-zinc-50 focus:bg-white text-xs font-mono focus:outline-none"
+                  />
+                </div>
+
+                <div className="pt-2 flex items-center justify-between gap-3 border-t-2 border-black">
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomQuoteModal(false)}
+                    className="px-4 py-2.5 border-2 border-black bg-zinc-100 hover:bg-zinc-200 text-black font-black text-xs uppercase cursor-pointer"
+                  >
+                    CANCEL
+                  </button>
+
+                  <button
+                    type="submit"
+                    className="px-6 py-2.5 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black font-black text-xs uppercase shadow-[3px_3px_0px_#000000] cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>SUBMIT SPECIFICATION REQUEST</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

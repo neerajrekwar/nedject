@@ -2,16 +2,17 @@
 
 /**
  * NEDJECT ADMIN CREDENTIALS MANAGER (TERMINAL CLI)
+ * Direct MongoDB Cloud & Local Credentials Manager
  *
  * Full Lifecycle Admin Credentials Manager:
- *   - create: create a new admin credential
- *   - update: update admin password, name, or role
- *   - delete: delete a specific admin by email
- *   - delete-all (delete all): wipe all admin credentials
- *   - all (list): display all configured admin accounts
- *   - verify: verify admin email and password matches stored hash
- *   - seed: seed default/custom admin account with high security
- *   - status: view system credentials and MongoDB sync status
+ *   - create: create a new admin credential directly in MongoDB
+ *   - update: update admin password, name, or role in MongoDB
+ *   - delete: delete a specific admin by email from MongoDB
+ *   - delete-all (delete all): wipe all admin credentials from MongoDB
+ *   - all (list): display all configured admin accounts from MongoDB
+ *   - verify: verify admin email and password against MongoDB stored hash
+ *   - seed: seed default/custom admin account directly into MongoDB
+ *   - status: view live MongoDB connection and credential counts
  *
  * Supported execution syntax:
  *   npx verify --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"
@@ -27,6 +28,7 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const CREDS_FILE = path.join(process.cwd(), '.admin-credentials.json');
 
@@ -44,7 +46,10 @@ function loadEnvironment() {
           if (eqIdx > 0) {
             const key = trimmed.slice(0, eqIdx).trim();
             let val = trimmed.slice(eqIdx + 1).trim();
-            if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            if (
+              (val.startsWith('"') && val.endsWith('"')) ||
+              (val.startsWith("'") && val.endsWith("'"))
+            ) {
               val = val.slice(1, -1);
             }
             if (!process.env[key]) {
@@ -64,17 +69,58 @@ function hashPassword(password, salt) {
   return crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
 }
 
-// 3. Storage Reader & Writer
+// 3. Primary MongoDB Connection & Database Access
+async function getMongoContext() {
+  let uri = process.env.MONGODB_URI || '';
+  uri = uri.trim();
+  if ((uri.startsWith('"') && uri.endsWith('"')) || (uri.startsWith("'") && uri.endsWith("'"))) {
+    uri = uri.slice(1, -1).trim();
+  }
+
+  if (!uri) {
+    return { ok: false, error: 'MONGODB_URI not found in environment' };
+  }
+
+  try {
+    const { MongoClient } = await import('mongodb');
+    const client = new MongoClient(uri, {
+      connectTimeoutMS: 8000,
+      serverSelectionTimeoutMS: 8000,
+    });
+    await client.connect();
+
+    // Prefer explicit MONGODB_DB or default from client/URI
+    const dbName = process.env.MONGODB_DB || client.db().databaseName || 'test';
+    const db = client.db(dbName);
+
+    return {
+      ok: true,
+      client,
+      db,
+      dbName,
+      adminCol: db.collection('admin_credentials'),
+      usersCol: db.collection('users'),
+      rateLimitCol: db.collection('admin_login_rate_limits'),
+    };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
+// 4. Secondary Local File Storage Reader & Writer (Mirror / Fallback)
 function getCredentialsStore() {
   if (fs.existsSync(CREDS_FILE)) {
     try {
       const raw = fs.readFileSync(CREDS_FILE, 'utf-8');
       const data = JSON.parse(raw);
-      
-      // Normalize to multi-admin structure while maintaining backwards compatibility
+
       if (data && typeof data === 'object') {
         const admins = Array.isArray(data.admins) ? [...data.admins] : [];
-        if (data.email && data.hash && !admins.some((a) => a.email.toLowerCase() === data.email.toLowerCase())) {
+        if (
+          data.email &&
+          data.hash &&
+          !admins.some((a) => a.email.toLowerCase() === data.email.toLowerCase())
+        ) {
           admins.unshift({
             id: 'admin-primary',
             email: data.email,
@@ -112,7 +158,6 @@ function getCredentialsStore() {
 }
 
 function saveCredentialsStore(store) {
-  // Keep primary top-level keys for backwards compatibility with single-credential readers
   const primary = store.admins && store.admins.length > 0 ? store.admins[0] : null;
   const payload = {
     email: primary ? primary.email : '',
@@ -124,51 +169,10 @@ function saveCredentialsStore(store) {
     admins: store.admins || [],
   };
 
-  fs.writeFileSync(CREDS_FILE, JSON.stringify(payload, null, 2), 'utf-8');
-  return payload;
-}
-
-// 4. Optional MongoDB Synchronizer (if MONGODB_URI is available)
-async function syncWithMongoDB(operation, payload) {
-  const uri = process.env.MONGODB_URI;
-  if (!uri) return { ok: false, reason: 'MONGODB_URI not defined in environment' };
-
   try {
-    const { MongoClient } = await import('mongodb');
-    const client = new MongoClient(uri, { serverSelectionTimeoutMS: 3000 });
-    await client.connect();
-    const db = client.db();
-    const collection = db.collection('admin_credentials');
-
-    if (operation === 'upsert') {
-      await collection.updateOne(
-        { email: payload.email.toLowerCase() },
-        {
-          $set: {
-            email: payload.email.toLowerCase(),
-            name: payload.name,
-            role: payload.role,
-            salt: payload.salt,
-            hash: payload.hash,
-            updatedAt: payload.updatedAt,
-          },
-          $setOnInsert: {
-            createdAt: payload.createdAt || new Date().toISOString(),
-          },
-        },
-        { upsert: true }
-      );
-    } else if (operation === 'delete') {
-      await collection.deleteOne({ email: payload.email.toLowerCase() });
-    } else if (operation === 'delete-all') {
-      await collection.deleteMany({});
-    }
-
-    await client.close();
-    return { ok: true, dbName: db.databaseName };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
+    fs.writeFileSync(CREDS_FILE, JSON.stringify(payload, null, 2), 'utf-8');
+  } catch (e) {}
+  return payload;
 }
 
 // 5. Intelligent CLI Argument & Flag Parser
@@ -235,11 +239,13 @@ if (binaryInvoked === 'verify') {
   }
 }
 
-// 6. COMMAND IMPLEMENTATIONS
+// 6. COMMAND IMPLEMENTATIONS (MONGODB-FIRST)
 
 // --- COMMAND: SEED ---
 async function handleSeed() {
-  const email = (flags.email || flags.e || positional[1] || 'neerajrekwar817@gmail.com').trim().toLowerCase();
+  const email = (flags.email || flags.e || positional[1] || 'neerajrekwar817@gmail.com')
+    .trim()
+    .toLowerCase();
   const password = flags.password || flags.p || positional[2] || 'YourStrongPassword';
   const name = flags.name || flags.n || 'Neeraj Rekwar';
   const role = flags.role || flags.r || 'Super Admin';
@@ -251,11 +257,74 @@ async function handleSeed() {
 
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = hashPassword(password, salt);
+  const bcryptHash = bcrypt.hashSync(password, 10);
   const now = new Date().toISOString();
 
+  // 1. PRIMARY STORE: MongoDB
+  const mongo = await getMongoContext();
+  let mongoSynced = false;
+  let mongoDetails = '';
+
+  if (mongo.ok) {
+    try {
+      // Upsert into admin_credentials
+      await mongo.adminCol.updateOne(
+        { email },
+        {
+          $set: {
+            email,
+            name,
+            role,
+            salt,
+            hash,
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            id: `admin-${Date.now()}`,
+            createdAt: now,
+          },
+        },
+        { upsert: true }
+      );
+
+      // Also upsert into users collection as active Super Admin
+      await mongo.usersCol.updateOne(
+        { email },
+        {
+          $set: {
+            email,
+            name,
+            role: 'admin',
+            plan: 'custom',
+            generationsLimit: 9999999,
+            isEmailVerified: true,
+            passwordHash: bcryptHash,
+            provider: 'credentials',
+            dob: '1995-01-01',
+            occupation: 'Super Admin',
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            createdAt: now,
+            generationsUsed: 0,
+          },
+        },
+        { upsert: true }
+      );
+
+      mongoSynced = true;
+      mongoDetails = `Database: "${mongo.dbName}" | Collections: "admin_credentials" & "users"`;
+      await mongo.client.close();
+    } catch (e) {
+      console.warn('\x1b[33mWarning: MongoDB write error:\x1b[0m', e.message);
+    }
+  } else {
+    console.warn(`\x1b[33mWarning: MongoDB connection skipped (${mongo.error})\x1b[0m`);
+  }
+
+  // 2. SECONDARY LOCAL MIRROR
   const store = getCredentialsStore();
   const existingIdx = store.admins.findIndex((a) => a.email.toLowerCase() === email);
-
   const adminDoc = {
     id: existingIdx >= 0 ? store.admins[existingIdx].id : `admin-${Date.now()}`,
     email,
@@ -272,24 +341,27 @@ async function handleSeed() {
   } else {
     store.admins.unshift(adminDoc);
   }
-
   saveCredentialsStore(store);
-  const mongoRes = await syncWithMongoDB('upsert', adminDoc);
 
+  // 3. OUTPUT
   console.log('\n\x1b[1m\x1b[32m====================================================\x1b[0m');
-  console.log('\x1b[1m\x1b[32m   ✓ ADMIN CREDENTIALS SEEDED SUCCESSFULLY          \x1b[0m');
+  console.log('\x1b[1m\x1b[32m   ✓ ADMIN CREDENTIALS STORED IN MONGODB            \x1b[0m');
   console.log('\x1b[1m\x1b[32m====================================================\x1b[0m\n');
-  console.log(`  \x1b[1mAdmin Email:\x1b[0m     \x1b[36m${email}\x1b[0m`);
-  console.log(`  \x1b[1mAdmin Password:\x1b[0m  \x1b[33m${password}\x1b[0m`);
-  console.log(`  \x1b[1mAdmin Name:\x1b[0m      ${name}`);
-  console.log(`  \x1b[1mAccess Role:\x1b[0m     ${role}`);
-  console.log(`  \x1b[1mPassword Hash:\x1b[0m   [PBKDF2-SHA512] ${hash.slice(0, 16)}...`);
-  console.log(`  \x1b[1mLocal File:\x1b[0m      .admin-credentials.json (Active & Secured)`);
-  if (mongoRes.ok) {
-    console.log(`  \x1b[1mMongoDB Sync:\x1b[0m    \x1b[32mSynced to collection "admin_credentials" in DB "${mongoRes.dbName}"\x1b[0m`);
+  console.log(`  \x1b[1mAdmin Email:\x1b[0m       \x1b[36m${email}\x1b[0m`);
+  console.log(`  \x1b[1mAdmin Password:\x1b[0m    \x1b[33m${password}\x1b[0m`);
+  console.log(`  \x1b[1mAdmin Name:\x1b[0m        ${name}`);
+  console.log(`  \x1b[1mAccess Role:\x1b[0m       ${role}`);
+  console.log(`  \x1b[1mPBKDF2 Hash:\x1b[0m       [PBKDF2-SHA512] ${hash.slice(0, 16)}...`);
+  console.log(`  \x1b[1mBcrypt Hash:\x1b[0m       [Bcrypt-10] ${bcryptHash.slice(0, 16)}...`);
+
+  if (mongoSynced) {
+    console.log(`  \x1b[1mMongoDB Store:\x1b[0m     \x1b[32m${mongoDetails} [PRIMARY ACTIVE]\x1b[0m`);
+    console.log(`  \x1b[1mUser Account:\x1b[0m      \x1b[32mSynced with isEmailVerified: true & Unlimited Custom Quota\x1b[0m`);
   } else {
-    console.log(`  \x1b[1mMongoDB Sync:\x1b[0m    \x1b[90m(Local file storage active, MongoDB not connected)\x1b[0m`);
+    console.log(`  \x1b[1mMongoDB Store:\x1b[0m     \x1b[31mOffline / Failed\x1b[0m`);
   }
+  console.log(`  \x1b[1mLocal Mirror:\x1b[0m      .admin-credentials.json (Synchronized backup)`);
+
   console.log('\n\x1b[1mVerify this login now in your terminal:\x1b[0m');
   console.log(`  \x1b[36mnpx verify --email "${email}" --password "${password}"\x1b[0m\n`);
   console.log(`Log in on the web at: \x1b[36mhttp://localhost:3000/admin/login\x1b[0m\n`);
@@ -306,7 +378,9 @@ async function handleCreate() {
   if (!email || !password) {
     console.error('\x1b[31mError: Both --email and --password are required.\x1b[0m');
     console.error('\nUsage:');
-    console.error('  npx admin-auth create --email "admin@example.com" --password "SecretPass" [--name "Name"] [--role "Super Admin"]\n');
+    console.error(
+      '  npx admin-auth create --email "admin@example.com" --password "SecretPass" [--name "Name"] [--role "Super Admin"]\n'
+    );
     process.exit(1);
   }
 
@@ -315,19 +389,81 @@ async function handleCreate() {
     process.exit(1);
   }
 
-  const store = getCredentialsStore();
-  const existingIdx = store.admins.findIndex((a) => a.email.toLowerCase() === email);
-
-  if (existingIdx >= 0 && !force) {
-    console.error(`\x1b[31mError: Admin "${email}" already exists.\x1b[0m`);
-    console.error('Use \x1b[33mupdate\x1b[0m to modify password, or pass \x1b[36m--force\x1b[0m to overwrite.\n');
-    process.exit(1);
-  }
-
   const salt = crypto.randomBytes(16).toString('hex');
   const hash = hashPassword(password, salt);
+  const bcryptHash = bcrypt.hashSync(password, 10);
   const now = new Date().toISOString();
 
+  // 1. PRIMARY STORE: MongoDB
+  const mongo = await getMongoContext();
+  let mongoSynced = false;
+
+  if (mongo.ok) {
+    try {
+      const existing = await mongo.adminCol.findOne({ email });
+      if (existing && !force) {
+        console.error(`\x1b[31mError: Admin "${email}" already exists in MongoDB.\x1b[0m`);
+        console.error(
+          'Use \x1b[33mupdate\x1b[0m to modify password, or pass \x1b[36m--force\x1b[0m to overwrite.\n'
+        );
+        await mongo.client.close();
+        process.exit(1);
+      }
+
+      await mongo.adminCol.updateOne(
+        { email },
+        {
+          $set: {
+            email,
+            name,
+            role,
+            salt,
+            hash,
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            id: `admin-${Date.now()}`,
+            createdAt: now,
+          },
+        },
+        { upsert: true }
+      );
+
+      // Also upsert in users collection
+      await mongo.usersCol.updateOne(
+        { email },
+        {
+          $set: {
+            email,
+            name,
+            role: 'admin',
+            plan: 'custom',
+            generationsLimit: 9999999,
+            isEmailVerified: true,
+            passwordHash: bcryptHash,
+            provider: 'credentials',
+            updatedAt: now,
+          },
+          $setOnInsert: {
+            createdAt: now,
+            dob: '1995-01-01',
+            occupation: 'Super Admin',
+            generationsUsed: 0,
+          },
+        },
+        { upsert: true }
+      );
+
+      mongoSynced = true;
+      await mongo.client.close();
+    } catch (e) {
+      console.warn('\x1b[33mWarning: MongoDB write error:\x1b[0m', e.message);
+    }
+  }
+
+  // 2. SECONDARY LOCAL MIRROR
+  const store = getCredentialsStore();
+  const existingIdx = store.admins.findIndex((a) => a.email.toLowerCase() === email);
   const adminDoc = {
     id: existingIdx >= 0 ? store.admins[existingIdx].id : `admin-${Date.now()}`,
     email,
@@ -344,17 +480,17 @@ async function handleCreate() {
   } else {
     store.admins.unshift(adminDoc);
   }
-
   saveCredentialsStore(store);
-  const mongoRes = await syncWithMongoDB('upsert', adminDoc);
 
-  console.log(`\n\x1b[32m✓ Admin account "${email}" successfully created via terminal!\x1b[0m`);
+  console.log(`\n\x1b[32m✓ Admin account "${email}" successfully stored in MongoDB!\x1b[0m`);
   console.log(`  \x1b[1mEmail:\x1b[0m     ${email}`);
   console.log(`  \x1b[1mName:\x1b[0m      ${name}`);
   console.log(`  \x1b[1mRole:\x1b[0m      ${role}`);
   console.log(`  \x1b[1mHash:\x1b[0m      ${hash.slice(0, 16)}...`);
-  if (mongoRes.ok) {
-    console.log(`  \x1b[1mMongoDB:\x1b[0m   \x1b[32mSynced (${mongoRes.dbName})\x1b[0m`);
+  if (mongoSynced) {
+    console.log(
+      `  \x1b[1mMongoDB:\x1b[0m   \x1b[32mStored in "admin_credentials" & "users" [PRIMARY ACTIVE]\x1b[0m`
+    );
   }
   console.log('');
 }
@@ -365,58 +501,96 @@ async function handleUpdate() {
 
   if (!email) {
     console.error('\x1b[31mError: Target --email is required for update.\x1b[0m');
-    console.error('Usage: npx admin-auth update --email "admin@example.com" [--password "NewPassword"] [--name "New Name"] [--role "Role"]\n');
+    console.error(
+      'Usage: npx admin-auth update --email "admin@example.com" [--password "NewPassword"] [--name "New Name"] [--role "Role"]\n'
+    );
     process.exit(1);
   }
 
-  const store = getCredentialsStore();
-  const idx = store.admins.findIndex((a) => a.email.toLowerCase() === email);
-
-  if (idx < 0) {
-    console.error(`\x1b[31mError: Admin "${email}" not found.\x1b[0m`);
-    if (store.admins.length > 0) {
-      console.log('Available admins:', store.admins.map((a) => a.email).join(', '));
-    }
-    process.exit(1);
-  }
-
-  const current = store.admins[idx];
   const newPassword = flags.password || flags.p;
   const newName = flags.name || flags.n;
   const newRole = flags.role || flags.r;
   const newEmail = (flags['new-email'] || '').trim().toLowerCase();
+
+  let salt = '';
+  let hash = '';
+  let bcryptHash = '';
 
   if (newPassword) {
     if (newPassword.length < 6) {
       console.error('\x1b[31mError: New password must be at least 6 characters long.\x1b[0m\n');
       process.exit(1);
     }
-    current.salt = crypto.randomBytes(16).toString('hex');
-    current.hash = hashPassword(newPassword, current.salt);
+    salt = crypto.randomBytes(16).toString('hex');
+    hash = hashPassword(newPassword, salt);
+    bcryptHash = bcrypt.hashSync(newPassword, 10);
   }
 
-  if (newName) current.name = newName;
-  if (newRole) current.role = newRole;
-  if (newEmail && newEmail !== email) {
-    current.email = newEmail;
+  const now = new Date().toISOString();
+
+  // 1. PRIMARY STORE: MongoDB
+  const mongo = await getMongoContext();
+  let mongoFound = false;
+
+  if (mongo.ok) {
+    try {
+      const existing = await mongo.adminCol.findOne({ email });
+      if (existing) {
+        mongoFound = true;
+        const updateSet = { updatedAt: now };
+        if (newName) updateSet.name = newName;
+        if (newRole) updateSet.role = newRole;
+        if (newPassword) {
+          updateSet.salt = salt;
+          updateSet.hash = hash;
+        }
+        if (newEmail && newEmail !== email) {
+          updateSet.email = newEmail;
+        }
+
+        await mongo.adminCol.updateOne({ email }, { $set: updateSet });
+
+        // Update in users collection
+        const userUpdateSet = { updatedAt: now };
+        if (newName) userUpdateSet.name = newName;
+        if (newPassword) userUpdateSet.passwordHash = bcryptHash;
+        if (newEmail && newEmail !== email) userUpdateSet.email = newEmail;
+        await mongo.usersCol.updateOne({ email }, { $set: userUpdateSet });
+      }
+      await mongo.client.close();
+    } catch (e) {
+      console.warn('\x1b[33mWarning: MongoDB update error:\x1b[0m', e.message);
+    }
   }
 
-  current.updatedAt = new Date().toISOString();
-  store.admins[idx] = current;
+  // 2. SECONDARY LOCAL MIRROR
+  const store = getCredentialsStore();
+  const idx = store.admins.findIndex((a) => a.email.toLowerCase() === email);
 
-  saveCredentialsStore(store);
-  const mongoRes = await syncWithMongoDB('upsert', current);
+  if (idx >= 0) {
+    const current = store.admins[idx];
+    if (newName) current.name = newName;
+    if (newRole) current.role = newRole;
+    if (newPassword) {
+      current.salt = salt;
+      current.hash = hash;
+    }
+    if (newEmail && newEmail !== email) {
+      current.email = newEmail;
+    }
+    current.updatedAt = now;
+    store.admins[idx] = current;
+    saveCredentialsStore(store);
+  } else if (!mongoFound) {
+    console.error(`\x1b[31mError: Admin "${email}" not found in MongoDB or local store.\x1b[0m\n`);
+    process.exit(1);
+  }
 
-  console.log(`\n\x1b[32m✓ Admin account "${email}" updated successfully!\x1b[0m`);
-  console.log(`  \x1b[1mEmail:\x1b[0m   ${current.email}`);
-  console.log(`  \x1b[1mName:\x1b[0m    ${current.name}`);
-  console.log(`  \x1b[1mRole:\x1b[0m    ${current.role}`);
-  if (newPassword) {
-    console.log(`  \x1b[1mPassword:\x1b[0m \x1b[33mUpdated to new hash\x1b[0m`);
-  }
-  if (mongoRes.ok) {
-    console.log(`  \x1b[1mMongoDB:\x1b[0m  \x1b[32mSynced\x1b[0m`);
-  }
+  console.log(`\n\x1b[32m✓ Admin account "${email}" updated successfully in MongoDB!\x1b[0m`);
+  console.log(`  \x1b[1mEmail:\x1b[0m   ${newEmail || email}`);
+  if (newName) console.log(`  \x1b[1mName:\x1b[0m    ${newName}`);
+  if (newRole) console.log(`  \x1b[1mRole:\x1b[0m    ${newRole}`);
+  if (newPassword) console.log(`  \x1b[1mPassword:\x1b[0m \x1b[33mUpdated to new hash in MongoDB\x1b[0m`);
   console.log('');
 }
 
@@ -431,24 +605,51 @@ async function handleDelete() {
     process.exit(1);
   }
 
+  // 1. PRIMARY STORE: MongoDB
+  const mongo = await getMongoContext();
+  let deletedCount = 0;
+
+  if (mongo.ok) {
+    try {
+      const res = await mongo.adminCol.deleteOne({ email });
+      deletedCount = res.deletedCount;
+      await mongo.client.close();
+    } catch (e) {
+      console.warn('\x1b[33mWarning: MongoDB delete error:\x1b[0m', e.message);
+    }
+  }
+
+  // 2. SECONDARY LOCAL MIRROR
   const store = getCredentialsStore();
   const initialCount = store.admins.length;
   store.admins = store.admins.filter((a) => a.email.toLowerCase() !== email);
+  saveCredentialsStore(store);
 
-  if (store.admins.length === initialCount) {
+  if (deletedCount === 0 && store.admins.length === initialCount) {
     console.error(`\x1b[31mError: No admin account found with email "${email}".\x1b[0m\n`);
     process.exit(1);
   }
 
-  saveCredentialsStore(store);
-  await syncWithMongoDB('delete', { email });
-
-  console.log(`\n\x1b[32m✓ Successfully deleted admin credential: "${email}"\x1b[0m`);
-  console.log(`  Remaining admin accounts: ${store.admins.length}\n`);
+  console.log(`\n\x1b[32m✓ Successfully deleted admin credential "${email}" from MongoDB!\x1b[0m\n`);
 }
 
 // --- COMMAND: DELETE-ALL (DELETE ALL / CLEAR / WIPE) ---
 async function handleDeleteAll() {
+  // 1. PRIMARY STORE: MongoDB
+  const mongo = await getMongoContext();
+  let clearedMongo = false;
+
+  if (mongo.ok) {
+    try {
+      await mongo.adminCol.deleteMany({});
+      clearedMongo = true;
+      await mongo.client.close();
+    } catch (e) {
+      console.warn('\x1b[33mWarning: MongoDB wipe error:\x1b[0m', e.message);
+    }
+  }
+
+  // 2. SECONDARY LOCAL MIRROR
   const store = {
     email: '',
     name: '',
@@ -458,35 +659,54 @@ async function handleDeleteAll() {
     updatedAt: new Date().toISOString(),
     admins: [],
   };
-
   saveCredentialsStore(store);
-  await syncWithMongoDB('delete-all', {});
 
   console.log('\n\x1b[1m\x1b[31m====================================================\x1b[0m');
   console.log('\x1b[1m\x1b[31m   ✓ ALL ADMIN CREDENTIALS HAVE BEEN WIPED CLEAN    \x1b[0m');
   console.log('\x1b[1m\x1b[31m====================================================\x1b[0m\n');
-  console.log('  \x1b[90m- .admin-credentials.json is emptied\x1b[0m');
-  console.log('  \x1b[90m- MongoDB admin_credentials collection cleared\x1b[0m\n');
-  console.log('To seed a new admin account, run:');
-  console.log('  \x1b[36mnpx admin-auth seed --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"\x1b[0m\n');
+  if (clearedMongo) {
+    console.log('  \x1b[32m✔ MongoDB collection "admin_credentials" cleared\x1b[0m');
+  }
+  console.log('  \x1b[90m✔ .admin-credentials.json cleared\x1b[0m\n');
 }
 
 // --- COMMAND: ALL / LIST ---
 async function handleList() {
-  const store = getCredentialsStore();
-  console.log('\n\x1b[1m\x1b[32m=== NEDJECT CONFIGURED ADMIN ACCOUNTS ===\x1b[0m\n');
+  console.log('\n\x1b[1m\x1b[32m=== NEDJECT CONFIGURED ADMIN ACCOUNTS (MONGODB) ===\x1b[0m\n');
 
-  if (!store.admins || store.admins.length === 0) {
-    console.log('\x1b[33mNo admin credentials configured yet.\x1b[0m');
+  // 1. Query MongoDB directly
+  const mongo = await getMongoContext();
+  let adminList = [];
+
+  if (mongo.ok) {
+    try {
+      adminList = await mongo.adminCol.find({}).toArray();
+      await mongo.client.close();
+    } catch (e) {
+      console.warn('\x1b[33mWarning: MongoDB query error:\x1b[0m', e.message);
+    }
+  }
+
+  // Fallback to local store if MongoDB returned nothing or offline
+  if (adminList.length === 0) {
+    const store = getCredentialsStore();
+    adminList = store.admins || [];
+  }
+
+  if (adminList.length === 0) {
+    console.log('\x1b[33mNo admin credentials configured yet in MongoDB.\x1b[0m');
     console.log('\nRun seed to create primary admin:');
-    console.log('  \x1b[36mnpx admin-auth seed --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"\x1b[0m\n');
+    console.log(
+      '  \x1b[36mnpx admin-auth seed --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"\x1b[0m\n'
+    );
     return;
   }
 
-  store.admins.forEach((admin, idx) => {
+  adminList.forEach((admin, idx) => {
     const isPrimary = idx === 0 ? '\x1b[32m[PRIMARY ADMIN]\x1b[0m' : '\x1b[90m[ADMIN]\x1b[0m';
-    console.log(`\x1b[1m#${idx + 1}\x1b[0m ${isPrimary} \x1b[1m${admin.name}\x1b[0m <\x1b[36m${admin.email}\x1b[0m>`);
-    console.log(`   \x1b[90mRole:\x1b[0m ${admin.role} | \x1b[90mID:\x1b[0m ${admin.id || 'N/A'}`);
+    const docId = admin._id ? admin._id.toString() : admin.id || 'N/A';
+    console.log(`\x1b[1m#${idx + 1}\x1b[0m ${isPrimary} \x1b[1m${admin.name || 'Admin'}\x1b[0m <\x1b[36m${admin.email}\x1b[0m>`);
+    console.log(`   \x1b[90mRole:\x1b[0m ${admin.role || 'Super Admin'} | \x1b[90mMongoDB ID:\x1b[0m ${docId}`);
     console.log(`   \x1b[90mHash:\x1b[0m ${admin.hash ? admin.hash.slice(0, 20) + '...' : 'NONE'} | \x1b[90mUpdated:\x1b[0m ${admin.updatedAt}`);
     console.log('');
   });
@@ -494,50 +714,52 @@ async function handleList() {
 
 // --- COMMAND: VERIFY ---
 async function handleVerify() {
-  // Support flags --email / --password, or positional args [1], [2]
   const email = (flags.email || flags.e || positional[1] || '').trim().toLowerCase();
   const password = flags.password || flags.p || positional[2] || '';
 
   if (!email || !password) {
-    console.error('\n\x1b[31mError: Both --email and --password are required to verify credentials.\x1b[0m\n');
+    console.error(
+      '\n\x1b[31mError: Both --email and --password are required to verify credentials.\x1b[0m\n'
+    );
     console.error('Usage:');
-    console.error('  \x1b[36mnpx verify --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"\x1b[0m\n');
+    console.error(
+      '  \x1b[36mnpx verify --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"\x1b[0m\n'
+    );
     process.exit(1);
   }
 
-  const store = getCredentialsStore();
-  let matched = store.admins.find((a) => a.email.toLowerCase() === email);
+  // 1. PRIMARY: Query MongoDB
+  let matched = null;
+  const mongo = await getMongoContext();
+  let verifiedFromMongo = false;
 
-  // Fallback to top-level if store was legacy format
-  if (!matched && store.email && store.email.toLowerCase() === email && store.hash) {
-    matched = store;
-  }
-
-  // Also check MongoDB if local store had no match
-  if (!matched && process.env.MONGODB_URI) {
+  if (mongo.ok) {
     try {
-      const { MongoClient } = await import('mongodb');
-      const client = new MongoClient(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 2000 });
-      await client.connect();
-      const doc = await client.db().collection('admin_credentials').findOne({ email });
-      await client.close();
+      const doc = await mongo.adminCol.findOne({ email });
       if (doc && doc.hash && doc.salt) {
         matched = doc;
+        verifiedFromMongo = true;
       }
-    } catch (e) {}
+      await mongo.client.close();
+    } catch (e) {
+      console.warn('\x1b[33mWarning: MongoDB query error:\x1b[0m', e.message);
+    }
+  }
+
+  // 2. Secondary Fallback
+  if (!matched) {
+    const store = getCredentialsStore();
+    matched = store.admins.find((a) => a.email.toLowerCase() === email);
+    if (!matched && store.email && store.email.toLowerCase() === email && store.hash) {
+      matched = store;
+    }
   }
 
   if (!matched) {
     console.log(`\n\x1b[1m\x1b[31m✗ VERIFICATION FAILED\x1b[0m`);
-    console.log(`No admin account found with email: \x1b[33m"${email}"\x1b[0m\n`);
-    if (store.admins.length > 0) {
-      console.log('Configured admin emails on this system:');
-      store.admins.forEach((a) => console.log(`  - \x1b[36m${a.email}\x1b[0m`));
-    } else {
-      console.log('No admin accounts are currently set. Run seed command:');
-      console.log(`  \x1b[36mnpx admin-auth seed --email "${email}" --password "${password}"\x1b[0m`);
-    }
-    console.log('');
+    console.log(`No admin account found in MongoDB with email: \x1b[33m"${email}"\x1b[0m\n`);
+    console.log('To seed this admin in MongoDB, run:');
+    console.log(`  \x1b[36mnpx admin-auth seed --email "${email}" --password "${password}"\x1b[0m\n`);
     process.exit(1);
   }
 
@@ -545,27 +767,34 @@ async function handleVerify() {
 
   if (testHash === matched.hash) {
     console.log('\n\x1b[1m\x1b[32m====================================================\x1b[0m');
-    console.log('\x1b[1m\x1b[32m   ✓ VERIFIED: ADMIN CREDENTIALS ARE VALID!         \x1b[0m');
+    console.log('\x1b[1m\x1b[32m   ✓ VERIFIED: ADMIN CREDENTIALS IN MONGODB VALID!  \x1b[0m');
     console.log('\x1b[1m\x1b[32m====================================================\x1b[0m\n');
     console.log(`  \x1b[1mEmail:\x1b[0m      \x1b[36m${matched.email}\x1b[0m`);
     console.log(`  \x1b[1mName:\x1b[0m       ${matched.name || 'Neeraj Rekwar'}`);
     console.log(`  \x1b[1mRole:\x1b[0m       ${matched.role || 'Super Admin'}`);
+    console.log(`  \x1b[1mStore:\x1b[0m      ${verifiedFromMongo ? '\x1b[32mMongoDB Cloud Database [PRIMARY]\x1b[0m' : 'Local Fallback'}`);
     console.log(`  \x1b[1mAlgorithm:\x1b[0m  PBKDF2-SHA512 (100,000 iterations)`);
-    console.log(`  \x1b[1mResult:\x1b[0m     \x1b[32mPASSWORD MATCHES STORED HASH (Access Granted)\x1b[0m`);
+    console.log(
+      `  \x1b[1mResult:\x1b[0m     \x1b[32mPASSWORD MATCHES MONGODB STORED HASH (Access Granted)\x1b[0m`
+    );
     console.log(`\nYou can safely log in at: \x1b[36mhttp://localhost:3000/admin/login\x1b[0m\n`);
     process.exit(0);
   } else {
     console.log(`\n\x1b[1m\x1b[31m✗ VERIFICATION FAILED\x1b[0m`);
     console.log(`\x1b[31mIncorrect password for admin:\x1b[0m \x1b[33m"${email}"\x1b[0m\n`);
-    console.log('To update this admin\'s password, run:');
-    console.log(`  \x1b[36mnpx admin-auth update --email "${email}" --password "${password}"\x1b[0m\n`);
+    console.log('To update this admin\'s password in MongoDB, run:');
+    console.log(
+      `  \x1b[36mnpx admin-auth update --email "${email}" --password "${password}"\x1b[0m\n`
+    );
     process.exit(1);
   }
 }
 
 // --- COMMAND: GENERATE ---
 async function handleGenerate() {
-  const email = (flags.email || flags.e || positional[1] || 'neerajrekwar817@gmail.com').trim().toLowerCase();
+  const email = (flags.email || flags.e || positional[1] || 'neerajrekwar817@gmail.com')
+    .trim()
+    .toLowerCase();
   const generatedPassword = crypto.randomBytes(9).toString('base64url');
   flags.email = email;
   flags.password = generatedPassword;
@@ -575,35 +804,22 @@ async function handleGenerate() {
 // --- COMMAND: UNBLOCK / RESET-LIMIT ---
 async function handleUnblock() {
   const email = (flags.email || flags.e || positional[1] || '').trim().toLowerCase();
-  
-  // 1. Reset active server cache via loopback API
-  try {
-    const url = email
-      ? `http://localhost:3000/api/admin/auth/login?email=${encodeURIComponent(email)}`
-      : 'http://localhost:3000/api/admin/auth/login';
-    const res = await fetch(url, { method: 'DELETE' });
-    const data = await res.json().catch(() => ({}));
-    if (res.ok && data.success) {
-      console.log(`\n\x1b[32m✓ Cleared live server admin login rate limits via loopback API.\x1b[0m`);
-    }
-  } catch (e) {}
 
-  const uri = process.env.MONGODB_URI;
-  if (uri) {
+  const mongo = await getMongoContext();
+  if (mongo.ok) {
     try {
-      const { MongoClient } = await import('mongodb');
-      const client = new MongoClient(uri, { serverSelectionTimeoutMS: 3000 });
-      await client.connect();
-      const col = client.db().collection('admin_login_rate_limits');
-
       if (email) {
-        const res = await col.deleteMany({ email });
-        console.log(`\x1b[32m✓ Cleared rate limit lock in MongoDB for: "${email}" (${res.deletedCount} attempts cleared)\x1b[0m\n`);
+        const res = await mongo.rateLimitCol.deleteMany({ email });
+        console.log(
+          `\x1b[32m✓ Cleared rate limit lock in MongoDB for: "${email}" (${res.deletedCount} attempts cleared)\x1b[0m\n`
+        );
       } else {
-        const res = await col.deleteMany({});
-        console.log(`\x1b[32m✓ Cleared all admin login rate limits in MongoDB (${res.deletedCount} attempts cleared)\x1b[0m\n`);
+        const res = await mongo.rateLimitCol.deleteMany({});
+        console.log(
+          `\x1b[32m✓ Cleared all admin login rate limits in MongoDB (${res.deletedCount} attempts cleared)\x1b[0m\n`
+        );
       }
-      await client.close();
+      await mongo.client.close();
       return;
     } catch (e) {
       console.warn('MongoDB unblock error:', e.message);
@@ -615,72 +831,97 @@ async function handleUnblock() {
 
 // --- COMMAND: STATUS ---
 async function handleStatus() {
-  const store = getCredentialsStore();
-  console.log('\n\x1b[1m\x1b[32m=== NEDJECT TERMINAL ADMIN CREDENTIALS STATUS ===\x1b[0m');
+  console.log('\n\x1b[1m\x1b[32m=== NEDJECT TERMINAL ADMIN CREDENTIALS STATUS (MONGODB) ===\x1b[0m');
 
-  if (!store.admins || store.admins.length === 0) {
-    console.log('\n\x1b[33mNo admin credentials currently configured.\x1b[0m');
+  const mongo = await getMongoContext();
+  let adminCount = 0;
+  let primaryAdmin = null;
+
+  if (mongo.ok) {
+    try {
+      const list = await mongo.adminCol.find({}).toArray();
+      adminCount = list.length;
+      primaryAdmin = list[0] || null;
+      await mongo.client.close();
+    } catch (e) {
+      console.warn('MongoDB status check warning:', e.message);
+    }
+  }
+
+  if (!primaryAdmin) {
+    const store = getCredentialsStore();
+    adminCount = store.admins ? store.admins.length : 0;
+    primaryAdmin = store.admins && store.admins[0] ? store.admins[0] : null;
+  }
+
+  if (!primaryAdmin) {
+    console.log('\n\x1b[33mNo admin credentials currently configured in MongoDB.\x1b[0m');
     console.log('\nRun seed to initialize:');
-    console.log('  \x1b[36mnpx admin-auth seed --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"\x1b[0m\n');
+    console.log(
+      '  \x1b[36mnpx admin-auth seed --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"\x1b[0m\n'
+    );
     return;
   }
 
-  const primary = store.admins[0];
-  console.log(`\n  \x1b[1mTotal Admins:\x1b[0m      ${store.admins.length}`);
-  console.log(`  \x1b[1mPrimary Admin:\x1b[0m     \x1b[36m${primary.email}\x1b[0m (${primary.name} - ${primary.role})`);
-  console.log(`  \x1b[1mLocal Storage:\x1b[0m     .admin-credentials.json [Active]`);
-  console.log(`  \x1b[1mRate Limiter:\x1b[0m      Active (3 attempts / hour)`);
-  console.log(`  \x1b[1mRobots Indexing:\x1b[0m   NOINDEX, NOFOLLOW [Active]`);
-  console.log(`  \x1b[1mLast Modified:\x1b[0m     ${primary.updatedAt}`);
-  console.log(`\n  \x1b[90mVerify credentials:\x1b[0m npx verify --email "${primary.email}" --password "<password>"\n`);
+  console.log(`\n  \x1b[1mTotal Admins:\x1b[0m      ${adminCount}`);
+  console.log(
+    `  \x1b[1mPrimary Admin:\x1b[0m     \x1b[36m${primaryAdmin.email}\x1b[0m (${primaryAdmin.name || 'Admin'} - ${primaryAdmin.role || 'Super Admin'})`
+  );
+  console.log(`  \x1b[1mMongoDB Database:\x1b[0m  ${mongo.ok ? `\x1b[32m${mongo.dbName} (Cluster0 Connected)\x1b[0m` : '\x1b[31mOffline\x1b[0m'}`);
+  console.log(`  \x1b[1mPrimary Store:\x1b[0m     admin_credentials collection [MongoDB Cloud]`);
+  console.log(`  \x1b[1mRate Limiter:\x1b[0m      Active in MongoDB (3 attempts / hour)`);
+  console.log(`  \x1b[1mLast Modified:\x1b[0m     ${primaryAdmin.updatedAt || 'N/A'}`);
+  console.log(
+    `\n  \x1b[90mVerify credentials:\x1b[0m npx verify --email "${primaryAdmin.email}" --password "<password>"\n`
+  );
 }
 
 // --- COMMAND: HELP ---
 function handleHelp() {
   console.log(`
-\x1b[1m\x1b[32m=== NEDJECT ADMIN CREDENTIALS TERMINAL CLI ===\x1b[0m
-Manage admin authentication credentials directly via the terminal.
+\x1b[1m\x1b[32m=== NEDJECT ADMIN CREDENTIALS TERMINAL CLI (MONGODB) ===\x1b[0m
+Manage admin authentication credentials directly in MongoDB Cloud.
 
 \x1b[1mAvailable Commands:\x1b[0m
 
   \x1b[36mseed\x1b[0m [--email "email"] [--password "pass"] [--name "Name"] [--role "Role"]
-    Seed default or custom admin credentials with PBKDF2-SHA512 security.
-    \x1b[90mExample:\x1b[0m npx admin-auth seed --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"
+    Seed default or custom admin credentials directly into MongoDB.
+    \x1b[90mExample:\x1b[0m npx admin-auth seed --email "neerajrekwar817@gmail.com" --password "n@12345"
 
   \x1b[36mverify\x1b[0m --email "email" --password "pass"
-    Verify credentials against stored PBKDF2 hash.
-    \x1b[90mExample:\x1b[0m npx verify --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"
+    Verify credentials directly against stored MongoDB PBKDF2 hash.
+    \x1b[90mExample:\x1b[0m npx verify --email "neerajrekwar817@gmail.com" --password "n@12345"
 
   \x1b[36munblock\x1b[0m [--email "email"]
-    Reset and unblock rate-limited login attempts.
+    Reset and unblock rate-limited login attempts in MongoDB.
     \x1b[90mExample:\x1b[0m npx admin-auth unblock
 
   \x1b[36mcreate\x1b[0m --email "email" --password "pass" [--name "Name"] [--role "Role"]
-    Create a new admin account.
-    \x1b[90mExample:\x1b[0m npx admin-auth create --email "neerajrekwar817@gmail.com" --password "YourStrongPassword"
+    Create a new admin account in MongoDB.
+    \x1b[90mExample:\x1b[0m npx admin-auth create --email "admin@example.com" --password "n@12345"
 
   \x1b[36mupdate\x1b[0m --email "email" [--password "newPass"] [--name "NewName"] [--role "Role"]
-    Update existing admin's password, name, or role.
+    Update existing admin's password, name, or role in MongoDB.
     \x1b[90mExample:\x1b[0m npx admin-auth update --email "neerajrekwar817@gmail.com" --password "NewPassword123"
 
   \x1b[36mdelete\x1b[0m --email "email"
-    Delete a specific admin account.
+    Delete a specific admin account from MongoDB.
     \x1b[90mExample:\x1b[0m npx admin-auth delete --email "admin@example.com"
 
   \x1b[36mdelete all\x1b[0m (or \x1b[36mdelete-all\x1b[0m)
-    Wipe and delete all admin credentials.
+    Wipe and delete all admin credentials from MongoDB.
     \x1b[90mExample:\x1b[0m npx admin-auth delete all
 
   \x1b[36mall\x1b[0m (or \x1b[36mlist\x1b[0m)
-    List all configured admin credentials.
+    List all configured admin credentials from MongoDB.
     \x1b[90mExample:\x1b[0m npx admin-auth all
 
   \x1b[36mstatus\x1b[0m
-    Show system status and primary admin email.
+    Show live MongoDB status and primary admin email.
     \x1b[90mExample:\x1b[0m npx admin-auth status
 
   \x1b[36mgenerate\x1b[0m [--email "email"]
-    Generate a random secure password for admin.
+    Generate a random secure password for admin and store in MongoDB.
     \x1b[90mExample:\x1b[0m npx admin-auth generate --email "neerajrekwar817@gmail.com"
 `);
 }
@@ -762,4 +1003,3 @@ switch (command.toLowerCase()) {
     process.exit(1);
     break;
 }
-

@@ -29,7 +29,7 @@ interface UserRecord {
   _id: string;
   name: string;
   email: string;
-  plan: 'free' | 'pro' | 'enterprise';
+  plan: 'free' | 'pro' | 'enterprise' | 'custom' | string;
   subscriptionBillingCycle?: 'monthly' | 'annual' | 'lifetime' | string;
   subscriptionStatus?: 'active' | 'cancelled' | 'none';
   subscriptionExpiresAt?: string | null;
@@ -53,7 +53,7 @@ export default function AdminUsersPage() {
 
   // Plan modal state
   const [modalUser, setModalUser] = useState<UserRecord | null>(null);
-  const [modalPlan, setModalPlan] = useState<'pro' | 'enterprise' | 'free'>('pro');
+  const [modalPlan, setModalPlan] = useState<'pro' | 'enterprise' | 'custom' | 'free'>('pro');
   const [modalCycle, setModalCycle] = useState<'monthly' | 'annual' | 'lifetime'>('monthly');
   const [modalDuration, setModalDuration] = useState<'30' | '365' | 'lifetime'>('30');
   const [managedPlans, setManagedPlans] = useState<ManagedPlan[]>(DEFAULT_PLANS);
@@ -112,7 +112,7 @@ export default function AdminUsersPage() {
   };
 
   const handleApplyPlan = async (
-    plan: 'free' | 'pro' | 'enterprise',
+    plan: 'free' | 'pro' | 'enterprise' | 'custom' | string,
     cycle: 'monthly' | 'annual' | 'lifetime',
     duration: '30' | '365' | 'lifetime'
   ) => {
@@ -310,7 +310,7 @@ export default function AdminUsersPage() {
 
         <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="text-zinc-500 font-bold uppercase text-[10px]">Filter Plan:</span>
-          {(['all', 'free', 'pro', 'enterprise'] as const).map((p) => (
+          {(['all', 'free', 'pro', 'enterprise', 'custom'] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPlanFilter(p)}
@@ -386,7 +386,9 @@ export default function AdminUsersPage() {
                           <div className="flex items-center gap-1.5">
                             <span
                               className={`px-2 py-0.5 border text-[10px] font-black uppercase ${
-                                user.plan === 'enterprise'
+                                user.plan === 'custom'
+                                  ? 'bg-black border-black text-[#ccff00]'
+                                  : user.plan === 'enterprise'
                                   ? 'bg-purple-100 border-purple-800 text-purple-900'
                                   : user.plan === 'pro'
                                   ? 'bg-[#ccff00] border-black text-black'
@@ -783,6 +785,35 @@ export default function AdminUsersPage() {
                           }`}
                         >
                           {entAnnualSub}
+                        </div>
+                      </button>
+
+                      {/* Bespoke Custom Plan */}
+                      <button
+                        type="button"
+                        onClick={() => handleApplyPlan('custom', 'annual', '365')}
+                        disabled={isSubmitting}
+                        className={`group p-3.5 border-2 text-left space-y-1 cursor-pointer transition-all shadow-[2px_2px_0px_#000000] relative col-span-1 md:col-span-2 ${
+                          modalUser.plan === 'custom'
+                            ? 'border-black bg-black text-white ring-2 ring-[#ccff00]'
+                            : 'border-black bg-zinc-900 text-white hover:bg-black'
+                        }`}
+                      >
+                        {modalUser.plan === 'custom' && (
+                          <span className="absolute -top-2.5 right-2 bg-[#ccff00] text-black text-[9px] font-black px-1.5 py-0.2 border border-black uppercase">
+                            ✓ CURRENTLY ACTIVE
+                          </span>
+                        )}
+                        <div className="flex items-center justify-between">
+                          <span className="font-black text-xs uppercase text-[#ccff00]">
+                            ⚡ BESPOKE CUSTOM TIER (ANNUAL &amp; UNLIMITED QUOTA)
+                          </span>
+                          <span className="text-[10px] font-black bg-[#ccff00] text-black px-1.5 py-0.5 border border-black">
+                            365 DAYS / 99.99% SLA
+                          </span>
+                        </div>
+                        <div className="text-[11px] font-sans text-zinc-300">
+                          Bespoke custom architecture • 9,999,999 generations • Dedicated 3,000+ RPM cluster • Admin override
                         </div>
                       </button>
                     </div>

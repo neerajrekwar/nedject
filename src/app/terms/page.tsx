@@ -12,25 +12,21 @@ import {
   CheckCircle2,
   Lock,
 } from 'lucide-react';
-import { getSiteUrl, SITE_NAME } from '@/lib/seo';
+import { createPageMetadata, SITE_NAME } from '@/lib/seo';
 
-const siteUrl = getSiteUrl();
-
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: 'Terms of Service | Nedject — 300 DPI Photo QR & Fitness Telemetry Studio',
   description:
     'Terms of Service for Nedject, genQRstudio, and Fitness Glass. Review terms regarding platform access, acceptable use, Google OAuth authentication, billing, and liability.',
-  alternates: {
-    canonical: `${siteUrl}/terms`,
-  },
-  openGraph: {
-    title: 'Terms of Service — Nedject',
-    description:
-      'Official Terms of Service governing access and usage of Nedject 300 DPI Photo QR Code Studio, Barcode Pick, and Fitness Glass telemetry.',
-    url: `${siteUrl}/terms`,
-    type: 'website',
-  },
-};
+  path: '/terms',
+  keywords: [
+    'terms of service',
+    'commercial license',
+    'billing terms',
+    'Nedject SLA',
+    '300 DPI export terms',
+  ],
+});
 
 export default function TermsOfServicePage() {
   const lastUpdated = 'February 24, 2026';

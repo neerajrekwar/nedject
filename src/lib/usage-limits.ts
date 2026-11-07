@@ -92,12 +92,12 @@ export function setLocalUsageCount(count: number, toolKey?: ToolKey): void {
 
 export const STORAGE_PLAN_KEY = 'nedject_active_plan';
 
-export function getCachedActivePlan(): 'free' | 'starter' | 'pro' | 'enterprise' | null {
+export function getCachedActivePlan(): 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | null {
   if (typeof window === 'undefined') return null;
   try {
     const raw = localStorage.getItem(STORAGE_PLAN_KEY);
-    if (raw === 'enterprise' || raw === 'pro' || raw === 'starter' || raw === 'free') {
-      return raw as 'free' | 'starter' | 'pro' | 'enterprise';
+    if (raw === 'custom' || raw === 'enterprise' || raw === 'pro' || raw === 'starter' || raw === 'free') {
+      return raw as 'free' | 'starter' | 'pro' | 'enterprise' | 'custom';
     }
     return null;
   } catch {
@@ -105,7 +105,7 @@ export function getCachedActivePlan(): 'free' | 'starter' | 'pro' | 'enterprise'
   }
 }
 
-export function setCachedActivePlan(plan: 'free' | 'starter' | 'pro' | 'enterprise' | string): void {
+export function setCachedActivePlan(plan: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' | string): void {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STORAGE_PLAN_KEY, plan);
@@ -153,20 +153,20 @@ export function getUsageStats(
   const isAdmin = Boolean(isAdminOverride ?? isClientAdmin());
   const cachedPlan = getCachedActivePlan();
   const effectivePlan =
-    plan === 'enterprise' || plan === 'pro' || plan === 'starter'
+    plan === 'custom' || plan === 'enterprise' || plan === 'pro' || plan === 'starter'
       ? plan
       : cachedPlan || plan;
 
-  const normalizedPlan: 'free' | 'starter' | 'pro' | 'enterprise' = isAdmin
+  const normalizedPlan: 'free' | 'starter' | 'pro' | 'enterprise' | 'custom' = isAdmin
     ? 'enterprise'
-    : (effectivePlan === 'enterprise' || effectivePlan === 'pro' || effectivePlan === 'starter' ? effectivePlan : 'free');
+    : (effectivePlan === 'custom' || effectivePlan === 'enterprise' || effectivePlan === 'pro' || effectivePlan === 'starter' ? (effectivePlan as any) : 'free');
 
-  const isPaidUnlimited = normalizedPlan === 'pro' || normalizedPlan === 'enterprise';
+  const isPaidUnlimited = normalizedPlan === 'pro' || normalizedPlan === 'enterprise' || normalizedPlan === 'custom';
   const isUnlimited = isAdmin || isPaidUnlimited;
 
   if (isUnlimited) {
-    // 3. PAID TIER (PRO / ENTERPRISE) OR ADMIN: UNLIMITED CREDITS
-    const isEnterpriseOrAdmin = isAdmin || normalizedPlan === 'enterprise';
+    // 3. PAID TIER (PRO / ENTERPRISE / CUSTOM) OR ADMIN: UNLIMITED CREDITS
+    const isEnterpriseOrAdmin = isAdmin || normalizedPlan === 'enterprise' || normalizedPlan === 'custom';
     return {
       used,
       limit: PRO_GENERATION_LIMIT, // 99999
@@ -176,8 +176,8 @@ export function getUsageStats(
       isAdmin,
       isUnlimited: true,
       plan: normalizedPlan,
-      badgeColor: isEnterpriseOrAdmin ? 'purple' : 'yellow',
-      badgeLabel: isAdmin ? 'Admin Unlimited' : normalizedPlan === 'enterprise' ? 'Enterprise Pack' : 'Pro Studio',
+      badgeColor: normalizedPlan === 'custom' ? 'purple' : isEnterpriseOrAdmin ? 'purple' : 'yellow',
+      badgeLabel: isAdmin ? 'Admin Unlimited' : normalizedPlan === 'custom' ? 'Bespoke Custom' : normalizedPlan === 'enterprise' ? 'Enterprise Pack' : 'Pro Studio',
       displayRemaining: '∞ Unlimited',
       displayLimit: 'Unlimited',
       toolBreakdown: getLocalToolBreakdown(),

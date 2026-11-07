@@ -20,6 +20,12 @@ import {
   CreditCard,
   BookOpen,
   Eye,
+  Radio,
+  Video,
+  Terminal,
+  Coffee,
+  Lock,
+  FileText,
 } from 'lucide-react';
 
 interface SocialCardsModalProps {
@@ -49,6 +55,17 @@ const PAGES_LIST: PageMetaItem[] = [
       'Floyd-Steinberg error diffusion & optical halftone matrices calibrated for 300 DPI commercial press prints with 100% verified camera scan rates.',
     badge: 'ISO/IEC 18004 300 DPI',
     icon: QrCode,
+    accentColor: '#ccff00',
+  },
+  {
+    id: 'nfc-bat',
+    name: 'NFC Bat Specimen Lab',
+    path: '/nfc-bat',
+    title: 'NFC Bat Precision Optical Specimen Lab // Nedject',
+    description:
+      'Deterministic NFC NTAG213/215/216 bitstream encoding with curated Batman precision bat patterns and optical camera scannability verification.',
+    badge: 'CURATED BATMAN SPECIMEN',
+    icon: Radio,
     accentColor: '#ccff00',
   },
   {
@@ -83,6 +100,39 @@ const PAGES_LIST: PageMetaItem[] = [
     badge: 'SILVER GELATIN B/W CURVE',
     icon: Printer,
     accentColor: '#ffffff',
+  },
+  {
+    id: 'insta-clip',
+    name: 'Insta-Clip Poster Studio',
+    path: '/insta-clip',
+    title: 'Insta-Clip — 9:16 Kinetic Video Canvas & 4K Frame Studio // Nedject',
+    description:
+      'Direct in-browser video frame extraction, 9:16 story poster typography, and lossless high-resolution canvas snapshots without cloud uploads.',
+    badge: '9:16 KINETIC POSTER CANVAS',
+    icon: Video,
+    accentColor: '#f43f5e',
+  },
+  {
+    id: 'docs',
+    name: 'Developer Documentation',
+    path: '/docs',
+    title: 'Developer Documentation & Architectural Guides // Nedject',
+    description:
+      'Complete developer documentation, prepress standards, cryptographic verification procedures, and hardware specifications for Nedject.',
+    badge: 'PLATFORM ARCHITECTURE MANUAL',
+    icon: BookOpen,
+    accentColor: '#38bdf8',
+  },
+  {
+    id: 'docs-api',
+    name: 'Cloud REST API & SDKs',
+    path: '/docs/api',
+    title: 'Cloud REST API Reference & Developer SDKs // Nedject Docs',
+    description:
+      'Integrate 300 DPI optical QR rendering, barcode generation, and PDF prepress pipelines directly into your production backend in minutes.',
+    badge: 'HIGH-THROUGHPUT CLOUD API',
+    icon: Terminal,
+    accentColor: '#a855f7',
   },
   {
     id: 'fitness-glass',
@@ -129,6 +179,17 @@ const PAGES_LIST: PageMetaItem[] = [
     accentColor: '#fbbf24',
   },
   {
+    id: 'dashboard',
+    name: 'Google Fit Telemetry HUD',
+    path: '/dashboard',
+    title: 'Google Fit Cloud Telemetry Dashboard // Nedject',
+    description:
+      'Real-time synchronization with Google Fit cloud APIs, biometric telemetry aggregation, AHA blood pressure tracking, and smart glass HUD cadence.',
+    badge: 'REAL-TIME BIOMETRIC TELEMETRY',
+    icon: Activity,
+    accentColor: '#06b6d4',
+  },
+  {
     id: 'blog',
     name: 'Engineering Monograph Blog',
     path: '/blog',
@@ -138,6 +199,50 @@ const PAGES_LIST: PageMetaItem[] = [
     badge: 'PEER-REVIEWED SPECIFICATIONS',
     icon: BookOpen,
     accentColor: '#a78bfa',
+  },
+  {
+    id: 'tip',
+    name: 'Support & Sponsor Matrix',
+    path: '/tip',
+    title: 'Support & Sponsor Nedject Development // Nedject',
+    description:
+      'Fuel continuous independent engineering of open-source print calibration kernels, forensic auditors, and zero-tracker optical tooling.',
+    badge: 'CREATOR SPONSORSHIP LEDGER',
+    icon: Coffee,
+    accentColor: '#f59e0b',
+  },
+  {
+    id: 'privacy',
+    name: 'Privacy Policy & OAuth',
+    path: '/privacy',
+    title: 'Privacy Policy & Google OAuth Limited Use Compliance // Nedject',
+    description:
+      'Full disclosure of Google OAuth 2.0 Limited Use compliance, zero-tracker client privacy, cryptographic isolation, and data governance.',
+    badge: 'GOOGLE LIMITED USE VERIFIED',
+    icon: Shield,
+    accentColor: '#22c55e',
+  },
+  {
+    id: 'terms',
+    name: 'Terms of Service & SLA',
+    path: '/terms',
+    title: 'Terms of Service & Licensing Agreements // Nedject',
+    description:
+      'Official terms governing platform access, commercial 300 DPI print licensing, Google OAuth authentication, billing cycles, and developer API usage.',
+    badge: 'COMMERCIAL LICENSING SLA',
+    icon: FileText,
+    accentColor: '#22c55e',
+  },
+  {
+    id: 'login',
+    name: 'Developer Portal & Vault',
+    path: '/login',
+    title: 'Sign In & Developer Access Portal // Nedject',
+    description:
+      'Access your Nedject developer workspace, commercial license keys, generation usage monitoring, and bespoke custom tier configurations.',
+    badge: 'SECURE ACCESS GATEWAY',
+    icon: Lock,
+    accentColor: '#eab308',
   },
 ];
 

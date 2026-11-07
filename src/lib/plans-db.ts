@@ -52,7 +52,7 @@ export async function getAllPlans(): Promise<ManagedPlan[]> {
     if (db) {
       const records = await db.collection('plans').find({}).toArray();
       if (records && records.length > 0) {
-        return records.map((r: any) => {
+        const mapped: ManagedPlan[] = records.map((r: any) => {
           const defaultPlan = DEFAULT_PLANS.find((p) => p.id === r.id);
           const rawPricing = r.pricing || defaultPlan?.pricing || DEFAULT_PLANS[0].pricing;
           const mergedPricing: any = {};
@@ -87,6 +87,16 @@ export async function getAllPlans(): Promise<ManagedPlan[]> {
             updatedAt: r.updatedAt,
           };
         });
+
+        // Ensure newly defined default plans (such as 'custom') are appended if not yet in database
+        const existingIds = new Set(mapped.map((p) => p.id));
+        for (const defPlan of DEFAULT_PLANS) {
+          if (!existingIds.has(defPlan.id)) {
+            mapped.push(defPlan);
+          }
+        }
+
+        return mapped;
       }
     }
   } catch (err) {

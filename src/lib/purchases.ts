@@ -276,8 +276,10 @@ export async function createPurchaseRecord(
   const now = new Date().toISOString();
   const invoiceId = data.invoiceId || generateInvoiceId();
   const amount = Number(data.amount) || 0;
+  const isCustom = data.plan === 'custom';
   const isEnt = data.plan === 'enterprise';
-  const planName = data.planName || (isEnt ? 'Enterprise Studio Pass' : 'Pro Athlete Pass');
+  const planName =
+    data.planName || (isCustom ? 'Nedject Bespoke Custom Tier' : isEnt ? 'Enterprise Studio Pass' : 'Pro Athlete Pass');
   const isIndianUser =
     data.userEmail.toLowerCase().includes('neerajrekwar') ||
     data.userEmail.toLowerCase().endsWith('.in');

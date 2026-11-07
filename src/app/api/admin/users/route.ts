@@ -127,8 +127,8 @@ export async function PUT(req: NextRequest) {
       });
     }
 
-    // 2. SET PLAN MANUALLY BY ADMIN (PRO / ENTERPRISE with MONTHLY or ANNUAL)
-    if (plan && ['free', 'pro', 'enterprise'].includes(plan)) {
+    // 2. SET PLAN MANUALLY BY ADMIN (PRO / ENTERPRISE / CUSTOM with MONTHLY or ANNUAL)
+    if (plan && ['free', 'starter', 'pro', 'enterprise', 'custom'].includes(plan)) {
       updateDoc.plan = plan;
 
       if (plan === 'free') {
@@ -157,7 +157,8 @@ export async function PUT(req: NextRequest) {
           updateDoc.subscriptionExpiresAt = exp.toISOString();
         }
 
-        updateDoc.generationsLimit = plan === 'enterprise' ? 999999 : 99999;
+        updateDoc.generationsLimit =
+          plan === 'custom' ? 9999999 : plan === 'enterprise' ? 999999 : plan === 'starter' ? 500 : 99999;
       }
     }
 
@@ -184,7 +185,12 @@ export async function PUT(req: NextRequest) {
             userEmail: userDoc.email,
             userName: userDoc.name || 'Subscriber',
             plan,
-            planName: plan === 'enterprise' ? 'Nedject Enterprise Matrix' : 'Nedject Pro Studio',
+            planName:
+              plan === 'custom'
+                ? 'Nedject Bespoke Custom Tier'
+                : plan === 'enterprise'
+                ? 'Nedject Enterprise Matrix'
+                : 'Nedject Pro Studio',
             amount: 0,
             amountFormatted: 'FREE (Admin Granted)',
             currency: grantCurrency,

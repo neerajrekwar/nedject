@@ -1,6 +1,6 @@
 import { SupportedCurrency, CURRENCY_SYMBOLS, DEFAULT_PLANS, ManagedPlan } from './plans-types';
 
-export type PlanTier = 'guest' | 'free' | 'pro' | 'enterprise';
+export type PlanTier = 'guest' | 'free' | 'pro' | 'enterprise' | 'custom' | string;
 
 export type PremiumFeatureKey =
   | 'insta_clip_4k_poster'
@@ -155,7 +155,7 @@ export function hasFeatureAccess(
     };
   }
 
-  if (plan === 'enterprise') return { allowed: true, gate };
+  if (plan === 'enterprise' || plan === 'custom') return { allowed: true, gate };
   if (plan === 'pro') {
     return { allowed: gate.requiredPlan !== 'enterprise', gate };
   }

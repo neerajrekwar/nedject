@@ -138,7 +138,28 @@ function hashPassword(password: string, salt: string): string {
 async function findAdminCredentials(targetEmail: string): Promise<AdminRecord | null> {
   const normalized = targetEmail.trim().toLowerCase();
 
-  // 1. Check local .admin-credentials.json set via terminal CLI
+  // 1. Primary Source of Truth: Check MongoDB collection 'admin_credentials'
+  try {
+    const db = await getDb();
+    if (db) {
+      const doc = await db.collection('admin_credentials').findOne({ email: normalized });
+      if (doc && doc.hash && doc.salt) {
+        return {
+          id: doc._id?.toString() || 'admin-mongo-owner',
+          email: doc.email.trim().toLowerCase(),
+          name: doc.name || 'Neeraj Rekwar',
+          role: doc.role || 'Super Admin',
+          salt: doc.salt,
+          hash: doc.hash,
+          avatar: doc.avatar,
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[AdminAuth] MongoDB admin lookup error, checking fallback store:', err);
+  }
+
+  // 2. Secondary Fallback: Check local .admin-credentials.json
   if (fs.existsSync(CREDS_FILE)) {
     try {
       const raw = fs.readFileSync(CREDS_FILE, 'utf-8');
@@ -182,27 +203,6 @@ async function findAdminCredentials(targetEmail: string): Promise<AdminRecord | 
     } catch (e) {
       console.warn('Error reading .admin-credentials.json:', e);
     }
-  }
-
-  // 2. Check MongoDB collection 'admin_credentials'
-  try {
-    const db = await getDb();
-    if (db) {
-      const doc = await db.collection('admin_credentials').findOne({ email: normalized });
-      if (doc && doc.hash && doc.salt) {
-        return {
-          id: doc._id?.toString() || 'admin-mongo-owner',
-          email: doc.email.trim().toLowerCase(),
-          name: doc.name || 'Neeraj Rekwar',
-          role: doc.role || 'Super Admin',
-          salt: doc.salt,
-          hash: doc.hash,
-          avatar: doc.avatar,
-        };
-      }
-    }
-  } catch (err) {
-    console.warn('MongoDB admin lookup error:', err);
   }
 
   // 3. Fallback to environment variables if provided

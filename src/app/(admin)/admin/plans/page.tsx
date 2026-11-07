@@ -62,6 +62,18 @@ export default function AdminPlansPage() {
     fetchPlans();
   }, []);
 
+  // Add bespoke custom plan if missing
+  const handleAddCustomPlan = () => {
+    const customDefault = DEFAULT_PLANS.find((p) => p.id === 'custom');
+    if (!customDefault) return;
+    if (plans.some((p) => p.id === 'custom')) {
+      alert('Custom Bespoke plan is already configured in the list below.');
+      return;
+    }
+    setPlans((prev) => [...prev, customDefault]);
+    setSuccessMsg('Added Bespoke Custom Tier schema to list. Click SAVE to persist.');
+  };
+
   // Update plan field locally
   const handlePlanChange = (index: number, field: keyof ManagedPlan, value: any) => {
     setPlans((prev) => {
@@ -260,6 +272,15 @@ export default function AdminPlansPage() {
           </Link>
           <button
             type="button"
+            onClick={handleAddCustomPlan}
+            className="px-3.5 py-2 border-2 border-black bg-[#ccff00] hover:bg-black hover:text-[#ccff00] text-black font-black text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] cursor-pointer"
+            title="Add Bespoke Custom Tier schema"
+          >
+            <Plus className="w-4 h-4" />
+            <span>ADD BESPOKE CUSTOM</span>
+          </button>
+          <button
+            type="button"
             disabled={resetting || loading}
             onClick={handleResetDefaults}
             className="px-3.5 py-2 border-2 border-black bg-rose-50 text-rose-700 hover:bg-rose-100 font-black text-xs uppercase flex items-center gap-1.5 shadow-[2px_2px_0px_#000000] cursor-pointer disabled:opacity-50"
@@ -323,7 +344,13 @@ export default function AdminPlansPage() {
             <div
               key={plan.id}
               className={`border-4 border-black bg-white p-6 shadow-[8px_8px_0px_#000000] space-y-6 ${
-                plan.id === 'pro' ? 'border-l-[12px] border-l-[#ccff00]' : ''
+                plan.id === 'pro'
+                  ? 'border-l-[12px] border-l-[#ccff00]'
+                  : plan.id === 'custom'
+                  ? 'border-l-[12px] border-l-black bg-[#fafaf9]'
+                  : plan.id === 'enterprise'
+                  ? 'border-l-[12px] border-l-purple-600'
+                  : ''
               }`}
             >
               {/* TOP STRIP: ID, NAME, BADGE, ACTIVE TOGGLE */}
@@ -532,6 +559,8 @@ export default function AdminPlansPage() {
                             ? '$9.99/mo rate • Unlimited 300 DPI exports • Active for 30 days'
                             : plan.id === 'enterprise'
                             ? '$29.00/mo rate • Full prepress vector engine • 30 days'
+                            : plan.id === 'custom'
+                            ? '$99.00/mo rate • Bespoke volume & custom SLA • Tailored monthly billing'
                             : '2 Guest / 10 Auth Generations • Active for 30 days')
                         }
                         onChange={(e) =>
@@ -553,6 +582,8 @@ export default function AdminPlansPage() {
                             ? '$99.00/yr rate • Full annual Pro access • 1-year expiration'
                             : plan.id === 'enterprise'
                             ? '$249.00/yr rate • Unlimited prepress license • 1-year expiration'
+                            : plan.id === 'custom'
+                            ? '$899.00/yr rate • Annual bespoke agreement • Dedicated engineering channel'
                             : 'Standard free access • 1-year renewal')
                         }
                         onChange={(e) =>
@@ -574,6 +605,8 @@ export default function AdminPlansPage() {
                             ? 'Pro Lifetime (No Expiry)'
                             : plan.id === 'enterprise'
                             ? 'Enterprise Lifetime (No Expiry)'
+                            : plan.id === 'custom'
+                            ? 'Custom Perpetual License (No Expiry)'
                             : 'Free Tier (No Expiry)')
                         }
                         onChange={(e) =>

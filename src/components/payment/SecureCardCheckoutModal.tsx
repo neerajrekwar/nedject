@@ -30,7 +30,7 @@ interface SecureCardCheckoutModalProps {
     amount: number;
     currency: string;
     planName: string;
-    planId: 'pro' | 'enterprise';
+    planId: 'pro' | 'enterprise' | 'custom' | string;
     billingCycle: 'monthly' | 'yearly' | 'lifetime' | string;
     displayAmount: string;
     couponCode?: string;

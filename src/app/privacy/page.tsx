@@ -19,25 +19,21 @@ import {
   Cpu,
   UserCheck,
 } from 'lucide-react';
-import { getSiteUrl, SITE_NAME } from '@/lib/seo';
+import { createPageMetadata, SITE_NAME } from '@/lib/seo';
 
-const siteUrl = getSiteUrl();
-
-export const metadata: Metadata = {
+export const metadata: Metadata = createPageMetadata({
   title: 'Privacy Policy | Nedject — 300 DPI Photo QR & Fitness Telemetry Studio',
   description:
     'Comprehensive Privacy Policy for Nedject, genQRstudio, and Fitness Glass. Full disclosure of Google OAuth 2.0, Google Fit API scopes, Google API Services User Data Policy Limited Use compliance, cryptographic security, and data deletion rights.',
-  alternates: {
-    canonical: `${siteUrl}/privacy`,
-  },
-  openGraph: {
-    title: 'Privacy Policy — Nedject',
-    description:
-      'Learn how Nedject safeguards your data, complies with the Google API Services User Data Policy Limited Use requirements, and protects Google Fit telemetry.',
-    url: `${siteUrl}/privacy`,
-    type: 'website',
-  },
-};
+  path: '/privacy',
+  keywords: [
+    'privacy policy',
+    'Google Fit API privacy',
+    'Limited Use compliance',
+    'cryptographic data security',
+    'zero third party trackers',
+  ],
+});
 
 export default function PrivacyPolicyPage() {
   const lastUpdated = 'February 24, 2026';

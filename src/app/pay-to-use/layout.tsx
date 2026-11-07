@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import { createPageMetadata, buildBreadcrumbJsonLd, getSiteUrl, SITE_NAME } from '@/lib/seo';
 
 export const metadata: Metadata = createPageMetadata({
-  title: 'Pay to Use & Plans Pricing | Nedject Studio',
+  title: 'Pay to Use & Plans Pricing — Pro & Bespoke Custom | Nedject Studio',
   description:
-    'Flexible plans for industrial QR generation, 300 DPI high-resolution exports, unlimited batch processing, and vector barcode downloads.',
+    'Flexible multi-currency plans for industrial QR generation, 300 DPI high-resolution exports, unlimited batch processing, vector barcodes, and Bespoke Custom VPC architecture.',
   path: '/pay-to-use',
   keywords: [
     'Nedject pay to use',
@@ -12,6 +12,8 @@ export const metadata: Metadata = createPageMetadata({
     '300 DPI export license',
     'barcode vector commercial license',
     'unlimited QR generator subscription',
+    'Bespoke custom plan',
+    'enterprise private VPC',
   ],
 });
 

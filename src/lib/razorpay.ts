@@ -114,6 +114,29 @@ export const NEDJECT_PLANS: Record<string, PlanConfig> = {
       { text: 'SLA Guaranteed 99.9% Optical Generation Uptime', included: true },
     ],
   },
+  custom: {
+    id: 'custom',
+    name: 'Nedject Bespoke Custom Tier',
+    badge: 'TAILORED ARCHITECTURE',
+    description: 'Fully customized volume, dedicated on-premise hardware profiles, custom SLA, and direct engineering consultation.',
+    monthlyInr: 7999,
+    yearlyInr: 69999,
+    lifetimeInr: 119999,
+    monthlyUsd: 99.0,
+    yearlyUsd: 899.0,
+    lifetimeUsd: 1499.0,
+    generationLimit: 9999999,
+    features: [
+      { text: 'Custom Optical Matrix & Proprietary Symbologies', included: true, highlight: true },
+      { text: 'Dedicated High-Throughput Cluster & 3,000+ RPM API Limit', included: true, highlight: true },
+      { text: 'Unlimited Multi-Seat Team Access & Granular RBAC Permissions', included: true },
+      { text: 'Zero Rate-Limiting Overhead & Custom Whitelist Domains (100+)', included: true },
+      { text: 'Custom Hardware Calibration Profile (Laser, Inkjet, Offset Press, Flexo)', included: true },
+      { text: 'Direct 24/7 Slack / WhatsApp Engineering Bridge & 99.99% SLA Guarantee', included: true },
+      { text: 'Bespoke Invoicing, Purchase Orders, GST / VAT & Net-30 Payment Terms', included: true },
+      { text: 'On-Premise Container Deployment / Private VPC Architecture Options', included: true },
+    ],
+  },
 };
 
 // Aliased for backwards compatibility

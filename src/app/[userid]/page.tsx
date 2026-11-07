@@ -54,7 +54,7 @@ export default function UserProfilePage() {
   const [email, setEmail] = useState('');
   const [dob, setDob] = useState('');
   const [occupation, setOccupation] = useState('');
-  const [userPlan, setUserPlan] = useState<'free' | 'pro' | 'enterprise'>('free');
+  const [userPlan, setUserPlan] = useState<'free' | 'pro' | 'enterprise' | 'custom' | string>('free');
   const [provider, setProvider] = useState<string>('credentials');
   const [userId, setUserId] = useState<string>('');
   const [updatedAt, setUpdatedAt] = useState<string>('');
@@ -82,7 +82,7 @@ export default function UserProfilePage() {
       const emailToFetch = session.user.email || '';
       setName(session.user.name || '');
       setEmail(emailToFetch);
-      const currentPlan = ((session.user as any)?.plan || 'free') as 'free' | 'pro' | 'enterprise';
+      const currentPlan = ((session.user as any)?.plan || 'free') as 'free' | 'pro' | 'enterprise' | 'custom' | string;
       setUserPlan(currentPlan);
       setUserId((session.user as any)?.id || useridParam || 'usr_' + Date.now().toString(36));
       setUsageStats(getUsageStats(true, currentPlan));
@@ -100,7 +100,7 @@ export default function UserProfilePage() {
             if (data.user.country) setUserCountry(data.user.country);
             const resolvedPlan = data.user.plan || currentPlan;
             setUserPlan(resolvedPlan);
-            if (resolvedPlan === 'enterprise' || resolvedPlan === 'pro') {
+            if (resolvedPlan === 'enterprise' || resolvedPlan === 'pro' || resolvedPlan === 'custom') {
               setCachedActivePlan(resolvedPlan);
             }
             setProvider(data.user.provider || 'credentials');
@@ -376,19 +376,27 @@ export default function UserProfilePage() {
             <div className="border-2 border-black bg-zinc-50 p-3 shadow-[2px_2px_0px_#000000]">
               <span className="text-[10px] font-black text-zinc-500 uppercase block">SUBSCRIPTION PLAN</span>
               <span className={`font-black uppercase block mt-0.5 ${
-                userPlan === 'enterprise'
+                userPlan === 'custom'
+                  ? 'text-black font-black'
+                  : userPlan === 'enterprise'
                   ? 'text-purple-700'
                   : userPlan === 'pro'
                   ? 'text-amber-600'
                   : 'text-emerald-700'
               }`}>
-                {userPlan === 'enterprise' ? 'ENTERPRISE PACK (PURPLE)' : userPlan === 'pro' ? 'PRO STUDIO (YELLOW)' : 'FREE TIER (GREEN)'}
+                {userPlan === 'custom'
+                  ? 'BESPOKE CUSTOM (BLACK BASE)'
+                  : userPlan === 'enterprise'
+                  ? 'ENTERPRISE PACK (PURPLE)'
+                  : userPlan === 'pro'
+                  ? 'PRO STUDIO (YELLOW)'
+                  : 'FREE TIER (GREEN)'}
               </span>
             </div>
             <div className="border-2 border-black bg-zinc-50 p-3 shadow-[2px_2px_0px_#000000]">
               <span className="text-[10px] font-black text-zinc-500 uppercase block">GENERATIONS QUOTA</span>
               <span className="font-black text-black block mt-0.5">
-                {userPlan === 'pro' || userPlan === 'enterprise' ? '∞ UNLIMITED' : `${usageStats.remaining} / 10 REMAINING`}
+                {userPlan === 'pro' || userPlan === 'enterprise' || userPlan === 'custom' ? '∞ UNLIMITED' : `${usageStats.remaining} / 10 REMAINING`}
               </span>
             </div>
             <div className="border-2 border-black bg-zinc-50 p-3 shadow-[2px_2px_0px_#000000]">

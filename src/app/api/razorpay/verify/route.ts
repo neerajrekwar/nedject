@@ -287,7 +287,7 @@ export async function POST(req: NextRequest) {
     try {
       await updateUserProfile(userEmail, {
         plan: assignedPlan,
-        generationsLimit: assignedPlan === 'enterprise' ? 999999 : 99999,
+        generationsLimit: assignedPlan === 'custom' ? 9999999 : (assignedPlan === 'enterprise' ? 999999 : 99999),
         subscriptionBillingCycle: verifiedCycle,
         subscriptionStatus: 'active',
         subscriptionExpiresAt: expiresAt,

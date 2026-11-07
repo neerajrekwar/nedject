@@ -13,6 +13,11 @@
     "verify": "node scripts/admin-auth.mjs verify",
     "seed": "node scripts/admin.mjs seed"
   },
+  "bin": {
+    "admin-auth": "./scripts/admin-auth.mjs",
+    "verify": "./scripts/admin-auth.mjs",
+    "admin": "./scripts/admin.mjs"
+  },
   "dependencies": {
     "@tiptap/extension-image": "^3.32.0",
     "@tiptap/extension-link": "^3.32.0",
